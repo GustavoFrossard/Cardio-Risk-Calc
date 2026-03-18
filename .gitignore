@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment variables (never commit secrets)
+.env
+.env.*
+!.env.example
+
+# Hugging Face / transformers model cache (gigabytes — use HF Hub instead)
+backend/models/
+*.bin
+*.safetensors
+*.gguf
+*.ot
+
+# Node / frontend
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/settings.json
+.idea/
+*.iml
+
+# Logs
+*.log
+logs/
+
+# Test artifacts
+*.tmp
+test_out.txt

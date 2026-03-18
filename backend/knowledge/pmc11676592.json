@@ -1,0 +1,15 @@
+{
+  "source": "PMC11676592",
+  "title": "Perioperative risk scores: prediction, pitfalls, and progress",
+  "year": 2024,
+  "journal": "Current Opinion in Anaesthesiology",
+  "doi": "10.1097/ACO.0000000000001445",
+  "chunks": [
+    "Perioperative risk scores aim to risk-stratify patients to guide evaluation and management. Scores often do not generalize well to new data and require ongoing updates.",
+    "ASA score: 6 classes based on preoperative health. Median c-statistic 0.77 for perioperative mortality. POSSUM: 12 physiological and 6 operative variables, c-statistic 0.82. P-POSSUM improves calibration.",
+    "ACS NSQIP: 21 predictors from 1.4 million patients, c-statistic 0.83. SORT: 6 variables developed from >16,000 patients, c-statistic 0.91.",
+    "PreOpNet deep-learning using ECG data predicts 30-day mortality (c-stat 0.83) and MACE (c-stat 0.77). LLMs evaluated for perioperative risk showing moderate to strong performance.",
+    "Future: data integration (EHR+imaging+genetics), dynamic prediction with intraoperative time-series, continuous learning, clinical workflow integration.",
+    "Pitfalls: overfitting, bias from nonrepresentative samples, inadequate validation, small sample sizes. Models require external validation across demographic subgroups."
+  ]
+}

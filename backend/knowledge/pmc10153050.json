@@ -1,0 +1,14 @@
+{
+  "source": "PMC10153050",
+  "title": "Enabling personalized perioperative risk prediction by using a ML model based on preoperative data",
+  "year": 2023,
+  "journal": "Scientific Reports",
+  "doi": "10.1038/s41598-023-33981-8",
+  "chunks": [
+    "Preoperative risk assessment is essential for shared decision-making and adequate perioperative care. Common scores provide limited predictive quality and lack personalized information. This study created an interpretable machine-learning-based model (XGBoost) to assess individual risk of postoperative mortality based on preoperative data of 66,846 patients undergoing elective non-cardiac surgery.",
+    "The model included 201 features with AUROC of 0.95 and AUPRC of 0.109. The feature with highest information gain was preoperative order for red packed cell concentrates followed by age and c-reactive protein.",
+    "Machine learning algorithms are superior to traditional scores in prediction accuracy. Random forests and gradient boosting showed best performance. Individual risk factors identified on patient level using waterfall plots.",
+    "Modifiable risk factors example: increasing haemoglobin by 0.5 points reduced risk from 1.37 pct to 0.6 pct. Weight gain of 8kg in cachectic patient could reduce mortality by 1 pct.",
+    "Mortality risk rises with increasing ordered packed red cells, age, c-reactive protein, preoperative consults, ASA score and Gamma-GT."
+  ]
+}
