@@ -347,6 +347,45 @@ def build_medication_advice(data: dict) -> list[dict]:
             "type": RecommendationType.AMBER,
         })
 
+    # DOACs: Rivaroxabana / Apixabana
+    # Suspender 24-48h antes e retornar no 1º ou 2º PO dependendo do risco de sangramento
+    if data.get("uses_rivaroxaban") or data.get("uses_apixaban"):
+        med_name = "Rivaroxabana" if data.get("uses_rivaroxaban") else "Apixabana"
+        advice.append({
+            "medication": med_name,
+            "action": "Suspender 24-48h antes",
+            "detail": (
+                f"{med_name}: suspender 24–48 horas antes do procedimento. "
+                "Retornar no 1º ou 2º dia pós-operatório conforme risco de sangramento e hemostasia garantida."
+            ),
+            "type": RecommendationType.AMBER,
+        })
+
+    # Dabigatrana: depende da depuração (ClCr) e risco de sangramento
+    if data.get("uses_dabigatran"):
+        clcr = data.get("clcr")
+        high_bleeding = data.get("high_bleeding_risk", False)
+        if isinstance(clcr, (int, float)) and clcr < 50 and high_bleeding:
+            advice.append({
+                "medication": "Dabigatrana",
+                "action": "Suspender 4 dias antes",
+                "detail": (
+                    "Dabigatrana com ClCr < 50 e alto risco de sangramento: suspender 4 dias antes. "
+                    "Retornar no 2º dia pós-operatório se hemostasia garantida."
+                ),
+                "type": RecommendationType.AMBER,
+            })
+        else:
+            advice.append({
+                "medication": "Dabigatrana",
+                "action": "Suspender 24-48h antes",
+                "detail": (
+                    "Dabigatrana (ClCr >= 50 ou sem risco aumentado): suspender 24–48 horas antes. "
+                    "Retornar no 1º ou 2º dia pós-operatório conforme risco de sangramento e hemostasia garantida."
+                ),
+                "type": RecommendationType.AMBER,
+            })
+
     # Warfarin
     if data.get("uses_warfarin"):
         bridging = _determine_warfarin_bridging(data)
@@ -571,7 +610,12 @@ def calculate_risk(data: dict) -> dict:
     mets: float = data.get("mets", 4)
     surgery_risk: str = data.get("surgery_risk", "intermediate")
     surgery_type: str = data.get("surgery_type", "")
-    is_vascular: bool = data.get("is_vascular", False)
+    # Accept multiple indicators for vascular surgery and infer from surgery_type
+    is_vascular: bool = (
+        bool(data.get("is_vascular", False))
+        or bool(data.get("surgery_is_vascular", False))
+        or (str(surgery_type).lower().find("vascular") >= 0)
+    )
 
     # 1. Check active cardiovascular conditions (Tabela 2)
     active_conditions = check_active_conditions(data)
@@ -588,7 +632,9 @@ def calculate_risk(data: dict) -> dict:
         score_class, mace_pct = _get_rcri_risk(score)
 
     # 3. Override for low-risk surgery
-    if surgery_risk == SurgeryRisk.LOW and not has_active:
+    # Keep the low-surgery cap, but do NOT apply it when the calculated score
+    # already indicates high procedural risk (e.g., RCRI score >= 3).
+    if surgery_risk == SurgeryRisk.LOW and not has_active and score < 3:
         mace_pct = min(mace_pct, 1.0)
 
     # 4. Classify risk

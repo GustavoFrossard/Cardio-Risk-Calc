@@ -102,9 +102,109 @@ CASES = [
             }
         ],
         "expect": {
-            # C2 deve estar AUSENTE — AVC é C4, não C2
-            # (pergunta direta: o modelo pode responder apenas "❌ Ausente")
             "c2_absent": True,
+        },
+    },
+    {
+        "name": "Infarto prévio + IC + DM insulina + colectomia (esperado: RCRI 4pts, Classe IV, 15%)",
+        "messages": [
+            {
+                "role": "user",
+                "content": (
+                    "Paciente de 70 anos com infarto do miocárdio há 8 meses, "
+                    "insuficiência cardíaca congestiva (FEVE 35%), diabetes tipo 1 em "
+                    "insulinoterapia. Sem AVC prévio. Creatinina 1.4 mg/dL. "
+                    "Programada colectomia aberta por neoplasia colorretal. Calcule o RCRI."
+                ),
+            }
+        ],
+        "expect": {
+            "score": 4,
+            "class": "iv",
+            "pct": "15",
+            "c1_present": True,   # colectomia = intraperitoneal
+            "c2_present": True,   # infarto prévio = DAC
+            "c3_present": True,   # IC congestiva
+            "c5_present": True,   # insulina
+            "c2_absent": False,   # C2 DEVE estar presente (infarto prévio é DAC)
+        },
+    },
+    {
+        "name": "Creatinina > 2,0 deve ativar C6",
+        "messages": [
+            {
+                "role": "user",
+                "content": (
+                    "Paciente de 58 anos, DRC estágio 4, creatinina 3,2 mg/dL, "
+                    "sem outras comorbidades cardiovasculares. "
+                    "Vai fazer histerectomia abdominal por miomatose. Calcule o RCRI."
+                ),
+            }
+        ],
+        "expect": {
+            "score": 2,
+            "class": "iii",
+            "pct": "10",
+            "c1_present": True,   # histerectomia abdominal = intraperitoneal
+            "c6_present": True,   # creatinina 3,2 > 2,0
+        },
+    },
+    {
+        "name": "AIT deve ser C4 (doença cerebrovascular), não C2",
+        "messages": [
+            {
+                "role": "user",
+                "content": (
+                    "Paciente de 63 anos com episódio de AIT há 6 meses, HAS controlada. "
+                    "Sem DAC, sem IC, sem diabetes. Creatinina normal. "
+                    "Vai fazer artroplastia total de quadril. Calcule o RCRI."
+                ),
+            }
+        ],
+        "expect": {
+            "score": 1,
+            "class": "ii",
+            "pct": "6",
+            "c4_present": True,   # AIT = doença cerebrovascular
+            "c2_absent": True,    # AIT != DAC
+            "c1_absent": True,    # ortopédica não é intraperitoneal/intratorácica
+        },
+    },
+    {
+        "name": "Cirurgia ocular: C1 ausente, score 0 mesmo com HAS",
+        "messages": [
+            {
+                "role": "user",
+                "content": (
+                    "Paciente de 75 anos, HAS em tratamento, sem outras comorbidades. "
+                    "Vai fazer facectomia (catarata) com anestesia local. Calcule o RCRI."
+                ),
+            }
+        ],
+        "expect": {
+            "score": 0,
+            "class": "i",
+            "pct": "3",
+            "c1_absent": True,    # cirurgia ocular não conta para C1
+        },
+    },
+    {
+        "name": "VSG-CRI: paciente 72 anos + DAC + DPOC para bypass femoropoplíteo",
+        "messages": [
+            {
+                "role": "user",
+                "content": (
+                    "Paciente de 72 anos, DAC conhecida (stent coronário há 2 anos), "
+                    "DPOC moderado, não diabético, sem IC, creatinina 1,1 mg/dL, "
+                    "não tabagista, sem uso de betabloqueador. "
+                    "Programado para bypass femoropoplíteo por isquemia de MMII. "
+                    "Qual índice usar e calcule o risco."
+                ),
+            }
+        ],
+        "expect": {
+            "index_vsg": True,    # deve usar VSG-CRI
+            "score_vsg_7": True,  # 72 anos=+3, DAC=+2, DPOC=+2 → 7pts = alto risco
         },
     },
 ]
@@ -134,10 +234,10 @@ def check_score(text: str, expected_score: int) -> tuple[bool, str]:
 
 def check_class(text: str, expected_class: str) -> tuple[bool, str]:
     t = _norm(text)
+    # Use \b word boundary to prevent "i" matching "ii"/"iii"/"iv"
     patterns = [
-        rf"classe\s+{expected_class}",
-        rf"class\s+{expected_class}",
-        rf"(classe|class)\s*(iii|ii|iv|i)".replace("(iii|ii|iv|i)", expected_class),
+        rf"classe\s+{expected_class}\b",
+        rf"class\s+{expected_class}\b",
     ]
     for p in patterns:
         if re.search(p, t):
@@ -153,12 +253,16 @@ def check_pct(text: str, pct: str) -> tuple[bool, str]:
 
 
 def check_c1_present(text: str) -> tuple[bool, str]:
-    t = _norm(text)
-    has_c1 = (
-        ("c1" in t or "intraperitoneal" in t or "intratorácic" in t)
-        and ("sim" in t or "✅" in t or "presente" in t or "conta" in t)
-    )
-    return has_c1, "C1 presente [OK]" if has_c1 else "C1 presente NAO confirmado"
+    """Scoped to the C1 row only to avoid false positives from other rows."""
+    # Find the C1 row line
+    m = re.search(r"(c1\s*[—\-][^\n]*)", text, re.IGNORECASE)
+    if m:
+        row = m.group(1)
+        ok = "✅" in row and re.search(r"presente", row, re.IGNORECASE)
+        return bool(ok), "C1 presente [OK]" if ok else "C1 presente NAO confirmado"
+    # Fallback: intraperitoneal + checkmark in same vicinity
+    m2 = re.search(r"intraperitoneal.{0,60}✅|✅.{0,60}intraperitoneal", text, re.IGNORECASE)
+    return bool(m2), "C1 presente [OK]" if m2 else "C1 presente NAO confirmado"
 
 
 def check_c1_absent(text: str) -> tuple[bool, str]:
@@ -216,16 +320,53 @@ def check_index_vsg(text: str) -> tuple[bool, str]:
     return has_vsg, "VSG-CRI mencionado [OK]" if has_vsg else "VSG-CRI NAO mencionado"
 
 
+def check_c2_present(text: str) -> tuple[bool, str]:
+    t = _norm(text)
+    has = re.search(r"c2.{0,100}(✅\s*presente|✅\s*sim\b|conta)", t) or \
+          re.search(r"(doença isquêmica|dac|infarto|angina).{0,80}(✅|presente|conta|\+1)", t)
+    return bool(has), "C2 (DAC/infarto) presente [OK]" if has else "C2 presente NAO confirmado"
+
+
+def check_c3_present(text: str) -> tuple[bool, str]:
+    t = _norm(text)
+    has = re.search(r"c3.{0,100}(✅\s*presente|✅\s*sim\b|conta)", t) or \
+          re.search(r"(insuficiência cardíaca|ic congestiva|icc).{0,80}(✅|presente|conta|\+1)", t)
+    return bool(has), "C3 (IC) presente [OK]" if has else "C3 presente NAO confirmado"
+
+
+def check_c6_present(text: str) -> tuple[bool, str]:
+    t = _norm(text)
+    has = re.search(r"c6.{0,100}(✅\s*presente|✅\s*sim\b|conta)", t) or \
+          re.search(r"creatinina.{0,80}(✅|presente|conta|\+1|>\s*2)", t)
+    return bool(has), "C6 (creatinina>2) presente [OK]" if has else "C6 presente NAO confirmado"
+
+
+def check_score_vsg_7(text: str) -> tuple[bool, str]:
+    t = _norm(text)
+    # Accept any score >=7 (7,8,9,10...) or explicit high risk label
+    has = re.search(r"\b([7-9]|1[0-9])\s*ponto", t) or \
+          re.search(r"total.*?\b([7-9]|1[0-9])\b", t) or \
+          re.search(r"pontuação total:\s*([7-9]|1[0-9])", t) or \
+          re.search(r"alto risco", t) or \
+          re.search(r"classe\s*iii\b", t) or \
+          re.search(r"risco mace estimado:\s*15", t)
+    return bool(has), "VSG-CRI >=7pts / alto risco [OK]" if has else "VSG score >=7 / alto risco NAO encontrado"
+
+
 CHECKERS = {
-    "score":      check_score,
-    "class":      check_class,
-    "pct":        check_pct,
-    "c1_present": lambda t, _=None: check_c1_present(t),
-    "c1_absent":  lambda t, _=None: check_c1_absent(t),
-    "c2_absent":  lambda t, _=None: check_c2_absent(t),
-    "c4_present": lambda t, _=None: check_c4_present(t),
-    "c5_present": lambda t, _=None: check_c5_present(t),
-    "index_vsg":  lambda t, _=None: check_index_vsg(t),
+    "score":        check_score,
+    "class":        check_class,
+    "pct":          check_pct,
+    "c1_present":   lambda t, _=None: check_c1_present(t),
+    "c1_absent":    lambda t, _=None: check_c1_absent(t),
+    "c2_present":   lambda t, _=None: check_c2_present(t),
+    "c2_absent":    lambda t, _=None: check_c2_absent(t),
+    "c3_present":   lambda t, _=None: check_c3_present(t),
+    "c4_present":   lambda t, _=None: check_c4_present(t),
+    "c5_present":   lambda t, _=None: check_c5_present(t),
+    "c6_present":   lambda t, _=None: check_c6_present(t),
+    "index_vsg":    lambda t, _=None: check_index_vsg(t),
+    "score_vsg_7":  lambda t, _=None: check_score_vsg_7(t),
 }
 
 # ─── Runner ───────────────────────────────────────────────────────────────────
@@ -251,6 +392,9 @@ def run_case(case: dict) -> tuple[int, int]:
     for key, expected in case["expect"].items():
         checker = CHECKERS.get(key)
         if checker is None:
+            continue
+        # expected=False means "skip this check" (used to document intent, not assert)
+        if expected is False:
             continue
         total += 1
         if key in ("score", "class", "pct"):

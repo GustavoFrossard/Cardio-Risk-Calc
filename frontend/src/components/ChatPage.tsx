@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { api } from "../services/api";
+import { api, ApiError } from "../services/api";
 import { generateReport } from "../services/report";
 import type { PatientData } from "../types";
 
@@ -72,13 +72,19 @@ export function ChatPage({ onBack }: Props) {
         }
         return next;
       });
-    } catch {
+    } catch (err: unknown) {
+      const detail =
+        err instanceof ApiError
+          ? `HTTP ${err.status}: ${err.message}`
+          : err instanceof Error
+            ? err.message
+            : "Erro desconhecido";
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now() + 1,
           role: "assistant",
-          text: "⚠️ Erro ao se comunicar com o assistente. Verifique se o backend está rodando e a chave da API está configurada.",
+          text: `⚠️ Erro ao se comunicar com o assistente: ${detail}`,
         },
       ]);
     } finally {

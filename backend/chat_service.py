@@ -13,13 +13,18 @@ do modelo local.
 """
 
 import json
+import logging
 import os
+import re
+import warnings
 from pathlib import Path
 
 import numpy as np
 import torch
+from calculator import calculate_risk
 from openai import OpenAI
 from sentence_transformers import SentenceTransformer
+from transformers import AutoModelForCausalLM, AutoTokenizer
 from transformers import pipeline as hf_pipeline
 
 KNOWLEDGE_DIR = Path(__file__).parent / "knowledge"
@@ -31,14 +36,47 @@ EMBEDDING_MODEL = os.environ.get(
     "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 )
 
-# Small, fast, multilingual — good Portuguese support, ~1.5 GB, GPU-accelerated.
+# Multilingual, strong clinical reasoning — ~15 GB download, ~8 GB VRAM fp16.
 # Alternatives (set via GENERATION_MODEL env var):
-#   Qwen/Qwen2.5-0.5B-Instruct   — only ~1 GB, faster but weaker
-#   Qwen/Qwen2.5-3B-Instruct     — better quality, ~6 GB
+#   Qwen/Qwen2.5-1.5B-Instruct   — only ~3 GB, faster but weaker clinical reasoning
+#   Qwen/Qwen2.5-3B-Instruct     — middle ground, ~6 GB
+#   Qwen/Qwen2.5-14B-Instruct    — best quality, needs ~16 GB VRAM
 GENERATION_MODEL = os.environ.get(
     "GENERATION_MODEL",
-    "Qwen/Qwen2.5-1.5B-Instruct"
+    "Qwen/Qwen2.5-7B-Instruct"
 )
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in ("1", "true", "yes", "y", "on")
+
+
+SUPPRESS_MODEL_WARNINGS = _env_bool("CARDIORISK_SUPPRESS_MODEL_WARNINGS", True)
+VERBOSE_MODEL_LOAD = _env_bool("CARDIORISK_VERBOSE_MODEL_LOAD", False)
+USE_DEVICE_MAP_AUTO = _env_bool("CARDIORISK_USE_DEVICE_MAP_AUTO", False)
+ENABLE_DETERMINISTIC_CALC = _env_bool("CARDIORISK_ENABLE_DETERMINISTIC_CALC", True)
+GENERATION_FALLBACK_MODEL = os.environ.get(
+    "CARDIORISK_FALLBACK_GENERATION_MODEL",
+    "Qwen/Qwen2.5-1.5B-Instruct",
+)
+LORA_ADAPTER_PATH = os.environ.get("CARDIORISK_LORA_ADAPTER_PATH", "").strip()
+
+if SUPPRESS_MODEL_WARNINGS:
+    # Keep backend logs clean on Windows and low-memory GPU setups.
+    warnings.filterwarnings(
+        "ignore",
+        message="expandable_segments not supported on this platform.*",
+    )
+    for logger_name in (
+        "transformers",
+        "sentence_transformers",
+        "huggingface_hub",
+        "accelerate",
+    ):
+        logging.getLogger(logger_name).setLevel(logging.ERROR)
 
 SYSTEM_PROMPT = """Você é o CARDIO-RISK CHAT, assistente clínico especializado em avaliação de risco cardiovascular perioperatório, baseado na Diretriz Brasileira de Avaliação Cardiovascular Perioperatória (SBC 2024).
 
@@ -73,13 +111,16 @@ Cardiac Risk Index), conforme a Diretriz SBC 2024."
 RCRI — DEFINIÇÃO EXATA DE CADA CRITÉRIO (1 ponto cada)
 ═══════════════════════════════════════════════════════
 C1 — CIRURGIA INTRAPERITONEAL, INTRATORÁCICA OU VASCULAR SUPRAINGUINAL
-  ✅ Conta: colecistectomia, gastrectomia, colectomia, histerectomia abdominal,
-     esplenectomia, cirurgia hepática, pancreática, nefrectomia, pneumectomia,
-     lobectomia, cirurgia de aorta, carótida, ilíaca, femoropoplítea.
+  ✅ Conta: colecistectomia (aberta OU laparoscópica), gastrectomia, colectomia
+     (aberta OU laparoscópica), histerectomia abdominal, esplenectomia,
+     cirurgia hepática, pancreática, nefrectomia, pneumectomia, lobectomia,
+     cirurgia de aorta, carótida, ilíaca, femoropoplítea.
   ❌ NÃO conta: ortopédica periférica, mama, tireoide, superficial, ocular,
      laparoscopia simples de baixo risco, cirurgia urológica endoscópica.
   ⚠️ ATENÇÃO: este critério é sobre o TIPO DE CIRURGIA, jamais sobre histórico do paciente.
-  Colecistectomia laparoscópica = procedimento INTRAPERITONEAL → C1 PRESENTE.
+  ⚠️ A via de acesso (aberta ou laparoscópica) NÃO muda o critério.
+     Colectomia aberta = INTRAPERITONEAL = C1 PRESENTE.
+     Colecistectomia laparoscópica = INTRAPERITONEAL = C1 PRESENTE.
 
 C2 — DOENÇA ISQUÊMICA CARDÍACA (DAC)
   ✅ Conta: angina, infarto do miocárdio prévio, ondas Q no ECG, uso de nitrato,
@@ -94,6 +135,9 @@ C3 — INSUFICIÊNCIA CARDÍACA CONGESTIVA (ICC)
   ✅ Conta: diagnóstico médico de IC, edema pulmonar prévio, B3 ao exame,
      congestão pulmonar à radiografia, redução de FEVE documentada.
   ❌ NÃO conta: HAS isolada, cardiomegalia sem diagnóstico de IC.
+  ⚠️ HAS (hipertensão arterial sistêmica) NUNCA ativa C3.
+  🚫 NUNCA marque C3 como presente apenas por HAS ou hipertensão.
+     C3 exige diagnóstico explícito de insuficiência cardíaca congestiva.
 
 C4 — DOENÇA CEREBROVASCULAR
   ✅ Conta: AVC isquêmico ou hemorrágico prévio, AIT, déficit neurológico focal prévio.
@@ -122,10 +166,25 @@ PONTUAÇÃO RCRI → RISCO MACE (ESC 2022 / SBC 2024):
 ═══════════════════════════════════════════════════════
 VSG-CRI — PONTUAÇÃO VARIÁVEL (cirurgias vasculares)
 ═══════════════════════════════════════════════════════
-Idade 60–69 anos: +2 | 70–79 anos: +3 | ≥80 anos: +4
-DAC: +2 | ICC: +2 | DPOC: +2 | Creatinina >1,8: +2
-Tabagismo: +1 | DM com insulina: +1 | Betabloqueador crônico: +1
-Revascularização miocárdica prévia: −1
+Idade (escolha APENAS uma faixa):
+  60–69 anos → +2  |  70–79 anos → +3  |  ≥80 anos → +4  |  <60 anos → +0
+  ⚠️ Paciente de 72 anos = faixa 70–79 = +3 (NÃO ≥80).
+
+Critérios de +2 pontos cada:
+  DAC (coronária obstrutiva, infarto, stent, angina)  → +2
+  ICC (insuficiência cardíaca congestiva)             → +2
+  DPOC (qualquer grau)                               → +2
+  Creatinina > 1,8 mg/dL                             → +2
+
+Critérios de +1 ponto cada:
+  Tabagismo ativo                                    → +1
+  DM com insulinoterapia                             → +1
+  Uso crônico de betabloqueador                      → +1
+
+Critério de −1 ponto:
+  Revascularização miocárdica cirúrgica prévia (CABG) → −1
+  ✅ Conta: cirurgia de bypass coronário (CABG)
+  ❌ NÃO conta: stent coronário, angioplastia — estes NÃO são revascularização cirúrgica.
 
 Classe I (0–4 pts): ~3,5% | Classe II (5–6 pts): ~8% | Classe III (≥7 pts): ~15%
 
@@ -296,7 +355,8 @@ def _get_embedder() -> SentenceTransformer | None:
     try:
         _embedder = SentenceTransformer(EMBEDDING_MODEL)
         _embedder_loaded = True
-        print(f"[CardioRisk] Embedding model loaded: {EMBEDDING_MODEL}")
+        if VERBOSE_MODEL_LOAD:
+            print(f"[CardioRisk] Embedding model loaded: {EMBEDDING_MODEL}")
     except Exception as e:
         print(f"[CardioRisk] Warning: could not load embedding model ({e}). Using keyword fallback.")
         _embedder_loaded = True  # Don't retry
@@ -330,20 +390,76 @@ def _get_generator():
     if _generator_loaded:
         return _generator
     _generator_loaded = True  # Set early to avoid retry on failure
-    try:
+
+    def _build_pipeline(model_name: str):
         device = 0 if torch.cuda.is_available() else -1
         dtype = torch.float16 if torch.cuda.is_available() else torch.float32
-        _generator = hf_pipeline(
-            "text-generation",
-            model=GENERATION_MODEL,
-            dtype=dtype,
-            device_map="auto",
-        )
-        print(f"[CardioRisk] Generation model loaded: {GENERATION_MODEL} "
-              f"({'GPU' if device == 0 else 'CPU'})")
+
+        if LORA_ADAPTER_PATH and Path(LORA_ADAPTER_PATH).exists():
+            try:
+                from peft import PeftModel
+            except Exception as e:
+                raise RuntimeError(
+                    "CARDIORISK_LORA_ADAPTER_PATH definido, mas 'peft' não está disponível"
+                ) from e
+
+            tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
+            if tokenizer.pad_token is None:
+                tokenizer.pad_token = tokenizer.eos_token
+
+            model_obj = AutoModelForCausalLM.from_pretrained(
+                model_name,
+                torch_dtype=dtype,
+            )
+            model_obj = PeftModel.from_pretrained(model_obj, LORA_ADAPTER_PATH)
+            if device == 0:
+                model_obj = model_obj.to("cuda")
+            pipe = hf_pipeline(
+                "text-generation",
+                model=model_obj,
+                tokenizer=tokenizer,
+            )
+            return pipe, device
+
+        kwargs = {
+            "task": "text-generation",
+            "model": model_name,
+            "dtype": dtype,
+        }
+        if USE_DEVICE_MAP_AUTO:
+            kwargs["device_map"] = "auto"
+        else:
+            kwargs["device"] = device
+        pipe = hf_pipeline(**kwargs)
+        return pipe, device
+
+    try:
+        _generator, device = _build_pipeline(GENERATION_MODEL)
+        if VERBOSE_MODEL_LOAD:
+            print(f"[CardioRisk] Generation model loaded: {GENERATION_MODEL} "
+                  f"({'GPU' if device == 0 else 'CPU'})")
+            if LORA_ADAPTER_PATH:
+                print(f"[CardioRisk] LoRA adapter: {LORA_ADAPTER_PATH}")
     except Exception as e:
-        print(f"[CardioRisk] Could not load generation model: {e}")
+        print(f"[CardioRisk] Could not load generation model '{GENERATION_MODEL}': {e}")
+        if GENERATION_FALLBACK_MODEL and GENERATION_FALLBACK_MODEL != GENERATION_MODEL:
+            try:
+                _generator, device = _build_pipeline(GENERATION_FALLBACK_MODEL)
+                print(
+                    f"[CardioRisk] Fallback generation model loaded: "
+                    f"{GENERATION_FALLBACK_MODEL} ({'GPU' if device == 0 else 'CPU'})"
+                )
+            except Exception as e2:
+                print(f"[CardioRisk] Could not load fallback model '{GENERATION_FALLBACK_MODEL}': {e2}")
     return _generator
+
+
+def preload_chat_runtime() -> None:
+    """Preload knowledge and local models to avoid first-message cold start."""
+    _get_knowledge()
+    _get_embedder()
+    if not os.environ.get("OPENAI_API_KEY", ""):
+        _get_generator()
 
 
 def _generate_local(messages_for_model: list[dict]) -> str:
@@ -360,11 +476,15 @@ def _generate_local(messages_for_model: list[dict]) -> str:
     try:
         torch.cuda.empty_cache()
         from transformers import GenerationConfig
+        max_new_tokens = int(os.environ.get("CARDIORISK_MAX_NEW_TOKENS", "900"))
+        temperature = float(os.environ.get("CARDIORISK_TEMPERATURE", "0.3"))
+        repetition_penalty = float(os.environ.get("CARDIORISK_REPETITION_PENALTY", "1.15"))
+        do_sample = os.environ.get("CARDIORISK_DO_SAMPLE", "true").lower() in ("1", "true", "yes", "y")
         gen_cfg = GenerationConfig(
-            max_new_tokens=900,
-            temperature=0.3,
-            do_sample=True,
-            repetition_penalty=1.15,
+            max_new_tokens=max_new_tokens,
+            temperature=temperature,
+            do_sample=do_sample,
+            repetition_penalty=repetition_penalty,
         )
         out = generator(
             messages_for_model,
@@ -717,6 +837,247 @@ def extract_report_data(messages: list[dict]) -> dict:
     return extracted
 
 
+def _detect_calc_intent(text: str) -> bool:
+    t = text.lower()
+    keywords = (
+        "calculo", "cálculo", "rcri", "vsg", "risco", "mace",
+        "pontuacao", "pontuação", "classificacao", "classificação",
+    )
+    return any(k in t for k in keywords)
+
+
+def _looks_like_clinical_case(text: str) -> bool:
+    """Heuristic for messages that likely contain a perioperative risk case."""
+    t = text.lower()
+    has_age = re.search(r"\b\d{1,3}\s*anos\b", t) is not None
+    has_surgery = any(
+        k in t
+        for k in (
+            "cirurgia", "colecistectomia", "colectomia", "gastrectomia",
+            "histerectomia", "nefrectomia", "pneumectomia", "lobectomia",
+            "endarterectomia", "angioplastia", "revasculariza", "aorta", "carot",
+        )
+    )
+    has_clinical_signal = any(
+        k in t
+        for k in (
+            "avc", "ait", "diabetes", "insulina", "insulinoterapia", "creatinina",
+            "infarto", "angina", "insuficiencia cardiaca", "insuficiência cardíaca",
+            "has", "hipertens",
+        )
+    )
+    return has_age and has_surgery and has_clinical_signal
+
+
+def _extract_patient_from_text(text: str) -> dict:
+    """Lightweight deterministic extractor for core RCRI/VSG criteria."""
+    t = text.lower()
+
+    # Core defaults so calculate_risk works reliably.
+    data = {
+        "name": None,
+        "age": None,
+        "surgery_name": "",
+        "surgery_type": "intraperitoneal",
+        "surgery_risk": "intermediate",
+        "is_vascular": False,
+        "mets": 4,
+        "functional_activities": [],
+        # RCRI
+        "rcri_high_risk_surgery": False,
+        "rcri_ischemic_heart": False,
+        "rcri_heart_failure": False,
+        "rcri_cerebrovascular": False,
+        "rcri_insulin_diabetes": False,
+        "rcri_creatinine_above_2": False,
+        # VSG
+        "vsg_age_range": "lt60",
+        "vsg_cad": False,
+        "vsg_chf": False,
+        "vsg_copd": False,
+        "vsg_creatinine_over_1_8": False,
+        "vsg_smoking": False,
+        "vsg_insulin_diabetes": False,
+        "vsg_chronic_beta_blocker": False,
+        "vsg_prior_revasc": False,
+        # Active conditions default false
+        "cv_acute_coronary": False,
+        "cv_unstable_aortic": False,
+        "cv_acute_pulmonary_edema": False,
+        "cv_cardiogenic_shock": False,
+        "cv_hf_nyha_3_4": False,
+        "cv_angina_ccs_3_4": False,
+        "cv_severe_arrhythmia": False,
+        "cv_uncontrolled_hypertension": False,
+        "cv_af_high_rate": False,
+        "cv_pulmonary_hypertension": False,
+        "cv_severe_valvular": False,
+        # Additional tags
+        "uses_aas": (" aas" in f" {t}" or "aspirina" in t),
+        "aas_prevention": "secondary" if any(x in t for x in ("avc", "infarto", "stent", "dac", "coronari")) else "",
+        "uses_clopidogrel": ("clopidogrel" in t),
+        "uses_ticagrelor": ("ticagrelor" in t),
+        "uses_prasugrel": ("prasugrel" in t),
+        "uses_warfarin": ("warfar" in t),
+        "warfarin_indication": "",
+        "known_hf": False,
+        "known_valvular_disease": False,
+        "known_cad": False,
+        "obesity": ("obes" in t),
+    }
+
+    age_match = re.search(r"\b(\d{1,3})\s*anos\b", t)
+    if age_match:
+        age = int(age_match.group(1))
+        data["age"] = age
+        if age >= 80:
+            data["vsg_age_range"] = "gte80"
+        elif age >= 70:
+            data["vsg_age_range"] = "70_79"
+        elif age >= 60:
+            data["vsg_age_range"] = "60_69"
+
+    # Surgery mapping
+    if any(k in t for k in ("colecistectomia", "colectomia", "gastrectomia", "histerectomia", "esplenectomia", "nefrectomia")):
+        data["surgery_type"] = "intraperitoneal"
+        data["surgery_risk"] = "intermediate"
+        data["rcri_high_risk_surgery"] = True
+    if any(k in t for k in ("pneumectomia", "lobectomia", "toracotomia", "intratorac")):
+        data["surgery_type"] = "intrathoracic"
+        data["surgery_risk"] = "high"
+        data["rcri_high_risk_surgery"] = True
+
+    vascular_terms = (
+        "cirurgia vascular", "bypass femoro", "femoropopl", "endarterectomia",
+        "angioplastia", "aorta", "carot", "revasculariza", "amputa",
+    )
+    if any(k in t for k in vascular_terms):
+        data["is_vascular"] = True
+        data["surgery_type"] = "peripheral_open"
+        data["surgery_risk"] = "high"
+        data["rcri_high_risk_surgery"] = False
+
+    # RCRI criteria
+    data["rcri_ischemic_heart"] = any(k in t for k in ("dac", "angina", "infarto", "stent", "revascularizacao miocard"))
+    data["rcri_heart_failure"] = any(k in t for k in ("insuficiencia cardiaca", "insuficiência cardíaca", "ic congestiva", "icc", "feve"))
+    data["rcri_cerebrovascular"] = any(k in t for k in ("avc", "ait", "cerebrovascular"))
+    data["rcri_insulin_diabetes"] = any(k in t for k in ("insulinoterapia", "insulina"))
+
+    creat_match = re.search(r"creatinin[a|ina]*\s*(?:de|:|=)?\s*([0-9]+[\.,]?[0-9]*)", t)
+    if creat_match:
+        try:
+            val = float(creat_match.group(1).replace(",", "."))
+            data["rcri_creatinine_above_2"] = val > 2.0
+            data["vsg_creatinine_over_1_8"] = val > 1.8
+        except Exception:
+            pass
+
+    # VSG criteria mirror core comorbidities when vascular
+    data["vsg_cad"] = data["rcri_ischemic_heart"]
+    data["vsg_chf"] = data["rcri_heart_failure"]
+    data["vsg_insulin_diabetes"] = data["rcri_insulin_diabetes"]
+    data["vsg_copd"] = ("dpoc" in t or "copd" in t)
+    data["vsg_smoking"] = ("tabag" in t or "fumante" in t)
+    data["vsg_chronic_beta_blocker"] = ("betabloque" in t)
+    data["vsg_prior_revasc"] = any(k in t for k in ("cabg", "ponte de safena", "revascularizacao miocardica cirurgica"))
+
+    # best-effort surgery free text
+    surg_match = re.search(
+        r"(colecistectomia[^\.,;\n]*|colectomia[^\.,;\n]*|gastrectomia[^\.,;\n]*|"
+        r"histerectomia[^\.,;\n]*|pneumectomia[^\.,;\n]*|lobectomia[^\.,;\n]*|"
+        r"endarterectomia[^\.,;\n]*|bypass[^\.,;\n]*|angioplastia[^\.,;\n]*)",
+        t,
+    )
+    if surg_match:
+        data["surgery_name"] = surg_match.group(1).strip()
+
+    return data
+
+
+def _render_deterministic_calc_reply(data: dict, result: dict) -> str:
+    name = data.get("name") or "Paciente"
+    is_vascular = bool(result.get("is_vascular"))
+
+    if is_vascular:
+        intro = (
+            "Esta e uma cirurgia VASCULAR -> utilizarei o VSG-CRI "
+            "(Vascular Surgery Group Cardiac Risk Index), conforme a Diretriz SBC 2024."
+        )
+        return (
+            f"{intro}\n\n"
+            f"**Calculo VSG-CRI - {name}**\n\n"
+            f"- Pontuacao total: {result.get('score', 0)} ponto(s)\n"
+            f"- Classe: {result.get('score_class', '—')}\n"
+            f"- Risco MACE estimado: {result.get('mace_risk_pct', 0)}%\n\n"
+            f"Critérios identificados: {', '.join(result.get('criteria_met', [])) or 'Nenhum'}\n"
+        )
+
+    c1 = data.get("rcri_high_risk_surgery", False)
+    c2 = data.get("rcri_ischemic_heart", False)
+    c3 = data.get("rcri_heart_failure", False)
+    c4 = data.get("rcri_cerebrovascular", False)
+    c5 = data.get("rcri_insulin_diabetes", False)
+    c6 = data.get("rcri_creatinine_above_2", False)
+
+    def mark(v: bool) -> str:
+        return "✅ Presente" if v else "❌ Ausente"
+
+    return (
+        f"**Calculo RCRI - {name}**\n\n"
+        f"| Criterio | Resultado |\n"
+        f"|---|---|\n"
+        f"| C1 - Cirurgia intrap./intratoracica/vasc. suprainguinal | {mark(c1)} |\n"
+        f"| C2 - Doenca isquemica cardiaca | {mark(c2)} |\n"
+        f"| C3 - Insuficiencia cardiaca congestiva | {mark(c3)} |\n"
+        f"| C4 - Doenca cerebrovascular | {mark(c4)} |\n"
+        f"| C5 - Diabetes com insulinoterapia | {mark(c5)} |\n"
+        f"| C6 - Creatinina > 2,0 mg/dL | {mark(c6)} |\n\n"
+        f"**Pontuacao total: {result.get('score', 0)} ponto(s) -> Classe {result.get('score_class', '—')} -> "
+        f"Risco MACE estimado: {result.get('mace_risk_pct', 0)}%**\n"
+    )
+
+
+def _try_deterministic_calc_reply(messages: list[dict], last_user_msg: str) -> str | None:
+    """Return a deterministic calculation reply when the user asks for risk scoring."""
+    if not last_user_msg:
+        return None
+
+    user_messages = [
+        m.get("content", "")
+        for m in messages
+        if m.get("role") == "user" and m.get("content", "").strip()
+    ]
+    conversation_user_text = "\n".join(user_messages)
+
+    explicit_intent = _detect_calc_intent(last_user_msg) or _detect_calc_intent(conversation_user_text)
+    case_intent = _looks_like_clinical_case(conversation_user_text)
+    if not explicit_intent and not case_intent:
+        return None
+
+    data = _extract_patient_from_text(conversation_user_text)
+
+    # Need at least surgery and one clinical clue to be meaningful.
+    has_surgery = bool(data.get("surgery_name") or data.get("rcri_high_risk_surgery") or data.get("is_vascular"))
+    has_clinical = any(
+        data.get(k, False)
+        for k in (
+            "rcri_ischemic_heart",
+            "rcri_heart_failure",
+            "rcri_cerebrovascular",
+            "rcri_insulin_diabetes",
+            "rcri_creatinine_above_2",
+            "vsg_cad",
+            "vsg_chf",
+            "vsg_copd",
+        )
+    )
+    if not has_surgery or not has_clinical:
+        return None
+
+    result = calculate_risk(data)
+    return _render_deterministic_calc_reply(data, result)
+
+
 def chat(messages: list[dict]) -> str:
     """
     Process a chat request with RAG-augmented context.
@@ -735,6 +1096,11 @@ def chat(messages: list[dict]) -> str:
         if msg.get("role") == "user":
             last_user_msg = msg.get("content", "")
             break
+
+    if ENABLE_DETERMINISTIC_CALC:
+        deterministic_reply = _try_deterministic_calc_reply(messages, last_user_msg)
+        if deterministic_reply:
+            return deterministic_reply
 
     # Semantic retrieval
     knowledge = _get_knowledge()

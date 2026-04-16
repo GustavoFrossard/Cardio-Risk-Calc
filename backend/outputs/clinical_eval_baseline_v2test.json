@@ -1,0 +1,388 @@
+{
+  "metrics": {
+    "samples": 21,
+    "accuracy_risk_index": 0.7142857142857143,
+    "accuracy_score": 0.0,
+    "accuracy_score_class": 0.0
+  },
+  "details": [
+    {
+      "case": "Varfarina FA - CHA2DS2-VASc 6 + AVC ha 6 semanas (< 3 meses) - ponte obrigatoria",
+      "expected": {
+        "risk_index": "rcri",
+        "score": 1,
+        "score_class": "II"
+      },
+      "predicted": {
+        "risk_index": "vsg",
+        "score": null,
+        "score_class": null
+      },
+      "ok": {
+        "risk_index": false,
+        "score": false,
+        "score_class": false
+      }
+    },
+    {
+      "case": "VSG-CRI 70-79 anos + DPOC, aneurisma aortico, METs 3",
+      "expected": {
+        "risk_index": "vsg",
+        "score": 5,
+        "score_class": "INTERMEDIARIO"
+      },
+      "predicted": {
+        "risk_index": "vsg",
+        "score": null,
+        "score_class": null
+      },
+      "ok": {
+        "risk_index": true,
+        "score": false,
+        "score_class": false
+      }
+    },
+    {
+      "case": "AAS primaria + RCRI 0 + cirurgia de baixo risco - suspender AAS",
+      "expected": {
+        "risk_index": "rcri",
+        "score": 0,
+        "score_class": "I"
+      },
+      "predicted": {
+        "risk_index": "rcri",
+        "score": null,
+        "score_class": null
+      },
+      "ok": {
+        "risk_index": true,
+        "score": false,
+        "score_class": false
+      }
+    },
+    {
+      "case": "RCRI criterio isolado: cirurgia de alto risco (suprainguinal/intratoracica), sem outros",
+      "expected": {
+        "risk_index": "rcri",
+        "score": 1,
+        "score_class": "II"
+      },
+      "predicted": {
+        "risk_index": "vsg",
+        "score": null,
+        "score_class": null
+      },
+      "ok": {
+        "risk_index": false,
+        "score": false,
+        "score_class": false
+      }
+    },
+    {
+      "case": "Condicao ativa isolada: Estenose aortica/mitral grave sintomatica - cirurgia eletiva abdominal",
+      "expected": {
+        "risk_index": "rcri",
+        "score": 0,
+        "score_class": "I"
+      },
+      "predicted": {
+        "risk_index": "rcri",
+        "score": null,
+        "score_class": null
+      },
+      "ok": {
+        "risk_index": true,
+        "score": false,
+        "score_class": false
+      }
+    },
+    {
+      "case": "VSG-CRI Score alto (>=7): >=80 anos + DAC + ICC + DPOC, bypass, METs 2",
+      "expected": {
+        "risk_index": "vsg",
+        "score": 10,
+        "score_class": "ALTO"
+      },
+      "predicted": {
+        "risk_index": "rcri",
+        "score": null,
+        "score_class": null
+      },
+      "ok": {
+        "risk_index": false,
+        "score": false,
+        "score_class": false
+      }
+    },
+    {
+      "case": "Mulher 58 anos, TVP ha 6 semanas (TEV recente) + varfarina, colecistectomia urgente",
+      "expected": {
+        "risk_index": "rcri",
+        "score": 0,
+        "score_class": "I"
+      },
+      "predicted": {
+        "risk_index": "rcri",
+        "score": null,
+        "score_class": null
+      },
+      "ok": {
+        "risk_index": true,
+        "score": false,
+        "score_class": false
+      }
+    },
+    {
+      "case": "Varfarina por FA - CHA2DS2-VASc 0, cirurgia abdominal eletiva",
+      "expected": {
+        "risk_index": "rcri",
+        "score": 0,
+        "score_class": "I"
+      },
+      "predicted": {
+        "risk_index": "rcri",
+        "score": null,
+        "score_class": null
+      },
+      "ok": {
+        "risk_index": true,
+        "score": false,
+        "score_class": false
+      }
+    },
+    {
+      "case": "Condicao ativa isolada: Choque cardiogenico - cirurgia eletiva abdominal",
+      "expected": {
+        "risk_index": "rcri",
+        "score": 0,
+        "score_class": "I"
+      },
+      "predicted": {
+        "risk_index": "rcri",
+        "score": null,
+        "score_class": null
+      },
+      "ok": {
+        "risk_index": true,
+        "score": false,
+        "score_class": false
+      }
+    },
+    {
+      "case": "Condicao ativa isolada: Hipertensao pulmonar sintomatica - cirurgia eletiva abdominal",
+      "expected": {
+        "risk_index": "rcri",
+        "score": 0,
+        "score_class": "I"
+      },
+      "predicted": {
+        "risk_index": "rcri",
+        "score": null,
+        "score_class": null
+      },
+      "ok": {
+        "risk_index": true,
+        "score": false,
+        "score_class": false
+      }
+    },
+    {
+      "case": "Homem 70 anos, AVC ha 2 meses + varfarina FA (CHA2DS2 4) + RCRI 1, cirurgia ortopedica",
+      "expected": {
+        "risk_index": "rcri",
+        "score": 1,
+        "score_class": "II"
+      },
+      "predicted": {
+        "risk_index": "vsg",
+        "score": null,
+        "score_class": null
+      },
+      "ok": {
+        "risk_index": false,
+        "score": false,
+        "score_class": false
+      }
+    },
+    {
+      "case": "Varfarina por FA - CHA2DS2-VASc 1, cirurgia abdominal eletiva",
+      "expected": {
+        "risk_index": "rcri",
+        "score": 0,
+        "score_class": "I"
+      },
+      "predicted": {
+        "risk_index": "rcri",
+        "score": null,
+        "score_class": null
+      },
+      "ok": {
+        "risk_index": true,
+        "score": false,
+        "score_class": false
+      }
+    },
+    {
+      "case": "Prasugrel (sem clopidogrel) - cirurgia de baixo risco",
+      "expected": {
+        "risk_index": "rcri",
+        "score": 1,
+        "score_class": "II"
+      },
+      "predicted": {
+        "risk_index": "rcri",
+        "score": null,
+        "score_class": null
+      },
+      "ok": {
+        "risk_index": true,
+        "score": false,
+        "score_class": false
+      }
+    },
+    {
+      "case": "Varfarina FA - CHA2DS2-VASc 4 + AVC ha 6 semanas (< 3 meses) - ponte obrigatoria",
+      "expected": {
+        "risk_index": "rcri",
+        "score": 1,
+        "score_class": "II"
+      },
+      "predicted": {
+        "risk_index": "vsg",
+        "score": null,
+        "score_class": null
+      },
+      "ok": {
+        "risk_index": false,
+        "score": false,
+        "score_class": false
+      }
+    },
+    {
+      "case": "RCRI Score 1 - 1 ponto (DAC), cirurgia intermediaria, METs 5",
+      "expected": {
+        "risk_index": "rcri",
+        "score": 1,
+        "score_class": "II"
+      },
+      "predicted": {
+        "risk_index": "rcri",
+        "score": null,
+        "score_class": null
+      },
+      "ok": {
+        "risk_index": true,
+        "score": false,
+        "score_class": false
+      }
+    },
+    {
+      "case": "RCRI Score 1 (DAC), METs 7 (bom - esportes), cirurgia intermediaria",
+      "expected": {
+        "risk_index": "rcri",
+        "score": 1,
+        "score_class": "II"
+      },
+      "predicted": {
+        "risk_index": "rcri",
+        "score": null,
+        "score_class": null
+      },
+      "ok": {
+        "risk_index": true,
+        "score": false,
+        "score_class": false
+      }
+    },
+    {
+      "case": "Mulher 55 anos, saudavel, BNP normal, METs 7, mastectomia - risco baixo sem restricoes",
+      "expected": {
+        "risk_index": "rcri",
+        "score": 0,
+        "score_class": "I"
+      },
+      "predicted": {
+        "risk_index": "rcri",
+        "score": null,
+        "score_class": null
+      },
+      "ok": {
+        "risk_index": true,
+        "score": false,
+        "score_class": false
+      }
+    },
+    {
+      "case": "Varfarina TEV 3-12 meses + neoplasia ativa (cancer em tratamento)",
+      "expected": {
+        "risk_index": "rcri",
+        "score": 0,
+        "score_class": "I"
+      },
+      "predicted": {
+        "risk_index": "rcri",
+        "score": null,
+        "score_class": null
+      },
+      "ok": {
+        "risk_index": true,
+        "score": false,
+        "score_class": false
+      }
+    },
+    {
+      "case": "RCRI Score 1 (DAC), METs 1 (acamado/sem atividade), cirurgia intermediaria",
+      "expected": {
+        "risk_index": "rcri",
+        "score": 1,
+        "score_class": "II"
+      },
+      "predicted": {
+        "risk_index": "vsg",
+        "score": null,
+        "score_class": null
+      },
+      "ok": {
+        "risk_index": false,
+        "score": false,
+        "score_class": false
+      }
+    },
+    {
+      "case": "AAS prevencao primaria - cirurgia de catarata (risco low)",
+      "expected": {
+        "risk_index": "rcri",
+        "score": 0,
+        "score_class": "I"
+      },
+      "predicted": {
+        "risk_index": "rcri",
+        "score": null,
+        "score_class": null
+      },
+      "ok": {
+        "risk_index": true,
+        "score": false,
+        "score_class": false
+      }
+    },
+    {
+      "case": "RCRI Score 2 - ICC + creatinina > 2, cirurgia intermediaria, METs 3",
+      "expected": {
+        "risk_index": "rcri",
+        "score": 2,
+        "score_class": "III"
+      },
+      "predicted": {
+        "risk_index": "rcri",
+        "score": null,
+        "score_class": null
+      },
+      "ok": {
+        "risk_index": true,
+        "score": false,
+        "score_class": false
+      }
+    }
+  ]
+}

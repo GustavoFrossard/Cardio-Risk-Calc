@@ -8,12 +8,17 @@ Based on: Diretriz Brasileira de Avaliação Cardiovascular Perioperatória,
 from dotenv import load_dotenv
 load_dotenv()
 
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional
 from calculator import calculate_risk
-from chat_service import chat as chat_service, extract_report_data
+from chat_service import (
+    chat as chat_service,
+    extract_report_data,
+    preload_chat_runtime,
+)
 
 app = FastAPI(
     title="CardioRisk Periop API",
@@ -28,6 +33,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+def preload_chat_models_on_startup():
+    """Optional warmup to remove first chat latency after backend boot."""
+    raw = os.environ.get("CARDIORISK_CHAT_PRELOAD", "false").strip().lower()
+    if raw in ("1", "true", "yes", "y", "on"):
+        preload_chat_runtime()
 
 
 class PatientData(BaseModel):

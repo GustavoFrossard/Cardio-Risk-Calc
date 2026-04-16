@@ -1,0 +1,82 @@
+{
+  "counts": {
+    "total_cases": 1000,
+    "by_risk_class": {
+      "low": 640,
+      "high": 131,
+      "intermediate": 229
+    },
+    "by_risk_index": {
+      "rcri": 802,
+      "vsg": 198
+    },
+    "by_score": {
+      "3": 51,
+      "2": 92,
+      "0": 492,
+      "1": 276,
+      "4": 37,
+      "6": 16,
+      "7": 14,
+      "5": 21,
+      "9": 1
+    }
+  },
+  "discrepancies": {
+    "high_score_not_high_class": {
+      "count": 10,
+      "samples": [
+        {
+          "id": 1,
+          "score": 3,
+          "risk_class": "low"
+        },
+        {
+          "id": 4,
+          "score": 3,
+          "risk_class": "low"
+        },
+        {
+          "id": 17,
+          "score": 4,
+          "risk_class": "low"
+        },
+        {
+          "id": 21,
+          "score": 4,
+          "risk_class": "low"
+        },
+        {
+          "id": 25,
+          "score": 6,
+          "risk_class": "intermediate"
+        },
+        {
+          "id": 29,
+          "score": 6,
+          "risk_class": "low"
+        },
+        {
+          "id": 34,
+          "score": 4,
+          "risk_class": "low"
+        },
+        {
+          "id": 37,
+          "score": 3,
+          "risk_class": "low"
+        },
+        {
+          "id": 56,
+          "score": 5,
+          "risk_class": "intermediate"
+        },
+        {
+          "id": 60,
+          "score": 6,
+          "risk_class": "intermediate"
+        }
+      ]
+    }
+  }
+}
