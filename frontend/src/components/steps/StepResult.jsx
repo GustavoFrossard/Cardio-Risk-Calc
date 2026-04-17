@@ -1,27 +1,21 @@
 import { useEffect, useRef } from "react";
-import type { RiskResult, RecommendationType, PatientData } from "../../types";
 import { generateReport } from "../../services/report";
 
-interface Props {
-  result: RiskResult;
-  data: PatientData;
-}
-
-const REC_COLORS: Record<RecommendationType, { border: string; bg: string }> = {
+const REC_COLORS = {
   green: { border: "var(--green)", bg: "var(--green-soft)" },
   amber: { border: "var(--amber)", bg: "var(--amber-soft)" },
   red: { border: "var(--red)", bg: "var(--red-soft)" },
 };
 
-const PILL_COLORS: Record<string, { bg: string; color: string }> = {
+const PILL_COLORS = {
   low: { bg: "var(--green-soft)", color: "var(--green)" },
   intermediate: { bg: "var(--amber-soft)", color: "var(--amber)" },
   high: { bg: "var(--red-soft)", color: "var(--red)" },
 };
 
-function RiskGauge({ pct, maxPct }: { pct: number; maxPct: number }) {
-  const fillRef = useRef<SVGPathElement>(null);
-  const dotRef = useRef<SVGCircleElement>(null);
+function RiskGauge({ pct, maxPct }) {
+  const fillRef = useRef(null);
+  const dotRef = useRef(null);
 
   useEffect(() => {
     const gaugeLen = 298;
@@ -59,14 +53,13 @@ function RiskGauge({ pct, maxPct }: { pct: number; maxPct: number }) {
   );
 }
 
-export function StepResult({ result, data }: Props) {
+export function StepResult({ result, data }) {
   const pill = PILL_COLORS[result.risk_class] ?? PILL_COLORS.low;
   const indexName = result.risk_index === "vsg" ? "VSG" : "RCRI";
   const maxPct = result.risk_index === "vsg" ? 24 : 15;
 
   return (
     <>
-      {/* Active conditions alert */}
       {result.has_active_conditions && (
         <div
           style={{
@@ -96,7 +89,6 @@ export function StepResult({ result, data }: Props) {
         </div>
       )}
 
-      {/* Hero card */}
       <div
         style={{
           background: "var(--white)",
@@ -137,7 +129,6 @@ export function StepResult({ result, data }: Props) {
 
         <RiskGauge pct={result.mace_risk_pct} maxPct={maxPct} />
 
-        {/* Stats grid */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", borderTop: "1px solid var(--border)" }}>
           {[
             { label: `Score ${indexName}`, value: `${result.score} pt${result.score !== 1 ? "s" : ""}` },
@@ -164,14 +155,13 @@ export function StepResult({ result, data }: Props) {
         </div>
       </div>
 
-      {/* Medication advice */}
       {result.medication_advice.length > 0 && (
         <>
           <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--ink-muted)", padding: "0 2px" }}>
             Manejo de Medicamentos
           </div>
           {result.medication_advice.map((med, i) => {
-            const colors = REC_COLORS[(med.type as RecommendationType) ?? "amber"];
+            const colors = REC_COLORS[med.type] || REC_COLORS.amber;
             return (
               <div
                 key={i}
@@ -210,7 +200,6 @@ export function StepResult({ result, data }: Props) {
         </>
       )}
 
-      {/* Recommended exams */}
       {result.recommended_exams.length > 0 && (
         <div
           style={{
@@ -227,17 +216,7 @@ export function StepResult({ result, data }: Props) {
             </div>
             <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>Exames Recomendados</span>
           </div>
-          <div
-            style={{
-              fontSize: 11,
-              color: "var(--amber)",
-              background: "var(--amber-soft)",
-              padding: "6px 10px",
-              borderRadius: 6,
-              marginBottom: 10,
-              fontWeight: 500,
-            }}
-          >
+          <div style={{ fontSize: 11, color: "var(--amber)", background: "var(--amber-soft)", padding: "6px 10px", borderRadius: 6, marginBottom: 10, fontWeight: 500 }}>
             ⚠️ Realizar antes do procedimento cirúrgico
           </div>
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "var(--ink-mid)", lineHeight: 1.8 }}>
@@ -248,13 +227,12 @@ export function StepResult({ result, data }: Props) {
         </div>
       )}
 
-      {/* Recommendations */}
       <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--ink-muted)", padding: "0 2px" }}>
         Recomendações
       </div>
 
       {result.recommendations.map((rec, i) => {
-        const colors = REC_COLORS[rec.type as RecommendationType] ?? REC_COLORS.green;
+        const colors = REC_COLORS[rec.type] || REC_COLORS.green;
         return (
           <div
             key={i}
@@ -283,7 +261,6 @@ export function StepResult({ result, data }: Props) {
         );
       })}
 
-      {/* Risk factor tags */}
       <div
         style={{
           background: "var(--white)",
@@ -311,7 +288,6 @@ export function StepResult({ result, data }: Props) {
         </div>
       </div>
 
-      {/* Download PDF */}
       <button
         onClick={() => generateReport(result, data)}
         style={{
@@ -335,9 +311,9 @@ export function StepResult({ result, data }: Props) {
         Baixar Relatório em PDF
       </button>
 
-      {/* Disclaimer */}
       <p style={{ textAlign: "center", fontSize: 10, color: "var(--ink-muted)", lineHeight: 1.7, padding: "0 8px" }}>
-        Ferramenta de suporte clínico. Não substitui o julgamento médico individualizado.<br />
+        Ferramenta de suporte clínico. Não substitui o julgamento médico individualizado.
+        <br />
         Baseado na Diretriz Brasileira de Avaliação Cardiovascular Perioperatória, RCRI (Lee) e VSG.
       </p>
     </>

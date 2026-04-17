@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Card, Field, Input, ToggleRow, ChipGroup } from "../ui";
-import type { PatientData } from "../../types";
 import { FUNCTIONAL_QUESTIONS } from "../../types";
 
 const SORTED_ACTIVITIES = [
@@ -8,19 +7,14 @@ const SORTED_ACTIVITIES = [
   ...FUNCTIONAL_QUESTIONS.slice().sort((a, b) => a.mets - b.mets),
 ];
 
-interface Props {
-  data: PatientData;
-  onChange: <K extends keyof PatientData>(key: K, value: PatientData[K]) => void;
-}
-
-const COMORBIDITIES: Array<{ key: keyof PatientData; label: string; description?: string }> = [
+const COMORBIDITIES = [
   { key: "obesity", label: "Obesidade", description: "IMC ≥ 30" },
   { key: "known_hf", label: "IC conhecida ou suspeita", description: "Insuficiência cardíaca" },
   { key: "known_valvular_disease", label: "Doença valvar conhecida ou suspeita" },
   { key: "known_cad", label: "Doença coronariana conhecida ou suspeita" },
 ];
 
-const MEDICATIONS: Array<{ key: keyof PatientData; label: string }> = [
+const MEDICATIONS = [
   { key: "uses_aas", label: "AAS (Ácido Acetilsalicílico)" },
   { key: "uses_clopidogrel", label: "Clopidogrel" },
   { key: "uses_ticagrelor", label: "Ticagrelor" },
@@ -29,30 +23,30 @@ const MEDICATIONS: Array<{ key: keyof PatientData; label: string }> = [
 ];
 
 const aasPreventionOptions = [
-  { value: "primary" as const, label: "Primária" },
-  { value: "secondary" as const, label: "Secundária" },
+  { value: "primary", label: "Primária" },
+  { value: "secondary", label: "Secundária" },
 ];
 
 const warfarinIndicationOptions = [
-  { value: "af" as const, label: "FA" },
-  { value: "vte" as const, label: "TEV" },
-  { value: "mechanical_valve" as const, label: "Prótese Mecânica" },
-  { value: "rheumatic" as const, label: "Valvar Reumática" },
+  { value: "af", label: "FA" },
+  { value: "vte", label: "TEV" },
+  { value: "mechanical_valve", label: "Prótese Mecânica" },
+  { value: "rheumatic", label: "Valvar Reumática" },
 ];
 
 const warfarinVteTimingOptions = [
-  { value: "recent" as const, label: "< 3 meses" },
-  { value: "3_12m" as const, label: "3–12 meses" },
-  { value: "over_12m" as const, label: "> 12 meses" },
+  { value: "recent", label: "< 3 meses" },
+  { value: "3_12m", label: "3–12 meses" },
+  { value: "over_12m", label: "> 12 meses" },
 ];
 
 const warfarinThrombophiliaOptions = [
-  { value: "severe" as const, label: "Grave" },
-  { value: "mild" as const, label: "Leve" },
-  { value: "none" as const, label: "Não" },
+  { value: "severe", label: "Grave" },
+  { value: "mild", label: "Leve" },
+  { value: "none", label: "Não" },
 ];
 
-export function StepPatientData({ data, onChange }: Props) {
+export function StepPatientData({ data, onChange }) {
   const [sliderIdx, setSliderIdx] = useState(() => {
     let best = 0;
     let minDiff = Infinity;
@@ -68,7 +62,6 @@ export function StepPatientData({ data, onChange }: Props) {
 
   return (
     <>
-      {/* Identification */}
       <Card icon="👤" title="Identificação">
         <Field label="Nome / Identificador" style={{ marginBottom: 12 }}>
           <Input
@@ -95,7 +88,6 @@ export function StepPatientData({ data, onChange }: Props) {
         </Field>
       </Card>
 
-      {/* Comorbidities */}
       <Card icon="🩺" title="Comorbidades">
         {COMORBIDITIES.map((item, i) => (
           <ToggleRow
@@ -103,24 +95,22 @@ export function StepPatientData({ data, onChange }: Props) {
             label={item.label}
             description={item.description}
             checked={Boolean(data[item.key])}
-            onChange={(val) => onChange(item.key, val as PatientData[typeof item.key])}
+            onChange={(val) => onChange(item.key, val)}
             isLast={i === COMORBIDITIES.length - 1}
           />
         ))}
       </Card>
 
-      {/* Medications */}
       <Card icon="💊" title="Medicamentos em Uso">
         {MEDICATIONS.map((item, i) => (
           <div key={item.key}>
             <ToggleRow
               label={item.label}
               checked={Boolean(data[item.key])}
-              onChange={(val) => onChange(item.key, val as PatientData[typeof item.key])}
+              onChange={(val) => onChange(item.key, val)}
               isLast={i === MEDICATIONS.length - 1 && !data.uses_aas && !data.uses_warfarin}
             />
 
-            {/* AAS sub-question: prevention type */}
             {item.key === "uses_aas" && data.uses_aas && (
               <div style={{ padding: "8px 0 12px 16px", borderBottom: "1px solid var(--border)" }}>
                 <Field label="Tipo de prevenção">
@@ -133,7 +123,6 @@ export function StepPatientData({ data, onChange }: Props) {
               </div>
             )}
 
-            {/* Warfarin sub-questions */}
             {item.key === "uses_warfarin" && data.uses_warfarin && (
               <div style={{ padding: "8px 0 12px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
                 <Field label="Indicação da varfarina">
@@ -144,7 +133,6 @@ export function StepPatientData({ data, onChange }: Props) {
                   />
                 </Field>
 
-                {/* FA sub-questions */}
                 {data.warfarin_indication === "af" && (
                   <>
                     <Field label="CHADS₂">
@@ -170,7 +158,6 @@ export function StepPatientData({ data, onChange }: Props) {
                   </>
                 )}
 
-                {/* VTE sub-questions */}
                 {data.warfarin_indication === "vte" && (
                   <>
                     <Field label="Tempo do TEV">
@@ -201,7 +188,6 @@ export function StepPatientData({ data, onChange }: Props) {
         ))}
       </Card>
 
-      {/* Functional Capacity */}
       <Card icon="📊" title="Capacidade Funcional">
         <div style={{ fontSize: 12, color: "var(--ink-mid)", marginBottom: 12, lineHeight: 1.5 }}>
           Deslize para indicar a <strong>atividade máxima</strong> que o paciente consegue realizar.
@@ -221,7 +207,6 @@ export function StepPatientData({ data, onChange }: Props) {
           style={{ width: "100%", accentColor: mets >= 4 ? "var(--green)" : "var(--amber)" }}
         />
 
-        {/* Selected activity */}
         <div
           style={{
             marginTop: 10,

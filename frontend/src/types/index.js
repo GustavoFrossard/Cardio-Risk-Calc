@@ -1,19 +1,6 @@
 // ─── Surgery Risk Types ───────────────────────────────────────────────────────
 
-export type SurgeryRisk = "low" | "intermediate" | "high";
-export type RiskClass = "low" | "intermediate" | "high";
-export type RecommendationType = "green" | "amber" | "red";
-
-// ─── Surgery Options (Tabela 3 - Diretriz) ───────────────────────────────────
-
-export interface SurgeryOption {
-  value: string;
-  label: string;
-  risk: SurgeryRisk;
-  vascular: boolean;
-}
-
-export const SURGERY_OPTIONS: SurgeryOption[] = [
+export const SURGERY_OPTIONS = [
   // Baixo Risco (<1%)
   { value: "breast", label: "Mama", risk: "low", vascular: false },
   { value: "dental", label: "Procedimentos dentários", risk: "low", vascular: false },
@@ -55,13 +42,7 @@ export const SURGERY_OPTIONS: SurgeryOption[] = [
 
 // ─── Functional Capacity Questionnaire ────────────────────────────────────────
 
-export interface FunctionalQuestion {
-  id: string;
-  label: string;
-  mets: number;
-}
-
-export const FUNCTIONAL_QUESTIONS: FunctionalQuestion[] = [
+export const FUNCTIONAL_QUESTIONS = [
   { id: "housework_light", label: "Fazer trabalhos leves em casa, como juntar o lixo ou lavar a louça?", mets: 2.7 },
   { id: "self_care", label: "Cuidar de si mesmo: vestir-se, alimentar-se, tomar banho?", mets: 2.75 },
   { id: "walk_flat", label: "Caminhar uma quadra ou duas, no plano?", mets: 2.75 },
@@ -75,129 +56,9 @@ export const FUNCTIONAL_QUESTIONS: FunctionalQuestion[] = [
   { id: "run_short", label: "Correr uma distância curta?", mets: 8 },
 ];
 
-// ─── Patient Form Data ────────────────────────────────────────────────────────
-
-export interface PatientData {
-  // === Step 1: Dados do Paciente ===
-  name?: string;
-  age?: number;
-
-  // Comorbidades
-  obesity: boolean;
-  known_hf: boolean;
-  known_valvular_disease: boolean;
-  known_cad: boolean;
-
-  // Medicamentos
-  uses_aas: boolean;
-  aas_prevention: "primary" | "secondary" | "";
-  uses_clopidogrel: boolean;
-  uses_ticagrelor: boolean;
-  uses_prasugrel: boolean;
-  uses_warfarin: boolean;
-  warfarin_indication: "af" | "vte" | "mechanical_valve" | "rheumatic" | "";
-  warfarin_chadsvasc?: number;
-  warfarin_stroke_3m: boolean;
-  warfarin_vte_timing: "recent" | "3_12m" | "over_12m" | "";
-  warfarin_thrombophilia: "severe" | "mild" | "none" | "";
-  warfarin_active_neoplasia: boolean;
-
-  // Capacidade funcional
-  functional_activities: string[];
-  mets: number;
-
-  // === Step 2: Cirurgia e Condições Ativas ===
-  surgery_type: string;
-  surgery_risk: SurgeryRisk | "";
-  is_vascular: boolean;
-
-  // Condições cardiovasculares graves (Tabela 2)
-  cv_acute_coronary: boolean;
-  cv_unstable_aortic: boolean;
-  cv_acute_pulmonary_edema: boolean;
-  cv_cardiogenic_shock: boolean;
-  cv_hf_nyha_3_4: boolean;
-  cv_angina_ccs_3_4: boolean;
-  cv_severe_arrhythmia: boolean;
-  cv_uncontrolled_hypertension: boolean;
-  cv_af_high_rate: boolean;
-  cv_pulmonary_hypertension: boolean;
-  cv_severe_valvular: boolean;
-
-  // === Step 3: Índice de Risco ===
-
-  // RCRI (Lee - cirurgia não vascular)
-  rcri_high_risk_surgery: boolean;
-  rcri_ischemic_heart: boolean;
-  rcri_heart_failure: boolean;
-  rcri_cerebrovascular: boolean;
-  rcri_insulin_diabetes: boolean;
-  rcri_creatinine_above_2: boolean;
-
-  // VSG-CRI (cirurgia vascular - Tabela 6)
-  vsg_age_range: "" | "lt60" | "60_69" | "70_79" | "gte80";
-  vsg_cad: boolean;
-  vsg_chf: boolean;
-  vsg_copd: boolean;
-  vsg_creatinine_over_1_8: boolean;
-  vsg_smoking: boolean;
-  vsg_insulin_diabetes: boolean;
-  vsg_chronic_beta_blocker: boolean;
-  vsg_prior_revasc: boolean;
-}
-
-// ─── API Response ─────────────────────────────────────────────────────────────
-
-export interface Recommendation {
-  type: RecommendationType;
-  icon: string;
-  title: string;
-  body: string;
-}
-
-export interface MedicationAdvice {
-  medication: string;
-  action: string;
-  detail: string;
-  type: RecommendationType;
-}
-
-export interface RiskResult {
-  risk_index: "rcri" | "vsg";
-  score: number;
-  score_class: string;
-  mace_risk_pct: number;
-  risk_class: RiskClass;
-  risk_label: string;
-
-  has_active_conditions: boolean;
-  active_conditions: string[];
-
-  criteria_met: string[];
-  risk_factors: string[];
-
-  recommendations: Recommendation[];
-  medication_advice: MedicationAdvice[];
-  recommended_exams: string[];
-
-  mets: number;
-  mets_label: string;
-  surgery_type: string;
-  surgery_risk: string;
-  surgery_label: string;
-  is_vascular: boolean;
-  functional_capacity_adequate: boolean;
-}
-
 // ─── Wizard Steps ─────────────────────────────────────────────────────────────
 
-export interface WizardStep {
-  id: number;
-  title: string;
-  subtitle?: string;
-}
-
-export const WIZARD_STEPS: WizardStep[] = [
+export const WIZARD_STEPS = [
   { id: 1, title: "Dados do Paciente", subtitle: "Informações gerais, comorbidades e medicamentos" },
   { id: 2, title: "Cirurgia e Condições Ativas", subtitle: "Procedimento e condições cardiovasculares" },
   { id: 3, title: "Índice de Risco", subtitle: "RCRI ou VSG conforme tipo cirúrgico" },
@@ -206,7 +67,7 @@ export const WIZARD_STEPS: WizardStep[] = [
 
 // ─── Default Form State ───────────────────────────────────────────────────────
 
-export const defaultPatientData: PatientData = {
+export const defaultPatientData = {
   name: "",
   age: undefined,
   obesity: false,

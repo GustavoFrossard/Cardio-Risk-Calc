@@ -1,13 +1,4 @@
-import React from "react";
-
-// ─── Toggle Switch ────────────────────────────────────────────────────────────
-
-interface ToggleProps {
-  checked: boolean;
-  onChange: (val: boolean) => void;
-}
-
-export function Toggle({ checked, onChange }: ToggleProps) {
+export function Toggle({ checked, onChange }) {
   return (
     <button
       type="button"
@@ -45,18 +36,7 @@ export function Toggle({ checked, onChange }: ToggleProps) {
   );
 }
 
-// ─── Toggle Row ───────────────────────────────────────────────────────────────
-
-interface ToggleRowProps {
-  label: string;
-  description?: string;
-  checked: boolean;
-  onChange: (val: boolean) => void;
-  badge?: string; // e.g. "+1"
-  isLast?: boolean;
-}
-
-export function ToggleRow({ label, description, checked, onChange, badge, isLast }: ToggleRowProps) {
+export function ToggleRow({ label, description, checked, onChange, badge, isLast }) {
   return (
     <div
       style={{
@@ -99,16 +79,7 @@ export function ToggleRow({ label, description, checked, onChange, badge, isLast
   );
 }
 
-// ─── Card ─────────────────────────────────────────────────────────────────────
-
-interface CardProps {
-  icon?: string;
-  title?: string;
-  children: React.ReactNode;
-  style?: React.CSSProperties;
-}
-
-export function Card({ icon, title, children, style }: CardProps) {
+export function Card({ icon, title, children, style }) {
   return (
     <div
       style={{
@@ -151,15 +122,7 @@ export function Card({ icon, title, children, style }: CardProps) {
   );
 }
 
-// ─── Field ────────────────────────────────────────────────────────────────────
-
-interface FieldProps {
-  label: string;
-  children: React.ReactNode;
-  style?: React.CSSProperties;
-}
-
-export function Field({ label, children, style }: FieldProps) {
+export function Field({ label, children, style }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 5, ...style }}>
       <label
@@ -178,14 +141,8 @@ export function Field({ label, children, style }: FieldProps) {
   );
 }
 
-// ─── Input ────────────────────────────────────────────────────────────────────
-
-interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  unit?: string;
-}
-
-export function Input({ unit, style, ...props }: InputProps) {
-  const inputStyle: React.CSSProperties = {
+export function Input({ unit, style, ...props }) {
+  const inputStyle = {
     width: "100%",
     border: "1.5px solid var(--border)",
     borderRadius: "var(--r-sm)",
@@ -223,9 +180,7 @@ export function Input({ unit, style, ...props }: InputProps) {
   );
 }
 
-// ─── Select ───────────────────────────────────────────────────────────────────
-
-export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
+export function Select(props) {
   return (
     <select
       style={{
@@ -247,20 +202,7 @@ export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
   );
 }
 
-// ─── Chip Group ───────────────────────────────────────────────────────────────
-
-interface ChipOption<T extends string> {
-  value: T;
-  label: string;
-}
-
-interface ChipGroupProps<T extends string> {
-  options: ChipOption<T>[];
-  value: T | "";
-  onChange: (val: T) => void;
-}
-
-export function ChipGroup<T extends string>({ options, value, onChange }: ChipGroupProps<T>) {
+export function ChipGroup({ options, value, onChange }) {
   return (
     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
       {options.map((opt) => (
@@ -288,14 +230,7 @@ export function ChipGroup<T extends string>({ options, value, onChange }: ChipGr
   );
 }
 
-// ─── Info Box ─────────────────────────────────────────────────────────────────
-
-interface InfoBoxProps {
-  icon?: string;
-  children: React.ReactNode;
-}
-
-export function InfoBox({ icon = "ℹ️", children }: InfoBoxProps) {
+export function InfoBox({ icon = "ℹ️", children }) {
   return (
     <div
       style={{

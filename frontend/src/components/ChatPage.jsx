@@ -1,23 +1,13 @@
 import { useState, useRef, useEffect } from "react";
 import { api, ApiError } from "../services/api";
 import { generateReport } from "../services/report";
-import type { PatientData } from "../types";
 
-interface Message {
-  id: number;
-  role: "user" | "assistant" | "report_ready";
-  text: string;
-}
-
-/** Returns true when the assistant text contains a completed risk calculation. */
-function hasCalculationResult(text: string): boolean {
+function hasCalculationResult(text) {
   const t = text.toLowerCase();
-  // Must mention a recognised index
   const hasIndex =
     t.includes("rcri") ||
     t.includes("vsg-cri") ||
     t.includes("vsg cri");
-  // Must also contain score/risk signals
   const hasScore =
     /\d+\s*(ponto|pont|pt)/.test(t) ||
     /\d+[,.]\d+\s*%/.test(t) ||
@@ -30,18 +20,14 @@ function hasCalculationResult(text: string): boolean {
   return hasIndex && hasScore;
 }
 
-interface Props {
-  onBack: () => void;
-}
-
-export function ChatPage({ onBack }: Props) {
-  const [messages, setMessages] = useState<Message[]>([
+export function ChatPage({ onBack }) {
+  const [messages, setMessages] = useState([
     { id: 0, role: "assistant", text: "Olá! Sou o assistente CardioRisk, especializado em avaliação de risco cardiovascular perioperatório baseado na Diretriz SBC 2024. Como posso ajudá-lo? 🫀" },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -51,20 +37,19 @@ export function ChatPage({ onBack }: Props) {
     const text = input.trim();
     if (!text || loading) return;
 
-    const userMsg: Message = { id: Date.now(), role: "user", text };
+    const userMsg = { id: Date.now(), role: "user", text };
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
     setInput("");
     setLoading(true);
 
     try {
-      // Send conversation history (skip initial greeting for cleaner context)
       const history = updatedMessages
         .filter((m) => m.id !== 0)
         .map((m) => ({ role: m.role, content: m.text }));
 
       const response = await api.chat(history);
-      const assistantMsg: Message = { id: Date.now() + 1, role: "assistant", text: response.content };
+      const assistantMsg = { id: Date.now() + 1, role: "assistant", text: response.content };
       setMessages((prev) => {
         const next = [...prev, assistantMsg];
         if (hasCalculationResult(response.content)) {
@@ -72,13 +57,13 @@ export function ChatPage({ onBack }: Props) {
         }
         return next;
       });
-    } catch (err: unknown) {
+    } catch (err) {
       const detail =
         err instanceof ApiError
           ? `HTTP ${err.status}: ${err.message}`
           : err instanceof Error
-            ? err.message
-            : "Erro desconhecido";
+          ? err.message
+          : "Erro desconhecido";
       setMessages((prev) => [
         ...prev,
         {
@@ -98,17 +83,17 @@ export function ChatPage({ onBack }: Props) {
     try {
       const history = messages
         .filter((m) => m.id !== 0 && m.role !== "report_ready")
-        .map((m) => ({ role: m.role as "user" | "assistant", content: m.text }));
+        .map((m) => ({ role: m.role, content: m.text }));
 
       const { result, patient } = await api.chatReport(history);
 
       const patientData = {
         name: patient.name ?? undefined,
         age: patient.age ?? undefined,
-      } as PatientData;
+      };
 
       generateReport(result, patientData);
-    } catch (err: unknown) {
+    } catch (err) {
       const detail = err instanceof Error ? err.message : "Erro ao gerar relatório.";
       setMessages((prev) => [
         ...prev,
@@ -125,7 +110,6 @@ export function ChatPage({ onBack }: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "var(--bg)" }}>
-      {/* Header */}
       <div
         style={{
           background: "var(--white)",
@@ -184,7 +168,6 @@ export function ChatPage({ onBack }: Props) {
         />
       </div>
 
-      {/* Messages */}
       <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 8px", display: "flex", flexDirection: "column", gap: 10 }}>
         {messages.map((msg) => {
           if (msg.role === "report_ready") {
@@ -288,7 +271,6 @@ export function ChatPage({ onBack }: Props) {
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
       <div
         style={{
           padding: "12px 16px",

@@ -1,13 +1,4 @@
-interface Props {
-  currentStep: number;
-  totalSteps: number;
-  isLoading: boolean;
-  onBack: () => void;
-  onNext: () => void;
-  onReset: () => void;
-}
-
-export function BottomBar({ currentStep, totalSteps, isLoading, onBack, onNext, onReset }: Props) {
+export function BottomBar({ currentStep, totalSteps, isLoading, onBack, onNext, onReset }) {
   const isResult = currentStep === totalSteps;
   const isLastInput = currentStep === totalSteps - 1;
 
@@ -19,7 +10,7 @@ export function BottomBar({ currentStep, totalSteps, isLoading, onBack, onNext, 
     ? "Calcular Risco"
     : "Próximo →";
 
-  const nextStyle: React.CSSProperties = {
+  const nextStyle = {
     flex: 1,
     padding: 13,
     borderRadius: "var(--r-sm)",
@@ -34,7 +25,7 @@ export function BottomBar({ currentStep, totalSteps, isLoading, onBack, onNext, 
     opacity: isLoading ? 0.7 : 1,
   };
 
-  const backStyle: React.CSSProperties = {
+  const backStyle = {
     flex: "0 0 auto",
     padding: "13px 16px",
     borderRadius: "var(--r-sm)",

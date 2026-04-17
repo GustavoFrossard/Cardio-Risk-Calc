@@ -1,11 +1,6 @@
 import { WIZARD_STEPS } from "../types";
 
-interface Props {
-  currentStep: number;
-  onOpenChat: () => void;
-}
-
-export function AppHeader({ currentStep, onOpenChat }: Props) {
+export function AppHeader({ currentStep, onOpenChat }) {
   const step = WIZARD_STEPS[currentStep - 1];
 
   return (
@@ -19,7 +14,6 @@ export function AppHeader({ currentStep, onOpenChat }: Props) {
         zIndex: 50,
       }}
     >
-      {/* Top bar */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
         <div
           style={{
@@ -79,7 +73,6 @@ export function AppHeader({ currentStep, onOpenChat }: Props) {
         </button>
       </div>
 
-      {/* Progress bar */}
       <div style={{ display: "flex", gap: 4, marginBottom: -1 }}>
         {WIZARD_STEPS.map((s) => (
           <div
@@ -100,7 +93,6 @@ export function AppHeader({ currentStep, onOpenChat }: Props) {
         ))}
       </div>
 
-      {/* Step label */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 0 12px" }}>
         <div
           style={{

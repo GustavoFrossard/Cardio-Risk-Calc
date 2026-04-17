@@ -1,11 +1,10 @@
 import jsPDF from "jspdf";
-import type { RiskResult, PatientData } from "../types";
 
 const MARGIN = 20;
 const PAGE_W = 210;
 const CONTENT_W = PAGE_W - MARGIN * 2;
 
-function addPage(doc: jsPDF, y: number, needed: number): number {
+function addPage(doc, y, needed) {
   if (y + needed > 280) {
     doc.addPage();
     return MARGIN;
@@ -13,12 +12,12 @@ function addPage(doc: jsPDF, y: number, needed: number): number {
   return y;
 }
 
-export function generateReport(result: RiskResult, data: PatientData): void {
+export function generateReport(result, data) {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const indexName = result.risk_index === "vsg" ? "VSG-CRI" : "RCRI";
   let y = MARGIN;
 
-  // ─── Header ────────────────────────────────────────────────────────
+  // ─── Header ──────────────────────────────────────────────────────
   doc.setFillColor(15, 76, 129);
   doc.rect(0, 0, PAGE_W, 36, "F");
 
@@ -41,7 +40,7 @@ export function generateReport(result: RiskResult, data: PatientData): void {
   y = 46;
   doc.setTextColor(30, 30, 30);
 
-  // ─── Patient info ──────────────────────────────────────────────────
+  // ─── Patient info ───────────────────────────────────────────────
   doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
   doc.text("Dados do Paciente", MARGIN, y);
@@ -62,12 +61,10 @@ export function generateReport(result: RiskResult, data: PatientData): void {
   doc.text(`Capacidade funcional: ${result.mets} METs — ${result.mets_label}`, MARGIN, y);
   y += 10;
 
-  // ─── Separator ─────────────────────────────────────────────────────
   doc.setDrawColor(200, 200, 200);
   doc.line(MARGIN, y, MARGIN + CONTENT_W, y);
   y += 8;
 
-  // ─── Active conditions alert ───────────────────────────────────────
   if (result.has_active_conditions) {
     y = addPage(doc, y, 20 + result.active_conditions.length * 5);
     doc.setFillColor(254, 226, 226);
@@ -90,14 +87,12 @@ export function generateReport(result: RiskResult, data: PatientData): void {
     doc.setTextColor(30, 30, 30);
   }
 
-  // ─── Main result ───────────────────────────────────────────────────
   y = addPage(doc, y, 30);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
   doc.text(`Resultado — Índice ${indexName}`, MARGIN, y);
   y += 8;
 
-  // Risk box
   const riskColor =
     result.risk_class === "low" ? [22, 163, 74] :
     result.risk_class === "intermediate" ? [202, 138, 4] :
@@ -117,7 +112,6 @@ export function generateReport(result: RiskResult, data: PatientData): void {
   y += 22;
   doc.setTextColor(30, 30, 30);
 
-  // ─── Risk factors ──────────────────────────────────────────────────
   if (result.risk_factors.length > 0) {
     y = addPage(doc, y, 10 + result.risk_factors.length * 5);
     doc.setFont("helvetica", "bold");
@@ -135,7 +129,6 @@ export function generateReport(result: RiskResult, data: PatientData): void {
     y += 4;
   }
 
-  // ─── Medication advice ─────────────────────────────────────────────
   if (result.medication_advice.length > 0) {
     y = addPage(doc, y, 14);
     doc.setFont("helvetica", "bold");
@@ -157,7 +150,6 @@ export function generateReport(result: RiskResult, data: PatientData): void {
     y += 2;
   }
 
-  // ─── Recommended exams ─────────────────────────────────────────────
   if (result.recommended_exams.length > 0) {
     y = addPage(doc, y, 10 + result.recommended_exams.length * 5);
     doc.setFont("helvetica", "bold");
@@ -175,7 +167,6 @@ export function generateReport(result: RiskResult, data: PatientData): void {
     y += 4;
   }
 
-  // ─── Recommendations ───────────────────────────────────────────────
   if (result.recommendations.length > 0) {
     y = addPage(doc, y, 14);
     doc.setFont("helvetica", "bold");
@@ -196,21 +187,13 @@ export function generateReport(result: RiskResult, data: PatientData): void {
     }
   }
 
-  // ─── Footer on every page ──────────────────────────────────────────
   const totalPages = doc.getNumberOfPages();
-  for (let p = 1; p <= totalPages; p++) {
-    doc.setPage(p);
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "italic");
-    doc.setTextColor(140, 140, 140);
-    doc.text(
-      "Ferramenta de suporte clínico. Não substitui o julgamento médico individualizado.",
-      PAGE_W / 2, 290, { align: "center" },
-    );
-    doc.text(`Página ${p}/${totalPages}`, PAGE_W - MARGIN, 290, { align: "right" });
+  for (let i = 1; i <= totalPages; i += 1) {
+    doc.setPage(i);
+    doc.setFontSize(9);
+    doc.setTextColor(150, 150, 150);
+    doc.text(`Página ${i} de ${totalPages}`, PAGE_W - MARGIN, 295, { align: "right" });
   }
 
-  // ─── Save ──────────────────────────────────────────────────────────
-  const safeName = (data.name || "paciente").replace(/[^a-zA-Z0-9À-ú ]/g, "").trim().replace(/\s+/g, "_");
-  doc.save(`relatorio_risco_${safeName}.pdf`);
+  doc.save("cardiorisk-relatorio.pdf");
 }

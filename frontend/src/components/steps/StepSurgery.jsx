@@ -1,19 +1,13 @@
 import { Card, ToggleRow, InfoBox, Select } from "../ui";
-import type { PatientData, SurgeryRisk } from "../../types";
 import { SURGERY_OPTIONS } from "../../types";
 
-interface Props {
-  data: PatientData;
-  onChange: <K extends keyof PatientData>(key: K, value: PatientData[K]) => void;
-}
-
-const RISK_GROUPS: Array<{ label: string; risk: SurgeryRisk }> = [
+const RISK_GROUPS = [
   { label: "Baixo Risco (< 1%)", risk: "low" },
   { label: "Risco Intermediário (1–5%)", risk: "intermediate" },
   { label: "Alto Risco (> 5%)", risk: "high" },
 ];
 
-const CV_CONDITIONS: Array<{ key: keyof PatientData; label: string; description: string }> = [
+const CV_CONDITIONS = [
   {
     key: "cv_acute_coronary",
     label: "Síndrome coronariana aguda",
@@ -71,8 +65,8 @@ const CV_CONDITIONS: Array<{ key: keyof PatientData; label: string; description:
   },
 ];
 
-export function StepSurgery({ data, onChange }: Props) {
-  const handleSurgeryChange = (value: string) => {
+export function StepSurgery({ data, onChange }) {
+  const handleSurgeryChange = (value) => {
     const option = SURGERY_OPTIONS.find((o) => o.value === value);
     onChange("surgery_type", value);
     onChange("surgery_risk", option?.risk ?? "");
@@ -86,7 +80,6 @@ export function StepSurgery({ data, onChange }: Props) {
 
   return (
     <>
-      {/* Surgery Selection */}
       <Card icon="🏥" title="Identificação da Cirurgia (Tabela 3)">
         <Select value={data.surgery_type} onChange={(e) => handleSurgeryChange(e.target.value)}>
           <option value="">Selecione o procedimento...</option>
@@ -150,7 +143,6 @@ export function StepSurgery({ data, onChange }: Props) {
         )}
       </Card>
 
-      {/* Active CV Conditions */}
       <Card icon="🚨" title="Condições Cardiovasculares Ativas (Tabela 2)">
         <InfoBox icon="⚠️">
           Condições que requerem avaliação e tratamento <strong>antes</strong> do procedimento cirúrgico.
@@ -162,7 +154,7 @@ export function StepSurgery({ data, onChange }: Props) {
               label={item.label}
               description={item.description}
               checked={Boolean(data[item.key])}
-              onChange={(val) => onChange(item.key, val as PatientData[typeof item.key])}
+              onChange={(val) => onChange(item.key, val)}
               isLast={i === CV_CONDITIONS.length - 1}
             />
           ))}

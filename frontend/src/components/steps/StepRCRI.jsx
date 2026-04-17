@@ -1,16 +1,6 @@
 import { Card, ToggleRow, InfoBox } from "../ui";
-import type { PatientData } from "../../types";
 
-interface Props {
-  data: PatientData;
-  onChange: <K extends keyof PatientData>(key: K, value: PatientData[K]) => void;
-}
-
-const RCRI_CRITERIA: Array<{
-  key: keyof PatientData;
-  label: string;
-  description: string;
-}> = [
+const RCRI_CRITERIA = [
   {
     key: "rcri_high_risk_surgery",
     label: "Cirurgia de alto risco",
@@ -43,39 +33,32 @@ const RCRI_CRITERIA: Array<{
   },
 ];
 
-const VSG_AGE_OPTIONS: Array<{ value: PatientData["vsg_age_range"]; label: string; points: number }> = [
-  { value: "lt60",  label: "< 60 anos",    points: 0 },
-  { value: "60_69", label: "60–69 anos",   points: 2 },
-  { value: "70_79", label: "70–79 anos",   points: 3 },
-  { value: "gte80", label: "≥ 80 anos",    points: 4 },
+const VSG_AGE_SELECT = [
+  { value: "lt60", label: "< 60 anos", points: 0 },
+  { value: "60_69", label: "60–69 anos", points: 2 },
+  { value: "70_79", label: "70–79 anos", points: 3 },
+  { value: "gte80", label: "≥ 80 anos", points: 4 },
 ];
 
-const VSG_CRITERIA: Array<{
-  key: keyof PatientData;
-  label: string;
-  description: string;
-  points: number;
-}> = [
-  { key: "vsg_cad",                label: "Doença arterial coronariana",       description: "DAC documentada ou tratada",            points: 2 },
-  { key: "vsg_chf",                label: "Insuficiência cardíaca",            description: "ICC prévia ou atual",                   points: 2 },
-  { key: "vsg_copd",               label: "DPOC",                             description: "Doença pulmonar obstrutiva crônica",     points: 2 },
-  { key: "vsg_creatinine_over_1_8",label: "Creatinina > 1,8 mg/dL",           description: "Insuficiência renal",                   points: 2 },
-  { key: "vsg_smoking",            label: "Tabagismo",                         description: "Tabagista atual",                       points: 1 },
-  { key: "vsg_insulin_diabetes",   label: "Diabetes com uso de insulina",      description: "DM em insulinoterapia",                 points: 1 },
-  { key: "vsg_chronic_beta_blocker",label: "Uso crônico de betabloqueador",    description: "Betabloqueador regular pré-operatório", points: 1 },
-  { key: "vsg_prior_revasc",       label: "Revascularização miocárdica prévia",description: "Cirurgia ou angioplastia coronária",    points: -1 },
+const VSG_CRITERIA = [
+  { key: "vsg_cad", label: "Doença arterial coronariana", description: "DAC documentada ou tratada", points: 2 },
+  { key: "vsg_chf", label: "Insuficiência cardíaca", description: "ICC prévia ou atual", points: 2 },
+  { key: "vsg_copd", label: "DPOC", description: "Doença pulmonar obstrutiva crônica", points: 2 },
+  { key: "vsg_creatinine_over_1_8", label: "Creatinina > 1,8 mg/dL", description: "Insuficiência renal", points: 2 },
+  { key: "vsg_smoking", label: "Tabagismo", description: "Tabagista atual", points: 1 },
+  { key: "vsg_insulin_diabetes", label: "Diabetes com uso de insulina", description: "DM em insulinoterapia", points: 1 },
+  { key: "vsg_chronic_beta_blocker", label: "Uso crônico de betabloqueador", description: "Betabloqueador regular pré-operatório", points: 1 },
+  { key: "vsg_prior_revasc", label: "Revascularização miocárdica prévia", description: "Cirurgia ou angioplastia coronária", points: -1 },
 ];
 
-export function StepRCRI({ data, onChange }: Props) {
+export function StepRCRI({ data, onChange }) {
   const isVascular = data.is_vascular;
   const indexName = isVascular ? "VSG" : "RCRI";
 
-  // Compute score
-  let score: number;
+  let score;
   if (isVascular) {
-    const ageOpt = VSG_AGE_OPTIONS.find((o) => o.value === data.vsg_age_range);
-    score = (ageOpt?.points ?? 0)
-      + VSG_CRITERIA.reduce((s, c) => s + (data[c.key] ? c.points : 0), 0);
+    const ageOpt = VSG_AGE_SELECT.find((o) => o.value === data.vsg_age_range);
+    score = (ageOpt?.points ?? 0) + VSG_CRITERIA.reduce((s, c) => s + (data[c.key] ? c.points : 0), 0);
     if (score < 0) score = 0;
   } else {
     score = RCRI_CRITERIA.filter((c) => data[c.key] === true).length;
@@ -86,23 +69,20 @@ export function StepRCRI({ data, onChange }: Props) {
       <InfoBox>
         {isVascular ? (
           <>
-            Cirurgia vascular identificada → usando <strong>Índice VSG-CRI</strong> (Tabelas 6 e 7).
-            Os pontos variam conforme o critério.
+            Cirurgia vascular identificada → usando <strong>Índice VSG-CRI</strong> (Tabelas 6 e 7). Os pontos variam conforme o critério.
           </>
         ) : (
           <>
-            Cirurgia não vascular → usando <strong>Índice RCRI</strong> (Tabelas 4 e 5).
-            Marque cada critério presente. Cada item soma <strong>+1 ponto</strong>.
+            Cirurgia não vascular → usando <strong>Índice RCRI</strong> (Tabelas 4 e 5). Marque cada critério presente. Cada item soma <strong>+1 ponto</strong>.
           </>
         )}
       </InfoBox>
 
       {isVascular ? (
         <>
-          {/* Age range selector */}
           <Card icon="📅" title="Faixa etária">
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {VSG_AGE_OPTIONS.map((opt) => (
+              {VSG_AGE_SELECT.map((opt) => (
                 <label
                   key={opt.value}
                   style={{
@@ -143,7 +123,6 @@ export function StepRCRI({ data, onChange }: Props) {
             </div>
           </Card>
 
-          {/* VSG boolean criteria */}
           <Card icon="🫀" title="Critérios do VSG-CRI">
             {VSG_CRITERIA.map((criterion, i) => (
               <ToggleRow
@@ -151,7 +130,7 @@ export function StepRCRI({ data, onChange }: Props) {
                 label={criterion.label}
                 description={criterion.description}
                 checked={Boolean(data[criterion.key])}
-                onChange={(val) => onChange(criterion.key, val as PatientData[typeof criterion.key])}
+                onChange={(val) => onChange(criterion.key, val)}
                 badge={criterion.points > 0 ? `+${criterion.points}` : `${criterion.points}`}
                 isLast={i === VSG_CRITERIA.length - 1}
               />
@@ -166,7 +145,7 @@ export function StepRCRI({ data, onChange }: Props) {
               label={criterion.label}
               description={criterion.description}
               checked={Boolean(data[criterion.key])}
-              onChange={(val) => onChange(criterion.key, val as PatientData[typeof criterion.key])}
+              onChange={(val) => onChange(criterion.key, val)}
               badge="+1"
               isLast={i === RCRI_CRITERIA.length - 1}
             />
@@ -174,7 +153,6 @@ export function StepRCRI({ data, onChange }: Props) {
         </Card>
       )}
 
-      {/* Live score preview */}
       <div
         style={{
           background: score === 0 ? "var(--green-soft)" : score <= 2 ? "var(--amber-soft)" : "var(--red-soft)",
