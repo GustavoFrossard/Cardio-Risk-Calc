@@ -1,0 +1,22 @@
+@startuml
+title Diagrama de Casos de Uso - CardioRisk
+
+actor Médico
+
+rectangle "Aplicação CardioRisk" {
+  usecase "Inserir dados do paciente" as UC1
+  usecase "Calcular risco" as UC2
+  usecase "Obter recomendações" as UC3
+  usecase "Gerar relatório em PDF" as UC4
+}
+
+Médico --> UC1
+Médico --> UC2
+Médico --> UC3
+Médico --> UC4
+
+UC1 .> UC2 : <<include>>
+UC2 .> UC3 : <<include>>
+UC3 .> UC4 : <<include>>
+
+@enduml

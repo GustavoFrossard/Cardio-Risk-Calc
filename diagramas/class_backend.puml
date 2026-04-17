@@ -1,0 +1,104 @@
+@startuml
+title Diagrama de Classes do Backend
+
+class PatientData {
+  +Optional<String> nome
+  +Optional<Integer> idade
+  +Boolean obesidade
+  +Boolean ic_known
+  +Boolean valvular_known
+  +Boolean cad_known
+  +Boolean usa_aas
+  +String aas_prevention
+  +Boolean usa_clopidogrel
+  +Boolean usa_ticagrelor
+  +Boolean usa_prasugrel
+  +Boolean usa_warfarin
+  +String warfarin_indication
+  +Optional<Integer> warfarin_chadsvasc
+  +Boolean warfarin_stroke_3m
+  +String warfarin_vte_timing
+  +String warfarin_thrombophilia
+  +Boolean warfarin_active_neoplasia
+  +List<String> functional_activities
+  +Float mets
+  +String surgery_type
+  +String surgery_risk
+  +Boolean is_vascular
+  +Boolean cv_acute_coronary
+  +Boolean cv_unstable_aortic
+  +Boolean cv_acute_pulmonary_edema
+  +Boolean cv_cardiogenic_shock
+  +Boolean cv_hf_nyha_3_4
+  +Boolean cv_angina_ccs_3_4
+  +Boolean cv_severe_arrhythmia
+  +Boolean cv_uncontrolled_hypertension
+  +Boolean cv_af_high_rate
+  +Boolean cv_pulmonary_hypertension
+  +Boolean cv_severe_valvular
+  +Boolean rcri_high_risk_surgery
+  +Boolean rcri_ischemic_heart
+  +Boolean rcri_heart_failure
+  +Boolean rcri_cerebrovascular
+  +Boolean rcri_insulin_diabetes
+  +Boolean rcri_creatinine_above_2
+  +String vsg_age_range
+  +Boolean vsg_cad
+  +Boolean vsg_chf
+  +Boolean vsg_copd
+  +Boolean vsg_creatinine_over_1_8
+  +Boolean vsg_smoking
+  +Boolean vsg_insulin_diabetes
+  +Boolean vsg_chronic_beta_blocker
+  +Boolean vsg_prior_revasc
+}
+
+class ChatMessage {
+  +String papel
+  +String conteudo
+}
+
+class ChatRequest {
+  +List<ChatMessage> mensagens
+}
+
+class ChatResponse {
+  +String papel
+  +String conteudo
+}
+
+class ChatReportRequest {
+  +List<ChatMessage> mensagens
+}
+
+class FastAPIApp {
+  +calcular(patient: PatientData)
+  +saude()
+  +endpoint_chat(req: ChatRequest)
+  +relatorio_chat(payload: ChatReportRequest)
+}
+
+class Calculator {
+  +calculate_risk(data)
+  +score_rcri(data)
+  +score_vsg(data)
+  +check_active_conditions(data)
+  +build_medication_advice(data)
+  +build_exam_recommendations(data)
+  +build_recommendations(data)
+}
+
+class ChatService {
+  +chat(messages)
+  +extract_report_data(messages)
+  +preload_chat_runtime()
+}
+
+FastAPIApp --> PatientData
+FastAPIApp --> ChatRequest
+FastAPIApp --> ChatResponse
+FastAPIApp --> ChatReportRequest
+FastAPIApp --> Calculator
+FastAPIApp --> ChatService
+Calculator --> PatientData
+@enduml

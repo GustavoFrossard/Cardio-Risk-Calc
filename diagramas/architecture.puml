@@ -1,0 +1,44 @@
+@startuml
+title Arquitetura Frontend / Backend
+
+package Frontend {
+  [App.jsx] <<React>>
+  [AppHeader.jsx] <<React>>
+  [ChatPage.jsx] <<React>>
+  [BottomBar.jsx] <<React>>
+  [Contêiner de Etapas] <<React>>
+  [StepPatientData.jsx] <<React>>
+  [StepSurgery.jsx] <<React>>
+  [StepRCRI.jsx] <<React>>
+  [StepResult.jsx] <<React>>
+  [hooks/useWizard.js] <<Hook>>
+  [services/api.js] <<Serviço>>
+  [services/report.js] <<Serviço>>
+  [types/index.js] <<Constantes>>
+}
+
+package Backend {
+  [Backend FastAPI] <<Serviço>>
+  [backend/main.py] <<API>>
+  [backend/calculator.py] <<Calculadora>>
+  [backend/chat_service.py] <<Serviço de Chat>>
+}
+
+[App.jsx] --> [AppHeader.jsx]
+[App.jsx] --> [ChatPage.jsx]
+[ChatPage.jsx] --> [BottomBar.jsx]
+[ChatPage.jsx] --> [Contêiner de Etapas]
+[Contêiner de Etapas] --> [StepPatientData.jsx]
+[Contêiner de Etapas] --> [StepSurgery.jsx]
+[Contêiner de Etapas] --> [StepRCRI.jsx]
+[Contêiner de Etapas] --> [StepResult.jsx]
+[ChatPage.jsx] --> [hooks/useWizard.js]
+[ChatPage.jsx] --> [services/api.js]
+[ChatPage.jsx] --> [services/report.js]
+[ChatPage.jsx] --> [types/index.js]
+[services/api.js] --> [Backend FastAPI]
+[Backend FastAPI] --> [backend/main.py]
+[backend/main.py] --> [backend/calculator.py]
+[backend/main.py] --> [backend/chat_service.py]
+
+@enduml

@@ -1,0 +1,19 @@
+@startuml
+title Fluxo de Relatório por Chat
+actor Usuário
+participant "ChatPage.jsx" as Frontend
+participant "/chat/report" as API
+participant "FastAPI" as Backend
+participant "extract_report_data" as Extrator
+participant "calculate_risk" as Calculadora
+
+Usuário -> Frontend: envia conversa clínica
+Frontend -> API: POST /chat/report
+API -> Backend: chat_report(payload)
+Backend -> Extrator: extract_report_data(messages)
+Extrator --> Backend: dados extraídos
+Backend -> Calculadora: calculate_risk(extracted)
+Calculadora --> Backend: Resultado de risco
+Backend --> Frontend: { resultado, paciente }
+Frontend --> Usuário: exibe relatório e permite PDF
+@enduml

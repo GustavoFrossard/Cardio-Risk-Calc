@@ -1,0 +1,16 @@
+@startuml
+title Fluxo de Cálculo
+actor Usuário
+participant "ChatPage.jsx" as Frontend
+participant "/calculate" as API
+participant "FastAPI" as Backend
+participant "calculate_risk" as Calculadora
+
+Usuário -> Frontend: envia dados do paciente
+Frontend -> API: POST /calculate
+API -> Backend: calcula(patient)
+Backend -> Calculadora: calculate_risk(patient.model_dump())
+Calculadora --> Backend: Resultado de risco
+Backend --> Frontend: JSON de resultado
+Frontend --> Usuário: exibe risco e recomendações
+@enduml
