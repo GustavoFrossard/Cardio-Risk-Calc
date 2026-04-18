@@ -1,25 +1,14 @@
-import { useState } from "react";
 import { useWizard } from "./hooks/useWizard";
 import { AppHeader } from "./components/AppHeader";
 import { BottomBar } from "./components/BottomBar";
-import { ChatPage } from "./components/ChatPage";
 import { StepPatientData } from "./components/steps/StepPatientData";
 import { StepSurgery } from "./components/steps/StepSurgery";
 import { StepRCRI } from "./components/steps/StepRCRI";
 import { StepResult } from "./components/steps/StepResult";
 
 export default function App() {
-  const [showChat, setShowChat] = useState(false);
   const { currentStep, totalSteps, formData, result, isLoading, error, updateField, goNext, goBack, reset } =
     useWizard();
-
-  if (showChat) {
-    return (
-      <div style={{ width: "100%", maxWidth: 420, minHeight: "100vh", margin: "0 auto" }}>
-        <ChatPage onBack={() => setShowChat(false)} />
-      </div>
-    );
-  }
 
   return (
     <div
@@ -32,7 +21,7 @@ export default function App() {
         margin: "0 auto",
       }}
     >
-      <AppHeader currentStep={currentStep} onOpenChat={() => setShowChat(true)} />
+      <AppHeader currentStep={currentStep} />
 
       <div
         style={{

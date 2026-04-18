@@ -30,16 +30,4 @@ export const api = {
     }),
 
   health: () => request("/health"),
-
-  chat: (messages) =>
-    request("/chat", {
-      method: "POST",
-      body: JSON.stringify({ messages }),
-    }),
-
-  chatReport: (messages) =>
-    request("/chat/report", {
-      method: "POST",
-      body: JSON.stringify({ messages }),
-    }),
 };

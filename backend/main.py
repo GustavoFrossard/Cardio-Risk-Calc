@@ -5,20 +5,11 @@ Based on: Diretriz Brasileira de Avaliação Cardiovascular Perioperatória,
           RCRI (Lee Index), VSG Cardiac Risk Index
 """
 
-from dotenv import load_dotenv
-load_dotenv()
-
-import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional
-from calculator import calculate_risk
-from chat_service import (
-    chat as chat_service,
-    extract_report_data,
-    preload_chat_runtime,
-)
+from core.calculator import calculate_risk
 
 app = FastAPI(
     title="CardioRisk Periop API",
@@ -33,14 +24,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-def preload_chat_models_on_startup():
-    """Optional warmup to remove first chat latency after backend boot."""
-    raw = os.environ.get("CARDIORISK_CHAT_PRELOAD", "false").strip().lower()
-    if raw in ("1", "true", "yes", "y", "on"):
-        preload_chat_runtime()
 
 
 class PatientData(BaseModel):
@@ -113,7 +96,7 @@ class PatientData(BaseModel):
 def root():
     return {
         "app": "CardioRisk Periop API",
-        "version": "1.0.0",
+        "version": "2.0.0",
         "docs": "/docs",
     }
 
@@ -131,72 +114,3 @@ def calculate(patient: PatientData):
 @app.get("/health")
 def health():
     return {"status": "ok"}
-
-
-class ChatMessage(BaseModel):
-    role: str
-    content: str
-
-
-class ChatReportRequest(BaseModel):
-    messages: list[ChatMessage]
-
-
-@app.post("/chat/report")
-def chat_report(payload: ChatReportRequest):
-    """
-    Extract structured patient data from chat conversation and generate a risk report.
-    Returns {result: RiskResult, patient: {name, age}} ready for PDF generation.
-    """
-    messages = [{"role": m.role, "content": m.content} for m in payload.messages]
-    extracted = extract_report_data(messages)
-
-    if not extracted:
-        from fastapi import HTTPException
-        raise HTTPException(
-            status_code=422,
-            detail="Não foi possível extrair dados clínicos suficientes da conversa. "
-                   "Certifique-se de informar pelo menos: tipo de cirurgia, presença de "
-                   "comorbidades (IC, DAC, DCV, diabetes com insulina, creatinina) e "
-                   "capacidade funcional.",
-        )
-
-    result = calculate_risk(extracted)
-
-    # Use the free-text surgery name from extraction for a richer label
-    surgery_name = extracted.get("surgery_name", "")
-    if surgery_name:
-        result["surgery_label"] = surgery_name
-
-    return {
-        "result": result,
-        "patient": {
-            "name": extracted.get("name"),
-            "age": extracted.get("age"),
-        },
-    }
-
-
-class ChatMessage(BaseModel):
-    role: str = Field(..., description="'user' or 'assistant'")
-    content: str = Field(..., description="Message text")
-
-
-class ChatRequest(BaseModel):
-    messages: list[ChatMessage] = Field(..., description="Conversation history")
-
-
-class ChatResponse(BaseModel):
-    role: str = "assistant"
-    content: str
-
-
-@app.post("/chat", response_model=ChatResponse)
-def chat_endpoint(req: ChatRequest):
-    """
-    RAG-augmented chat endpoint for perioperative cardiovascular risk Q&A.
-    Uses local Ollama model by default (no API key needed).
-    """
-    msgs = [{"role": m.role, "content": m.content} for m in req.messages]
-    reply = chat_service(msgs)
-    return ChatResponse(content=reply)

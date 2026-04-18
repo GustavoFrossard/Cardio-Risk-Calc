@@ -1,6 +1,6 @@
 import { WIZARD_STEPS } from "../types";
 
-export function AppHeader({ currentStep, onOpenChat }) {
+export function AppHeader({ currentStep }) {
   const step = WIZARD_STEPS[currentStep - 1];
 
   return (
@@ -51,26 +51,6 @@ export function AppHeader({ currentStep, onOpenChat }) {
         >
           {currentStep} / {WIZARD_STEPS.length}
         </div>
-        <button
-          onClick={onOpenChat}
-          aria-label="Abrir chat"
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: 10,
-            background: "var(--blue-soft)",
-            border: "1px solid rgba(91,148,245,0.25)",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-          }}
-        >
-          <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          </svg>
-        </button>
       </div>
 
       <div style={{ display: "flex", gap: 4, marginBottom: -1 }}>

@@ -1,0 +1,471 @@
+================================================================================
+  MAPA DE CAMPOS → IMPACTO NA CALCULADORA
+  CardioRisk Periop
+================================================================================
+
+Cada campo do frontend envia um valor para o backend via POST /calculate.
+Abaixo, cada campo pelo NOME QUE APARECE NA TELA, com o campo técnico entre
+parênteses, e exatamente o que muda no cálculo.
+
+================================================================================
+STEP 1 — "Dados do Paciente"
+  Card: 👤 Identificação
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ "Nome / Identificador" (name)                                               │
+│ TIPO:  Campo de texto livre (placeholder: "Opcional")                       │
+│ EFEITO: Nenhum no cálculo. Usado apenas no relatório PDF.                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ "Idade" (age)                                                               │
+│ TIPO:  Campo numérico, 0–120, unidade "anos"                               │
+│ EFEITO: Nenhum direto no cálculo. No VSG-CRI a idade é tratada pela        │
+│         "Faixa etária" do Step 3 (campo separado).                          │
+│         Usado no relatório PDF.                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+  Card: 🩺 Comorbidades
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ "Obesidade" — sublabel: IMC ≥ 30 (obesity)                                 │
+│ TIPO:  Toggle (Sim/Não)                                                     │
+│ EFEITO:                                                                     │
+│   • NÃO altera score RCRI nem VSG                                          │
+│   • NÃO altera MACE% nem classe de risco                                   │
+│   • ADICIONA tag "Obesidade" na lista de fatores de risco                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ "IC conhecida ou suspeita" — sublabel: Insuficiência cardíaca (known_hf)   │
+│ TIPO:  Toggle (Sim/Não)                                                     │
+│ EFEITO:                                                                     │
+│   • NÃO altera score RCRI/VSG diretamente                                  │
+│   • ADICIONA tag "IC conhecida/suspeita" nos fatores de risco              │
+│   • ADICIONA exame: "Ecocardiograma transtorácico"                         │
+│   • ADICIONA exame: "BNP ou NT-proBNP"                                     │
+│   • ADICIONA recomendação (âmbar): otimizar IC antes da cirurgia           │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ "Doença valvar conhecida ou suspeita" (known_valvular_disease)              │
+│ TIPO:  Toggle (Sim/Não)                                                     │
+│ EFEITO:                                                                     │
+│   • NÃO altera score                                                        │
+│   • ADICIONA tag "Doença valvar" nos fatores de risco                      │
+│   • ADICIONA exame: "Ecocardiograma transtorácico"                         │
+│   • ADICIONA recomendação (âmbar): solicitar eco para gravidade            │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ "Doença coronariana conhecida ou suspeita" (known_cad)                      │
+│ TIPO:  Toggle (Sim/Não)                                                     │
+│ EFEITO:                                                                     │
+│   • NÃO altera score                                                        │
+│   • ADICIONA tag "DAC conhecida/suspeita" nos fatores de risco             │
+│   • ADICIONA recomendação (âmbar): avaliar controle da coronariopatia      │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+  Card: 💊 Medicamentos em Uso
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ "AAS (Ácido Acetilsalicílico)" (uses_aas)                                  │
+│ TIPO:  Toggle (Sim/Não)                                                     │
+│                                                                             │
+│   Quando ligado, aparece sub-campo:                                         │
+│   "Tipo de prevenção" (aas_prevention) — Chips: "Primária" / "Secundária"  │
+│                                                                             │
+│ EFEITO no conselho de medicação:                                            │
+│                                                                             │
+│   Prevenção = "Primária":                                                   │
+│     → "Suspender 7 dias antes" (âmbar)                                     │
+│                                                                             │
+│   Prevenção = "Secundária":                                                 │
+│     • Se cirurgia = Neurológica, Urológica minor (RTU) ou Ocular:          │
+│       → "Suspender 7 dias antes" (vermelho)                                │
+│     • Qualquer outra cirurgia:                                              │
+│       → "Manter AAS" (verde)                                               │
+│                                                                             │
+│   NÃO altera score, MACE% nem classe de risco.                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ "Clopidogrel" (uses_clopidogrel)                                            │
+│ TIPO:  Toggle (Sim/Não)                                                     │
+│ EFEITO:                                                                     │
+│   → Conselho: "Suspender 5 dias antes" (âmbar)                            │
+│   NÃO altera score, MACE% nem classe de risco.                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ "Ticagrelor" (uses_ticagrelor)                                              │
+│ TIPO:  Toggle (Sim/Não)                                                     │
+│ EFEITO:                                                                     │
+│   → Conselho: "Suspender 5 dias antes" (âmbar)                            │
+│   NÃO altera score, MACE% nem classe de risco.                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ "Prasugrel" (uses_prasugrel)                                                │
+│ TIPO:  Toggle (Sim/Não)                                                     │
+│ EFEITO:                                                                     │
+│   → Conselho: "Suspender 7 dias antes" (âmbar)                            │
+│   NÃO altera score, MACE% nem classe de risco.                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ "Varfarina" (uses_warfarin)                                                 │
+│ TIPO:  Toggle (Sim/Não)                                                     │
+│ EFEITO:                                                                     │
+│   • ADICIONA exame: "Coagulograma (INR, TAP, TTPa)"                       │
+│   • Gera conselho que depende dos sub-campos abaixo.                       │
+│   NÃO altera score, MACE% nem classe de risco.                            │
+│                                                                             │
+│   Quando ligado, aparece:                                                   │
+│   ─────────────────────────────────────────────────────────────────────     │
+│   "Indicação da varfarina" (warfarin_indication)                           │
+│   Chips: "FA" / "TEV" / "Prótese Mecânica" / "Valvar Reumática"           │
+│                                                                             │
+│     "Prótese Mecânica" → Ponte com heparina (vermelho)                     │
+│     "Valvar Reumática" → Ponte com heparina (vermelho)                     │
+│     "FA"               → depende dos sub-campos abaixo                     │
+│     "TEV"              → depende dos sub-campos abaixo                     │
+│                                                                             │
+│   Se indicação = "FA":                                                      │
+│   ─────────────────────────────────────────────────────────────────────     │
+│   "CHADS₂" (warfarin_chadsvasc) — Campo numérico 0–6                      │
+│     ≥ 5 OU "AVC/AIT nos últimos 3 meses" = Sim                            │
+│       → Ponte com heparina (vermelho)                                      │
+│     3–4                                                                     │
+│       → Considerar ponte (âmbar)                                           │
+│     0–2                                                                     │
+│       → Suspender sem ponte (verde)                                        │
+│                                                                             │
+│   "AVC/AIT nos últimos 3 meses" (warfarin_stroke_3m)                      │
+│   Toggle (Sim/Não)                                                          │
+│     Sim + qualquer CHADS → Ponte com heparina (vermelho)                   │
+│                                                                             │
+│   Se indicação = "TEV":                                                     │
+│   ─────────────────────────────────────────────────────────────────────     │
+│   "Tempo do TEV" (warfarin_vte_timing)                                     │
+│   Chips: "< 3 meses" / "3–12 meses" / "> 12 meses"                       │
+│     "< 3 meses"  → Ponte com heparina (vermelho)                          │
+│     "3–12 meses" → Considerar ponte (âmbar)                               │
+│     "> 12 meses" → Suspender sem ponte (verde)                            │
+│                                                                             │
+│   "Trombofilia" (warfarin_thrombophilia)                                   │
+│   Chips: "Grave" / "Leve" / "Não"                                         │
+│     Aparece no texto quando Tempo = "3–12 meses"                           │
+│                                                                             │
+│   "Neoplasia ativa" (warfarin_active_neoplasia)                            │
+│   Toggle (Sim/Não)                                                          │
+│     Aparece no texto quando Tempo = "3–12 meses"                           │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+  Card: 📊 Capacidade Funcional
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Slider de atividade máxima (mets)                                           │
+│ TIPO:  Slider deslizante com 12 posições                                   │
+│ ENVIA: float (1 a 8 METs)                                                   │
+│                                                                             │
+│   Posições do slider (da mais baixa para a mais alta):                     │
+│                                                                             │
+│     1.00 — "Nenhuma atividade / acamado"                                   │
+│     2.70 — "Fazer trabalhos leves em casa, como juntar o lixo ou lavar     │
+│            a louça?"                                                        │
+│     2.75 — "Cuidar de si mesmo: vestir-se, alimentar-se, tomar banho?"     │
+│     2.75 — "Caminhar uma quadra ou duas, no plano?"                        │
+│     3.50 — "Fazer trabalhos moderados em casa, como passar o aspirador     │
+│            de pó, varrer o chão ou guardar/carregar mantimentos?"           │
+│     4.50 — "Fazer trabalhos no jardim/quintal, como usar o rastelo,        │
+│            juntar folhas ou usar a máquina de cortar grama?"               │
+│     5.25 — "Ter atividade sexual?"                                         │
+│     5.50 — "Subir um lance de escadas ou caminhar em uma subida?"          │
+│     6.00 — "Participar de atividades recreacionais moderadas, como jogar   │
+│            boliche, dançar, jogar tênis em dupla?"                          │
+│     7.50 — "Participar de atividades esportivas, como natação, ou tênis    │
+│            individual, ou futebol?"                                        │
+│     8.00 — "Fazer trabalhos pesados em casa, como esfregar/lavar o piso,   │
+│            ou levantar ou deslocar móveis pesados?"                        │
+│     8.00 — "Correr uma distância curta?"                                   │
+│                                                                             │
+│   Indicador visual:                                                         │
+│     ≥ 4 METs → fundo verde, "✅ Capacidade funcional adequada"             │
+│     < 4 METs → fundo âmbar, "⚠️ Capacidade funcional reduzida"            │
+│                                                                             │
+│   IMPACTO se METs < 4:                                                      │
+│     • ADICIONA tag "Cap. funcional ↓" nos fatores de risco                 │
+│     • ADICIONA recomendação (âmbar): "METs < 4 é preditor independente"    │
+│     • Se cirurgia intermediária/alta E score intermediário+:               │
+│       → ADICIONA exame: "Teste funcional (ergo/cintilo/eco estresse)"      │
+│     • functional_capacity_adequate = false                                  │
+│                                                                             │
+│   IMPACTO se METs ≥ 4:                                                     │
+│     • functional_capacity_adequate = true                                   │
+│     • Nenhuma recomendação extra                                           │
+│                                                                             │
+│   NÃO altera diretamente o score RCRI/VSG nem o MACE%.                    │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+================================================================================
+STEP 2 — "Cirurgia e Condições Ativas"
+  Card: 🏥 Identificação da Cirurgia (Tabela 3)
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ "Selecione o procedimento..." (surgery_type)                                │
+│ TIPO:  Select dropdown, agrupado por risco                                  │
+│                                                                             │
+│ A seleção define automaticamente:                                           │
+│   • surgery_risk: "low" / "intermediate" / "high"                          │
+│   • is_vascular: true / false                                               │
+│ Badges: "Risco Baixo/Intermediário/Alto" + "Cirurgia Vascular → VSG"       │
+│                                                                             │
+│   ── Grupo "Baixo Risco (< 1%)" ──                                        │
+│   Mama · Procedimentos dentários · Tireoide · Ocular ·                     │
+│   Ginecológica minor · Ortopédica minor (menisco) · Reconstrutiva ·        │
+│   Superfície · Urológica minor (RTU) · VATS minor                         │
+│     → MACE capped a 1.0% (se score < 3 e sem condições ativas)            │
+│     → Recomendação verde: "Prosseguir, risco < 1%"                        │
+│                                                                             │
+│   ── Grupo "Risco Intermediário (1–5%)" ──                                 │
+│   Carótida assintomática⁽ᵛ⁾ · Endarterectomia carótida (sintomática)⁽ᵛ⁾ · │
+│   Angioplastia arterial periférica⁽ᵛ⁾ · Aneurisma de aorta endovasc⁽ᵛ⁾ · │
+│   Cabeça e pescoço · Intraperitoneal (colecistectomia, hérnia, etc.) ·     │
+│   Intratorácica non-major · Neurológica · Ortopédica major ·              │
+│   Transplante renal · Urológica major · Ginecológica major ·              │
+│   Cistectomia total                                                         │
+│     (ᵛ) = vascular → força uso do VSG-CRI no Step 3                       │
+│     → Solicita: ECG, Hemograma                                             │
+│                                                                             │
+│   ── Grupo "Alto Risco (> 5%)" ──                                          │
+│   Aorta e vascular major⁽ᵛ⁾ · Revasc periférica aberta / amputação⁽ᵛ⁾ · │
+│   Angioplastia carótida (sintomática)⁽ᵛ⁾ · Ressecção adrenal ·           │
+│   Pancreática · Fígado e vias biliares · Esofagectomia ·                  │
+│   Pneumectomia (VATS ou aberta) · Transplante pulmonar ·                  │
+│   Transplante hepático · Reparo de perfuração intestinal                   │
+│     (ᵛ) = vascular → força uso do VSG-CRI no Step 3                       │
+│     → Solicita: ECG, Hemograma, Função renal                              │
+│     → Recomendação (vermelho): "Cirurgia alto risco, > 5%"                │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+  Card: 🚨 Condições Cardiovasculares Ativas (Tabela 2)
+  Info: "Condições que requerem avaliação e tratamento ANTES do procedimento"
+================================================================================
+
+  Cada toggle, se ligado, ADICIONA a condição à lista active_conditions.
+  Se QUALQUER uma estiver ligada:
+    → risk_class é forçado a HIGH ("Risco Alto — Condições Ativas")
+    → ADICIONA exame: "Ecocardiograma transtorácico"
+    → ADICIONA recomendação (vermelho): tratar ANTES da cirurgia
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ NOME NO FRONTEND                              │ SUBLABEL                    │
+│───────────────────────────────────────────────│─────────────────────────────│
+│ "Síndrome coronariana aguda"                  │ IAM agudo (<30d) ou angina  │
+│                                               │ instável                    │
+│ "Doenças instáveis da aorta torácica"        │ Dissecção aguda, aneurisma  │
+│                                               │ sintomático                 │
+│ "Edema agudo dos pulmões"                    │ Episódio atual ou recente   │
+│ "Choque cardiogênico"                        │ Hipoperfusão por causa      │
+│                                               │ cardíaca                    │
+│ "IC classe funcional III/IV (NYHA)"          │ Dispneia aos pequenos       │
+│                                               │ esforços ou em repouso      │
+│ "Angina classe funcional CCS III/IV"         │ Angina em atividades leves  │
+│                                               │ ou em repouso               │
+│ "Bradiarritmias ou taquiarritmias graves"    │ BAVT, TV sustentada,        │
+│                                               │ arritmias sintomáticas      │
+│ "HAS não controlada"                         │ PA > 180 × 110 mmHg        │
+│ "FA de alta resposta ventricular"            │ FC > 120 bpm               │
+│ "HAP sintomática"                             │ Hipertensão arterial        │
+│                                               │ pulmonar com sintomas       │
+│ "Estenose aórtica/mitral importante          │ Estenose valvar grave com   │
+│  sintomática"                                 │ repercussão hemodinâmica    │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+  Adicionalmente, "Edema agudo dos pulmões", "Choque cardiogênico" e
+  "IC classe funcional III/IV" também forçam "Ecocardiograma transtorácico".
+
+
+================================================================================
+STEP 3 — "Índice de Risco"
+================================================================================
+
+  O índice é determinado automaticamente pelo Step 2:
+    • Cirurgia NÃO vascular → "Índice RCRI" (Tabelas 4 e 5)
+    • Cirurgia VASCULAR     → "Índice VSG-CRI" (Tabelas 6 e 7)
+
+── RCRI — Card: 🫀 Critérios do RCRI ──────────────────────────────────────────
+
+  Info: "Cirurgia não vascular → usando Índice RCRI. Marque cada critério
+        presente. Cada item soma +1 ponto."
+
+  Cada toggle vale +1 ponto. Score vai de 0 a 6.
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ NOME NO FRONTEND                    │ SUBLABEL                      │ PTS  │
+│─────────────────────────────────────│───────────────────────────────│──────│
+│ "Cirurgia de alto risco"            │ Intraperitoneal, intratorácica│ +1   │
+│                                     │ ou vascular suprainguinal     │      │
+│ "Doença arterial coronária"        │ Ondas Q, sintomas de isquemia,│ +1   │
+│                                     │ teste positivo, uso de nitrato│      │
+│ "Insuficiência cardíaca congestiva"│ Clínica de ICC ou RX de tórax│ +1   │
+│                                     │ com congestão                 │      │
+│ "Doença cerebrovascular"           │ AVC ou AIT prévios            │ +1   │
+│ "Diabetes com insulinoterapia"      │ Em uso de insulina no         │ +1   │
+│                                     │ pré-operatório               │      │
+│                                     │ → também adiciona exame HbA1c│      │
+│ "Creatinina pré-operatória > 2,0   │ Insuficiência renal           │ +1   │
+│  mg/dL"                             │ pré-operatória               │      │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+  TABELA DE RESULTADO RCRI:
+  ┌────────┬────────┬──────────┬────────────────────┐
+  │ Score  │ Classe │ MACE %   │ Classe de Risco    │
+  │────────│────────│──────────│────────────────────│
+  │   0    │   I    │   3.9%   │ Baixo              │
+  │   1    │  II    │   6.0%   │ Intermediário      │
+  │   2    │ III    │  10.1%   │ Alto               │
+  │  ≥ 3   │  IV    │  15.0%   │ Alto               │
+  └────────┴────────┴──────────┴────────────────────┘
+
+  Classificação final:
+    MACE < 5%   → Baixo
+    MACE 5–10%  → Intermediário
+    MACE ≥ 10%  → Alto
+
+
+── VSG-CRI ─────────────────────────────────────────────────────────────────────
+
+  Info: "Cirurgia vascular identificada → usando Índice VSG-CRI.
+        Os pontos variam conforme o critério."
+
+  Card: 📅 Faixa etária (radio buttons)
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ OPÇÃO NO FRONTEND           │ PTS  │                                       │
+│─────────────────────────────│──────│                                       │
+│ "< 60 anos"                 │  0   │                                       │
+│ "60–69 anos"                │ +2   │                                       │
+│ "70–79 anos"                │ +3   │                                       │
+│ "≥ 80 anos"                │ +4   │                                       │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+  Card: 🫀 Critérios do VSG-CRI (toggles com badges de pontos)
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ NOME NO FRONTEND                    │ SUBLABEL                      │ PTS  │
+│─────────────────────────────────────│───────────────────────────────│──────│
+│ "Doença arterial coronariana"      │ DAC documentada ou tratada     │ +2   │
+│ "Insuficiência cardíaca"           │ ICC prévia ou atual            │ +2   │
+│ "DPOC"                              │ Doença pulmonar obstrutiva    │ +2   │
+│                                     │ crônica                       │      │
+│ "Creatinina > 1,8 mg/dL"           │ Insuficiência renal           │ +2   │
+│ "Tabagismo"                         │ Tabagista atual               │ +1   │
+│ "Diabetes com uso de insulina"      │ DM em insulinoterapia         │ +1   │
+│                                     │ → também adiciona exame HbA1c│      │
+│ "Uso crônico de betabloqueador"    │ Betabloqueador regular         │ +1   │
+│                                     │ pré-operatório               │      │
+│ "Revascularização miocárdica       │ Cirurgia ou angioplastia      │ −1   │
+│  prévia"                            │ coronária                    │      │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+  TABELA DE RESULTADO VSG-CRI:
+  ┌────────────┬──────────────────┬──────────┐
+  │ Score      │ Classe           │ MACE %   │
+  │────────────│──────────────────│──────────│
+  │  0 – 4     │ Baixo            │   3.5%   │
+  │  5 – 6     │ Intermediário    │   8.0%   │
+  │  ≥ 7       │ Alto             │  15.0%   │
+  └────────────┴──────────────────┴──────────┘
+
+  Score mínimo é 0 (nunca negativo, mesmo com "Revascularização prévia").
+
+  Indicador visual do score (barra na tela):
+    0 pts    → fundo verde
+    1–2 pts  → fundo âmbar
+    ≥ 3 pts  → fundo vermelho
+
+
+================================================================================
+STEP 4 — "Resultado" (somente leitura)
+================================================================================
+
+  Nenhum campo de entrada. Mostra:
+    • MACE risk % com gauge visual
+    • Classe de risco (Baixo / Intermediário / Alto)
+    • Score e classe (I/II/III/IV para RCRI, Baixo/Intermediário/Alto para VSG)
+    • Capacidade funcional (METs)
+    • Tipo de cirurgia
+    • Condições ativas (se houver)
+    • Conselhos de medicação
+    • Exames recomendados
+    • Recomendações clínicas
+    • Fatores de risco
+    • Botão "Baixar Relatório PDF"
+
+
+================================================================================
+REGRAS ESPECIAIS / OVERRIDES
+================================================================================
+
+1. CIRURGIA BAIXO RISCO + score < 3 + sem condições ativas:
+   → MACE% é limitado a no máximo 1.0% (independente do score calculado)
+   → Recomendação: prosseguir com cirurgia
+
+2. QUALQUER condição cardiovascular ativa marcada:
+   → risk_class é FORÇADO a HIGH
+   → risk_label = "Risco Alto (Condições Ativas)"
+   → Independe de score, METs e tipo de cirurgia
+
+3. Score RCRI ≥ 3:
+   → Recomendação vermelha: "Otimização farmacológica"
+   → "Considere betabloqueadores e estatinas"
+
+4. Cirurgia de ALTO RISCO:
+   → Recomendação vermelha: monitorização invasiva + CTI
+
+5. TESTE FUNCIONAL só é recomendado quando TODOS os 3 são verdade:
+   → Slider de METs < 4
+   → Cirurgia intermediária ou alta
+   → Score intermediário+ (RCRI ≥ 2 ou VSG ≥ 5)
+
+
+================================================================================
+EXAMES RECOMENDADOS — RESUMO DAS CONDIÇÕES
+================================================================================
+
+  ECG de 12 derivações
+    → cirurgia não-baixo risco OU score > 0
+
+  Ecocardiograma transtorácico
+    → "IC conhecida ou suspeita" OU "Doença valvar conhecida ou suspeita"
+    → OU qualquer condição ativa ligada
+    → OU "Edema agudo dos pulmões" / "Choque cardiogênico" / "IC III/IV"
+
+  Teste funcional (ergo/cintilo/eco estresse)
+    → Slider METs < 4 E cirurgia intermed/alta E score intermediário+
+
+  Hemograma completo
+    → cirurgia intermediária ou alta
+
+  Coagulograma (INR, TAP, TTPa)
+    → "Varfarina" ligada
+
+  Função renal (creatinina, ureia)
+    → score > 0 OU cirurgia alto risco
+
+  BNP ou NT-proBNP
+    → classe de risco = Alto OU "IC conhecida ou suspeita" ligada
+
+  Glicemia de jejum / HbA1c
+    → "Diabetes com insulinoterapia" (RCRI) OU
+      "Diabetes com uso de insulina" (VSG) ligado
