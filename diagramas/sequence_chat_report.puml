@@ -1,19 +1,34 @@
 @startuml
-title Fluxo de Relatório por Chat
-actor Usuário
-participant "ChatPage.jsx" as Frontend
-participant "/chat/report" as API
-participant "FastAPI" as Backend
-participant "extract_report_data" as Extrator
-participant "calculate_risk" as Calculadora
+title Fluxo de Geração de Relatório PDF
+actor Médico
+participant "StepResult.jsx" as StepResult
+participant "report.js\n(generateReport)" as ReportService
+participant "jsPDF" as JSPDF
 
-Usuário -> Frontend: envia conversa clínica
-Frontend -> API: POST /chat/report
-API -> Backend: chat_report(payload)
-Backend -> Extrator: extract_report_data(messages)
-Extrator --> Backend: dados extraídos
-Backend -> Calculadora: calculate_risk(extracted)
-Calculadora --> Backend: Resultado de risco
-Backend --> Frontend: { resultado, paciente }
-Frontend --> Usuário: exibe relatório e permite PDF
+Médico -> StepResult: clica "Baixar Relatório em PDF"
+StepResult -> ReportService: generateReport(result, data)
+
+group Construção do PDF (client-side)
+  ReportService -> JSPDF: new jsPDF()
+  ReportService -> JSPDF: header (título, data)
+  ReportService -> JSPDF: dados do paciente (nome, idade, cirurgia, METs)
+
+  opt Condições ativas detectadas
+    ReportService -> JSPDF: box vermelho com condições ativas
+  end
+
+  ReportService -> JSPDF: resultado (MACE %, risk_label, score, classe)
+  ReportService -> JSPDF: fatores de risco identificados
+
+  opt Medicamentos em uso
+    ReportService -> JSPDF: manejo de medicamentos
+  end
+
+  ReportService -> JSPDF: exames recomendados
+  ReportService -> JSPDF: recomendações clínicas
+  ReportService -> JSPDF: numeração de páginas
+end
+
+ReportService -> JSPDF: doc.save("cardiorisk-relatorio.pdf")
+JSPDF --> Médico: download do arquivo PDF
 @enduml

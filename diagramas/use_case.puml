@@ -1,22 +1,36 @@
 @startuml
-title Diagrama de Casos de Uso - CardioRisk
+title Diagrama de Casos de Uso - CardioRisk Periop
 
 actor Médico
 
 rectangle "Aplicação CardioRisk" {
-  usecase "Inserir dados do paciente" as UC1
-  usecase "Calcular risco" as UC2
-  usecase "Obter recomendações" as UC3
-  usecase "Gerar relatório em PDF" as UC4
+  usecase "Informar dados do paciente\n(nome, idade, comorbidades)" as UC1
+  usecase "Informar medicamentos em uso\n(AAS, clopidogrel, varfarina...)" as UC1b
+  usecase "Avaliar capacidade funcional\n(METs)" as UC1c
+  usecase "Selecionar tipo de cirurgia\n(Tabela 3)" as UC2
+  usecase "Informar condições\ncardiovasculares ativas (Tabela 2)" as UC2b
+  usecase "Preencher critérios de risco\n(RCRI ou VSG-CRI)" as UC3
+  usecase "Calcular risco perioperatório" as UC4
+  usecase "Visualizar resultado\n(MACE %, classe, recomendações)" as UC5
+  usecase "Consultar manejo\nde medicamentos" as UC5b
+  usecase "Consultar exames\nrecomendados" as UC5c
+  usecase "Gerar relatório em PDF" as UC6
+  usecase "Reiniciar avaliação" as UC7
 }
 
 Médico --> UC1
 Médico --> UC2
 Médico --> UC3
-Médico --> UC4
+Médico --> UC5
+Médico --> UC6
+Médico --> UC7
 
-UC1 .> UC2 : <<include>>
-UC2 .> UC3 : <<include>>
-UC3 .> UC4 : <<include>>
+UC1 ..> UC1b : <<include>>
+UC1 ..> UC1c : <<include>>
+UC2 ..> UC2b : <<include>>
+UC3 ..> UC4 : <<include>>
+UC4 ..> UC5 : <<include>>
+UC5 ..> UC5b : <<include>>
+UC5 ..> UC5c : <<include>>
 
 @enduml

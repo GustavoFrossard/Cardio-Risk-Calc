@@ -1,16 +1,32 @@
 @startuml
-title Fluxo de Cálculo
-actor Usuário
-participant "ChatPage.jsx" as Frontend
-participant "/calculate" as API
-participant "FastAPI" as Backend
-participant "calculate_risk" as Calculadora
+title Fluxo de Cálculo de Risco
+actor Médico
+participant "App.jsx" as App
+participant "useWizard.js" as Wizard
+participant "api.js" as ApiService
+participant "FastAPI\nmain.py" as Backend
+participant "calculator.py" as Calculadora
 
-Usuário -> Frontend: envia dados do paciente
-Frontend -> API: POST /calculate
-API -> Backend: calcula(patient)
+Médico -> App: preenche etapas 1-3 (dados, cirurgia, RCRI/VSG)
+App -> Wizard: goNext() [step 3]
+Wizard -> ApiService: calculateRisk(formData)
+ApiService -> Backend: POST /calculate
 Backend -> Calculadora: calculate_risk(patient.model_dump())
-Calculadora --> Backend: Resultado de risco
-Backend --> Frontend: JSON de resultado
-Frontend --> Usuário: exibe risco e recomendações
+
+group Processamento do Cálculo
+  Calculadora -> Calculadora: check_active_conditions(data)
+  Calculadora -> Calculadora: score_rcri(data) ou score_vsg(data)
+  Calculadora -> Calculadora: classify_risk(mace_pct)
+  Calculadora -> Calculadora: build_recommendations(...)
+  Calculadora -> Calculadora: build_medication_advice(data)
+  Calculadora -> Calculadora: build_exam_recommendations(...)
+  Calculadora -> Calculadora: build_risk_factors(...)
+end
+
+Calculadora --> Backend: dict com resultado completo
+Backend --> ApiService: JSON de resultado
+ApiService --> Wizard: resultado
+Wizard -> Wizard: setResult(res); setCurrentStep(4)
+App -> App: renderiza StepResult
+App --> Médico: exibe risco, recomendações,\nexames e manejo de medicamentos
 @enduml
