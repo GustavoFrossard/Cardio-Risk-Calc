@@ -1,2 +1,0 @@
-patient_name,age,sex,surgery_type,surgery_class,urgency,met_value,comorbidities,medications,clcr,creatinine,warfarin,doac,notes
-nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan,31,,nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan nan,,,,,,,,False,False,Generated from RCP Excel
