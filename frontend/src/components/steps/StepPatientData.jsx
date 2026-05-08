@@ -46,7 +46,7 @@ const warfarinThrombophiliaOptions = [
   { value: "none", label: "Não" },
 ];
 
-export function StepPatientData({ data, onChange }) {
+export function EtapaDadosPaciente({ data, onChange }) {
   const [sliderIdx, setSliderIdx] = useState(() => {
     let best = 0;
     let minDiff = Infinity;

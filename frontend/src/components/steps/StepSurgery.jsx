@@ -65,7 +65,7 @@ const CV_CONDITIONS = [
   },
 ];
 
-export function StepSurgery({ data, onChange }) {
+export function EtapaCirurgia({ data, onChange }) {
   const handleSurgeryChange = (value) => {
     const option = SURGERY_OPTIONS.find((o) => o.value === value);
     onChange("surgery_type", value);

@@ -14,19 +14,19 @@ from enum import Enum
 # Enumerations
 # ---------------------------------------------------------------------------
 
-class SurgeryRisk(str, Enum):
+class RiscoCirurgia(str, Enum):
     LOW = "low"
     INTERMEDIATE = "intermediate"
     HIGH = "high"
 
 
-class RiskClass(str, Enum):
+class ClasseRisco(str, Enum):
     LOW = "low"
     INTERMEDIATE = "intermediate"
     HIGH = "high"
 
 
-class RecommendationType(str, Enum):
+class TipoRecomendacao(str, Enum):
     GREEN = "green"
     AMBER = "amber"
     RED = "red"
@@ -44,7 +44,7 @@ RCRI_TABLE: dict[int, tuple[str, float]] = {
 # ≥3 factors → Class IV, 15.0% (ESC 2022 / Diretriz SBC 2024)
 
 
-def _get_rcri_risk(score: int) -> tuple[str, float]:
+def _obter_risco_rcri(score: int) -> tuple[str, float]:
     if score >= 3:
         return ("IV", 15.0)
     return RCRI_TABLE.get(score, ("I", 3.9))
@@ -54,7 +54,7 @@ def _get_rcri_risk(score: int) -> tuple[str, float]:
 # VSG Cardiac Risk Index Table (Bertges et al / Diretriz SBC)
 # ---------------------------------------------------------------------------
 
-def _get_vsg_risk(score: int) -> tuple[str, float]:
+def _obter_risco_vsg(score: int) -> tuple[str, float]:
     """VSG-CRI risk classification (Tabela 7).
 
     A diretriz SBC 2024 não fornece percentuais específicos para o VSG-CRI,
@@ -86,7 +86,7 @@ METS_LABELS: dict[float, str] = {
     8:    "Trabalhos pesados em casa / correr distância curta",
 }
 
-SURGERY_LABELS: dict[str, str] = {
+ROTULOS_CIRURGIA: dict[str, str] = {
     "low":          "Baixo Risco",
     "intermediate": "Risco Intermediário",
     "high":         "Alto Risco",
@@ -97,7 +97,7 @@ SURGERY_LABELS: dict[str, str] = {
 # RCRI Scoring
 # ---------------------------------------------------------------------------
 
-def score_rcri(data: dict) -> tuple[int, list[str]]:
+def pontuar_rcri(data: dict) -> tuple[int, list[str]]:
     criteria: list[tuple[bool, str]] = [
         (data.get("rcri_high_risk_surgery", False),
          "Operação intraperitoneal, intratorácica ou vascular suprainguinal"),
@@ -120,7 +120,7 @@ def score_rcri(data: dict) -> tuple[int, list[str]]:
 # VSG Scoring
 # ---------------------------------------------------------------------------
 
-def score_vsg(data: dict) -> tuple[int, list[str]]:
+def pontuar_vsg(data: dict) -> tuple[int, list[str]]:
     """VSG-CRI scoring per Tabela 6 — variable points per criterion."""
     total = 0
     met: list[str] = []
@@ -166,7 +166,7 @@ def score_vsg(data: dict) -> tuple[int, list[str]]:
 # Active Cardiovascular Conditions (Tabela 2)
 # ---------------------------------------------------------------------------
 
-def check_active_conditions(data: dict) -> list[str]:
+def verificar_condicoes_ativas(data: dict) -> list[str]:
     conditions: list[tuple[bool, str]] = [
         (data.get("cv_acute_coronary", False),
          "Síndrome coronariana aguda"),
@@ -198,34 +198,34 @@ def check_active_conditions(data: dict) -> list[str]:
 # Risk Classification
 # ---------------------------------------------------------------------------
 
-def classify_risk(pct: float) -> tuple[str, str]:
+def classificar_risco(pct: float) -> tuple[str, str]:
     if pct < 5.0:
-        return RiskClass.LOW, "Risco Baixo"
+        return ClasseRisco.LOW, "Risco Baixo"
     elif pct < 10.0:
-        return RiskClass.INTERMEDIATE, "Risco Intermediário"
+        return ClasseRisco.INTERMEDIATE, "Risco Intermediário"
     else:
-        return RiskClass.HIGH, "Risco Alto"
+        return ClasseRisco.HIGH, "Risco Alto"
 
 
 # ---------------------------------------------------------------------------
 # Medication Advice
 # ---------------------------------------------------------------------------
 
-def _determine_warfarin_bridging(data: dict) -> dict:
+def _determinar_ponte_varfarina(data: dict) -> dict:
     indication = data.get("warfarin_indication", "")
 
     if indication == "mechanical_valve":
         return {
             "action": "Suspender + Ponte com heparina",
             "detail": "Prótese valvar mecânica: realizar ponte com heparina de baixo peso molecular.",
-            "type": RecommendationType.RED,
+            "type": TipoRecomendacao.RED,
         }
 
     if indication == "rheumatic":
         return {
             "action": "Suspender + Ponte com heparina",
             "detail": "Doença valvar reumática: realizar ponte com heparina de baixo peso molecular.",
-            "type": RecommendationType.RED,
+            "type": TipoRecomendacao.RED,
         }
 
     if indication == "af":
@@ -237,19 +237,19 @@ def _determine_warfarin_bridging(data: dict) -> dict:
             return {
                 "action": "Suspender + Ponte com heparina",
                 "detail": f"FA com CHA₂DS₂-VASc {chadsvasc}{extra}: realizar ponte com heparina.",
-                "type": RecommendationType.RED,
+                "type": TipoRecomendacao.RED,
             }
         elif chadsvasc >= 3:
             return {
                 "action": "Considerar ponte com heparina",
                 "detail": f"FA com CHA₂DS₂-VASc {chadsvasc}: considerar ponte com heparina.",
-                "type": RecommendationType.AMBER,
+                "type": TipoRecomendacao.AMBER,
             }
         else:
             return {
                 "action": "Suspender sem ponte",
                 "detail": f"FA com CHA₂DS₂-VASc {chadsvasc} sem AVC/AIT recente: não realizar ponte.",
-                "type": RecommendationType.GREEN,
+                "type": TipoRecomendacao.GREEN,
             }
 
     if indication == "vte":
@@ -261,7 +261,7 @@ def _determine_warfarin_bridging(data: dict) -> dict:
             return {
                 "action": "Suspender + Ponte com heparina",
                 "detail": "TEV recente: realizar ponte com heparina.",
-                "type": RecommendationType.RED,
+                "type": TipoRecomendacao.RED,
             }
         elif timing == "3_12m":
             parts = []
@@ -273,23 +273,23 @@ def _determine_warfarin_bridging(data: dict) -> dict:
             return {
                 "action": "Considerar ponte com heparina",
                 "detail": f"TEV 3–12 meses{extra}: considerar ponte com heparina.",
-                "type": RecommendationType.AMBER,
+                "type": TipoRecomendacao.AMBER,
             }
         else:
             return {
                 "action": "Suspender sem ponte",
                 "detail": "TEV > 12 meses: não realizar ponte com heparina.",
-                "type": RecommendationType.GREEN,
+                "type": TipoRecomendacao.GREEN,
             }
 
     return {
         "action": "Avaliar individualmente",
         "detail": "Varfarina: suspender 5 dias antes. Avaliar necessidade de ponte com heparina.",
-        "type": RecommendationType.AMBER,
+        "type": TipoRecomendacao.AMBER,
     }
 
 
-def build_medication_advice(data: dict) -> list[dict]:
+def montar_orientacoes_medicacao(data: dict) -> list[dict]:
     advice: list[dict] = []
     surgery_type = data.get("surgery_type", "")
 
@@ -301,7 +301,7 @@ def build_medication_advice(data: dict) -> list[dict]:
                 "medication": "AAS",
                 "action": "Suspender 7 dias antes",
                 "detail": "Prevenção primária: suspender AAS 7 dias antes do procedimento.",
-                "type": RecommendationType.AMBER,
+                "type": TipoRecomendacao.AMBER,
             })
         elif prevention == "secondary":
             high_bleeding = surgery_type in ("neurologic", "urologic_minor", "eye")
@@ -310,14 +310,14 @@ def build_medication_advice(data: dict) -> list[dict]:
                     "medication": "AAS",
                     "action": "Suspender 7 dias antes",
                     "detail": "Prevenção secundária: suspender por neurocirurgia, RTU de próstata ou cirurgia de retina.",
-                    "type": RecommendationType.RED,
+                    "type": TipoRecomendacao.RED,
                 })
             else:
                 advice.append({
                     "medication": "AAS",
                     "action": "Manter",
                     "detail": "Prevenção secundária: manter AAS (exceto neurocirurgia, RTU de próstata ou cirurgia de retina).",
-                    "type": RecommendationType.GREEN,
+                    "type": TipoRecomendacao.GREEN,
                 })
 
     # Clopidogrel
@@ -326,7 +326,7 @@ def build_medication_advice(data: dict) -> list[dict]:
             "medication": "Clopidogrel",
             "action": "Suspender 5 dias antes",
             "detail": "Suspender 5 dias antes. Manter apenas se monoterapia em procedimentos de baixo risco de sangramento.",
-            "type": RecommendationType.AMBER,
+            "type": TipoRecomendacao.AMBER,
         })
 
     # Ticagrelor
@@ -335,7 +335,7 @@ def build_medication_advice(data: dict) -> list[dict]:
             "medication": "Ticagrelor",
             "action": "Suspender 5 dias antes",
             "detail": "Suspender ticagrelor 5 dias antes do procedimento.",
-            "type": RecommendationType.AMBER,
+            "type": TipoRecomendacao.AMBER,
         })
 
     # Prasugrel
@@ -344,7 +344,7 @@ def build_medication_advice(data: dict) -> list[dict]:
             "medication": "Prasugrel",
             "action": "Suspender 7 dias antes",
             "detail": "Suspender prasugrel 7 dias antes do procedimento.",
-            "type": RecommendationType.AMBER,
+            "type": TipoRecomendacao.AMBER,
         })
 
     # DOACs: Rivaroxabana / Apixabana
@@ -358,7 +358,7 @@ def build_medication_advice(data: dict) -> list[dict]:
                 f"{med_name}: suspender 24–48 horas antes do procedimento. "
                 "Retornar no 1º ou 2º dia pós-operatório conforme risco de sangramento e hemostasia garantida."
             ),
-            "type": RecommendationType.AMBER,
+            "type": TipoRecomendacao.AMBER,
         })
 
     # Dabigatrana: depende da depuração (ClCr) e risco de sangramento
@@ -373,7 +373,7 @@ def build_medication_advice(data: dict) -> list[dict]:
                     "Dabigatrana com ClCr < 50 e alto risco de sangramento: suspender 4 dias antes. "
                     "Retornar no 2º dia pós-operatório se hemostasia garantida."
                 ),
-                "type": RecommendationType.AMBER,
+                "type": TipoRecomendacao.AMBER,
             })
         else:
             advice.append({
@@ -383,12 +383,12 @@ def build_medication_advice(data: dict) -> list[dict]:
                     "Dabigatrana (ClCr >= 50 ou sem risco aumentado): suspender 24–48 horas antes. "
                     "Retornar no 1º ou 2º dia pós-operatório conforme risco de sangramento e hemostasia garantida."
                 ),
-                "type": RecommendationType.AMBER,
+                "type": TipoRecomendacao.AMBER,
             })
 
     # Warfarin
     if data.get("uses_warfarin"):
-        bridging = _determine_warfarin_bridging(data)
+        bridging = _determinar_ponte_varfarina(data)
         advice.append({
             "medication": "Varfarina",
             "action": bridging["action"],
@@ -403,7 +403,7 @@ def build_medication_advice(data: dict) -> list[dict]:
 # Recommended Exams
 # ---------------------------------------------------------------------------
 
-def build_exam_recommendations(
+def montar_recomendacoes_exames(
     data: dict,
     risk_class: str,
     score: int,
@@ -439,7 +439,7 @@ def build_exam_recommendations(
     if score > 0 or surgery_risk == "high":
         exams.append("Função renal (creatinina, ureia)")
 
-    if risk_class == RiskClass.HIGH or data.get("known_hf"):
+    if risk_class == ClasseRisco.HIGH or data.get("known_hf"):
         exams.append("BNP ou NT-proBNP")
 
     if data.get("rcri_insulin_diabetes") or data.get("vsg_insulin_diabetes"):
@@ -452,7 +452,7 @@ def build_exam_recommendations(
 # Recommendations
 # ---------------------------------------------------------------------------
 
-def build_recommendations(
+def montar_recomendacoes(
     risk_class: str,
     score: int,
     mets: int,
@@ -467,7 +467,7 @@ def build_recommendations(
     # Active conditions take priority
     if has_active:
         recs.append({
-            "type": RecommendationType.RED,
+            "type": TipoRecomendacao.RED,
             "icon": "🚨",
             "title": "Condições cardíacas ativas detectadas",
             "body": (
@@ -478,9 +478,9 @@ def build_recommendations(
         })
 
     # Low-risk surgery shortcut
-    if surgery_risk == SurgeryRisk.LOW and not has_active:
+    if surgery_risk == RiscoCirurgia.LOW and not has_active:
         recs.append({
-            "type": RecommendationType.GREEN,
+            "type": TipoRecomendacao.GREEN,
             "icon": "✅",
             "title": "Cirurgia de baixo risco",
             "body": (
@@ -491,16 +491,16 @@ def build_recommendations(
         return recs
 
     # Risk-based recommendation
-    if risk_class == RiskClass.LOW:
+    if risk_class == ClasseRisco.LOW:
         recs.append({
-            "type": RecommendationType.GREEN,
+            "type": TipoRecomendacao.GREEN,
             "icon": "✅",
             "title": "Prosseguir com cirurgia",
             "body": "Risco cardíaco perioperatório baixo. Monitorização padrão é suficiente.",
         })
-    elif risk_class == RiskClass.INTERMEDIATE:
+    elif risk_class == ClasseRisco.INTERMEDIATE:
         recs.append({
-            "type": RecommendationType.AMBER,
+            "type": TipoRecomendacao.AMBER,
             "icon": "⚠️",
             "title": "Considerar avaliação adicional",
             "body": (
@@ -510,7 +510,7 @@ def build_recommendations(
         })
     else:
         recs.append({
-            "type": RecommendationType.RED,
+            "type": TipoRecomendacao.RED,
             "icon": "🚨",
             "title": "Avaliação cardiológica indicada",
             "body": (
@@ -522,7 +522,7 @@ def build_recommendations(
     # Functional capacity
     if mets < 4:
         recs.append({
-            "type": RecommendationType.AMBER,
+            "type": TipoRecomendacao.AMBER,
             "icon": "🏃",
             "title": "Capacidade funcional reduzida",
             "body": (
@@ -532,9 +532,9 @@ def build_recommendations(
         })
 
     # High-risk surgery
-    if surgery_risk == SurgeryRisk.HIGH:
+    if surgery_risk == RiscoCirurgia.HIGH:
         recs.append({
-            "type": RecommendationType.RED,
+            "type": TipoRecomendacao.RED,
             "icon": "🔪",
             "title": "Cirurgia de alto risco",
             "body": (
@@ -546,7 +546,7 @@ def build_recommendations(
     # High score optimization
     if score >= 3:
         recs.append({
-            "type": RecommendationType.RED,
+            "type": TipoRecomendacao.RED,
             "icon": "💊",
             "title": "Otimização farmacológica",
             "body": (
@@ -558,7 +558,7 @@ def build_recommendations(
     # Comorbidity-specific
     if data.get("known_hf"):
         recs.append({
-            "type": RecommendationType.AMBER,
+            "type": TipoRecomendacao.AMBER,
             "icon": "🫀",
             "title": "IC conhecida / suspeita",
             "body": "Avaliação ecocardiográfica recomendada. Otimize tratamento da IC antes do procedimento.",
@@ -566,7 +566,7 @@ def build_recommendations(
 
     if data.get("known_valvular_disease"):
         recs.append({
-            "type": RecommendationType.AMBER,
+            "type": TipoRecomendacao.AMBER,
             "icon": "🫀",
             "title": "Doença valvar conhecida / suspeita",
             "body": "Solicite ecocardiograma para avaliação da gravidade valvar.",
@@ -574,7 +574,7 @@ def build_recommendations(
 
     if data.get("known_cad"):
         recs.append({
-            "type": RecommendationType.AMBER,
+            "type": TipoRecomendacao.AMBER,
             "icon": "❤️",
             "title": "DAC conhecida / suspeita",
             "body": "Avalie controle da doença coronariana. Considere teste funcional se indicado.",
@@ -587,7 +587,7 @@ def build_recommendations(
 # Risk Factor Tags
 # ---------------------------------------------------------------------------
 
-def build_risk_factors(data: dict, criteria_met: list[str], mets: int) -> list[str]:
+def montar_fatores_risco(data: dict, criteria_met: list[str], mets: int) -> list[str]:
     factors = list(criteria_met)
     if mets < 4:
         factors.append("Cap. funcional ↓")
@@ -606,7 +606,7 @@ def build_risk_factors(data: dict, criteria_met: list[str], mets: int) -> list[s
 # Main Entry Point
 # ---------------------------------------------------------------------------
 
-def calculate_risk(data: dict) -> dict:
+def calcular_risco(data: dict) -> dict:
     mets: float = data.get("mets", 4)
     surgery_risk: str = data.get("surgery_risk", "intermediate")
     surgery_type: str = data.get("surgery_type", "")
@@ -617,36 +617,36 @@ def calculate_risk(data: dict) -> dict:
         or (str(surgery_type).lower().find("vascular") >= 0)
     )
 
-    # 1. Check active cardiovascular conditions (Tabela 2)
-    active_conditions = check_active_conditions(data)
+    # 1. Verificar condições cardiovasculares ativas (Tabela 2)
+    active_conditions = verificar_condicoes_ativas(data)
     has_active = len(active_conditions) > 0
 
-    # 2. Score using RCRI or VSG
+    # 2. Pontuação usando RCRI ou VSG
     if is_vascular:
         risk_index = "vsg"
-        score, criteria_met = score_vsg(data)
-        score_class, mace_pct = _get_vsg_risk(score)
+        score, criteria_met = pontuar_vsg(data)
+        score_class, mace_pct = _obter_risco_vsg(score)
     else:
         risk_index = "rcri"
-        score, criteria_met = score_rcri(data)
-        score_class, mace_pct = _get_rcri_risk(score)
+        score, criteria_met = pontuar_rcri(data)
+        score_class, mace_pct = _obter_risco_rcri(score)
 
     # 3. Override for low-risk surgery
     # Keep the low-surgery cap, but do NOT apply it when the calculated score
     # already indicates high procedural risk (e.g., RCRI score >= 3).
-    if surgery_risk == SurgeryRisk.LOW and not has_active and score < 3:
+    if surgery_risk == RiscoCirurgia.LOW and not has_active and score < 3:
         mace_pct = min(mace_pct, 1.0)
 
-    # 4. Classify risk
-    risk_class, risk_label = classify_risk(mace_pct)
+    # 4. Classificar risco
+    risk_class, risk_label = classificar_risco(mace_pct)
 
     # If active conditions, always high risk
     if has_active:
-        risk_class = RiskClass.HIGH
+        risk_class = ClasseRisco.HIGH
         risk_label = "Risco Alto (Condições Ativas)"
 
     # 5. Build recommendations
-    recommendations = build_recommendations(
+    recommendations = montar_recomendacoes(
         risk_class=risk_class,
         score=score,
         mets=mets,
@@ -658,10 +658,10 @@ def calculate_risk(data: dict) -> dict:
     )
 
     # 6. Build medication advice
-    medication_advice = build_medication_advice(data)
+    medication_advice = montar_orientacoes_medicacao(data)
 
     # 7. Recommended exams
-    recommended_exams = build_exam_recommendations(
+    recommended_exams = montar_recomendacoes_exames(
         data=data,
         risk_class=risk_class,
         score=score,
@@ -669,7 +669,7 @@ def calculate_risk(data: dict) -> dict:
     )
 
     # 8. Risk factor tags
-    risk_factors = build_risk_factors(data, criteria_met, mets)
+    risk_factors = montar_fatores_risco(data, criteria_met, mets)
 
     return {
         "risk_index": risk_index,
@@ -689,7 +689,7 @@ def calculate_risk(data: dict) -> dict:
         "mets_label": METS_LABELS.get(mets, f"{mets} METs"),
         "surgery_type": surgery_type,
         "surgery_risk": surgery_risk,
-        "surgery_label": SURGERY_LABELS.get(surgery_risk, "—"),
+        "surgery_label": ROTULOS_CIRURGIA.get(surgery_risk, "—"),
         "is_vascular": is_vascular,
         "functional_capacity_adequate": mets >= 4,
     }

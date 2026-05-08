@@ -1,4 +1,4 @@
-export function BottomBar({ currentStep, totalSteps, isLoading, onBack, onNext, onReset }) {
+export function BarraInferior({ currentStep, totalSteps, isLoading, onBack, onNext, onReset }) {
   const isResult = currentStep === totalSteps;
   const isLastInput = currentStep === totalSteps - 1;
 

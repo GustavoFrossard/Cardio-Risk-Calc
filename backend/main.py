@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional
-from core.calculator import calculate_risk
+from core.calculator import calcular_risco
 
 app = FastAPI(
     title="CardioRisk Periop API",
@@ -107,7 +107,7 @@ def calculate(patient: PatientData):
     Calculate perioperative cardiovascular risk.
     Returns RCRI score, MACE risk percentage, risk class, and clinical recommendations.
     """
-    result = calculate_risk(patient.model_dump())
+    result = calcular_risco(patient.model_dump())
     return result
 
 

@@ -1,100 +1,100 @@
 @startuml
 title Diagrama de Classes do Backend
 
-class PatientData <<Pydantic BaseModel>> {
-  +Optional<String> name
-  +Optional<Integer> age
-  +Boolean obesity
-  +Boolean known_hf
-  +Boolean known_valvular_disease
-  +Boolean known_cad
-  +Boolean uses_aas
-  +String aas_prevention
-  +Boolean uses_clopidogrel
-  +Boolean uses_ticagrelor
-  +Boolean uses_prasugrel
-  +Boolean uses_warfarin
-  +String warfarin_indication
-  +Optional<Integer> warfarin_chadsvasc
-  +Boolean warfarin_stroke_3m
-  +String warfarin_vte_timing
-  +String warfarin_thrombophilia
-  +Boolean warfarin_active_neoplasia
-  +List<String> functional_activities
+class DadosPaciente <<Pydantic BaseModel>> {
+  +Optional<String> nome
+  +Optional<Integer> idade
+  +Boolean obesidade
+  +Boolean insuficiencia_cardiaca
+  +Boolean doenca_valvar
+  +Boolean doenca_coronariana
+  +Boolean usa_aas
+  +String prev_aas
+  +Boolean usa_clopidogrel
+  +Boolean usa_ticagrelor
+  +Boolean usa_prasugrel
+  +Boolean usa_varfarina
+  +String indicacao_varfarina
+  +Optional<Integer> chadsvasc_varfarina
+  +Boolean avc3m_varfarina
+  +String tev_tempo_varfarina
+  +String trombofilia_varfarina
+  +Boolean neoplasia_ativa_varfarina
+  +List<String> atividades_funcionais
   +Float mets
-  +String surgery_type
-  +String surgery_risk
-  +Boolean is_vascular
-  +Boolean cv_acute_coronary
-  +Boolean cv_unstable_aortic
-  +Boolean cv_acute_pulmonary_edema
-  +Boolean cv_cardiogenic_shock
-  +Boolean cv_hf_nyha_3_4
-  +Boolean cv_angina_ccs_3_4
-  +Boolean cv_severe_arrhythmia
-  +Boolean cv_uncontrolled_hypertension
-  +Boolean cv_af_high_rate
-  +Boolean cv_pulmonary_hypertension
-  +Boolean cv_severe_valvular
-  +Boolean rcri_high_risk_surgery
-  +Boolean rcri_ischemic_heart
-  +Boolean rcri_heart_failure
+  +String tipo_cirurgia
+  +String risco_cirurgia
+  +Boolean cirurgia_vascular
+  +Boolean sca_ativa
+  +Boolean aorta_instavel
+  +Boolean edema_pulmonar_agudo
+  +Boolean choque_cardiogenico
+  +Boolean ic_nyha_3_4
+  +Boolean angina_ccs_3_4
+  +Boolean arritmia_grave
+  +Boolean hipertensao_nao_controlada
+  +Boolean fa_alta_resposta
+  +Boolean hipertensao_pulmonar
+  +Boolean valvopatia_importante
+  +Boolean rcri_cirurgia_alto_risco
+  +Boolean rcri_doenca_coronaria
+  +Boolean rcri_ic
   +Boolean rcri_cerebrovascular
-  +Boolean rcri_insulin_diabetes
-  +Boolean rcri_creatinine_above_2
-  +String vsg_age_range
-  +Boolean vsg_cad
-  +Boolean vsg_chf
-  +Boolean vsg_copd
-  +Boolean vsg_creatinine_over_1_8
-  +Boolean vsg_smoking
-  +Boolean vsg_insulin_diabetes
-  +Boolean vsg_chronic_beta_blocker
-  +Boolean vsg_prior_revasc
+  +Boolean rcri_diabetes_insulina
+  +Boolean rcri_creatinina_maior_2
+  +String vsg_faixa_idade
+  +Boolean vsg_doenca_coronaria
+  +Boolean vsg_ic
+  +Boolean vsg_dpo
+  +Boolean vsg_creatinina_maior_1_8
+  +Boolean vsg_tabagismo
+  +Boolean vsg_diabetes_insulina
+  +Boolean vsg_betabloqueador
+  +Boolean vsg_revasc_previa
 }
 
-enum SurgeryRisk {
-  LOW
-  INTERMEDIATE
-  HIGH
+enum RiscoCirurgia {
+  BAIXO
+  INTERMEDIARIO
+  ALTO
 }
 
-enum RiskClass {
-  LOW
-  INTERMEDIATE
-  HIGH
+enum ClasseRisco {
+  BAIXA
+  INTERMEDIARIA
+  ALTA
 }
 
-enum RecommendationType {
-  GREEN
-  AMBER
-  RED
+enum TipoRecomendacao {
+  VERDE
+  AMARELO
+  VERMELHO
 }
 
-class FastAPIApp <<main.py>> {
-  +root(): dict
-  +calculate(patient: PatientData): dict
-  +health(): dict
+class AplicacaoFastAPI <<main.py>> {
+  +raiz(): dict
+  +calcular(paciente: PatientData): dict
+  +saude(): dict
 }
 
-class Calculator <<core/calculator.py>> {
-  +calculate_risk(data: dict): dict
-  +score_rcri(data: dict): tuple[int, list]
-  +score_vsg(data: dict): tuple[int, list]
-  +check_active_conditions(data: dict): list[str]
-  +classify_risk(pct: float): tuple[str, str]
-  +build_medication_advice(data: dict): list[dict]
-  +build_exam_recommendations(data, risk_class, score, has_active): list[str]
-  +build_recommendations(risk_class, score, mets, ...): list[dict]
-  +build_risk_factors(data, criteria_met, mets): list[str]
-  -_get_rcri_risk(score: int): tuple[str, float]
-  -_get_vsg_risk(score: int): tuple[str, float]
-  -_determine_warfarin_bridging(data: dict): dict
+class Calculadora <<core/calculator.py>> {
+  +calcular_risco(dados: dict): dict
+  +pontuar_rcri(dados: dict): tuple[int, list]
+  +pontuar_vsg(dados: dict): tuple[int, list]
+  +verificar_condicoes_ativas(dados: dict): list[str]
+  +classificar_risco(pct: float): tuple[str, str]
+  +montar_orientacoes_medicacao(dados: dict): list[dict]
+  +montar_recomendacoes_exames(dados, classe_risco, score, tem_ativa): list[str]
+  +montar_recomendacoes(classe_risco, score, mets, ...): list[dict]
+  +montar_fatores_risco(dados, criterios, mets): list[str]
+  -_obter_risco_rcri(score: int): tuple[str, float]
+  -_obter_risco_vsg(score: int): tuple[str, float]
+  -_determinar_ponte_varfarina(dados: dict): dict
 }
 
-FastAPIApp --> PatientData
-FastAPIApp --> Calculator
-Calculator --> SurgeryRisk
-Calculator --> RiskClass
-Calculator --> RecommendationType
+AplicacaoFastAPI --> DadosPaciente
+AplicacaoFastAPI --> Calculadora
+Calculadora --> RiscoCirurgia
+Calculadora --> ClasseRisco
+Calculadora --> TipoRecomendacao
 @enduml

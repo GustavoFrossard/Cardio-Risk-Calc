@@ -51,7 +51,7 @@ const VSG_CRITERIA = [
   { key: "vsg_prior_revasc", label: "Revascularização miocárdica prévia", description: "Cirurgia ou angioplastia coronária", points: -1 },
 ];
 
-export function StepRCRI({ data, onChange }) {
+export function EtapaRCRI({ data, onChange }) {
   const isVascular = data.is_vascular;
   const indexName = isVascular ? "VSG" : "RCRI";
 

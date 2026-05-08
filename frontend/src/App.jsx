@@ -1,14 +1,14 @@
-import { useWizard } from "./hooks/useWizard";
-import { AppHeader } from "./components/AppHeader";
-import { BottomBar } from "./components/BottomBar";
-import { StepPatientData } from "./components/steps/StepPatientData";
-import { StepSurgery } from "./components/steps/StepSurgery";
-import { StepRCRI } from "./components/steps/StepRCRI";
-import { StepResult } from "./components/steps/StepResult";
+import { useAssistente } from "./hooks/useWizard";
+import { CabecalhoApp } from "./components/AppHeader";
+import { BarraInferior } from "./components/BottomBar";
+import { EtapaDadosPaciente } from "./components/steps/StepPatientData";
+import { EtapaCirurgia } from "./components/steps/StepSurgery";
+import { EtapaRCRI } from "./components/steps/StepRCRI";
+import { EtapaResultado } from "./components/steps/StepResult";
 
 export default function App() {
   const { currentStep, totalSteps, formData, result, isLoading, error, updateField, goNext, goBack, reset } =
-    useWizard();
+    useAssistente();
 
   return (
     <div
@@ -21,7 +21,7 @@ export default function App() {
         margin: "0 auto",
       }}
     >
-      <AppHeader currentStep={currentStep} />
+      <CabecalhoApp currentStep={currentStep} />
 
       <div
         style={{
@@ -32,16 +32,16 @@ export default function App() {
         }}
       >
         {currentStep === 1 && (
-          <StepPatientData data={formData} onChange={updateField} />
+          <EtapaDadosPaciente data={formData} onChange={updateField} />
         )}
         {currentStep === 2 && (
-          <StepSurgery data={formData} onChange={updateField} />
+          <EtapaCirurgia data={formData} onChange={updateField} />
         )}
         {currentStep === 3 && (
-          <StepRCRI data={formData} onChange={updateField} />
+          <EtapaRCRI data={formData} onChange={updateField} />
         )}
         {currentStep === 4 && result && (
-          <StepResult result={result} data={formData} />
+          <EtapaResultado result={result} data={formData} />
         )}
 
         {error && (
@@ -61,7 +61,7 @@ export default function App() {
         )}
       </div>
 
-      <BottomBar
+      <BarraInferior
         currentStep={currentStep}
         totalSteps={totalSteps}
         isLoading={isLoading}

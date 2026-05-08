@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { defaultPatientData, WIZARD_STEPS } from "../types";
 import { api } from "../services/api";
 
-export function useWizard() {
+export function useAssistente() {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState(defaultPatientData);
   const [result, setResult] = useState(null);

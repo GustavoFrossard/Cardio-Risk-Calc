@@ -1,6 +1,6 @@
 import { WIZARD_STEPS } from "../types";
 
-export function AppHeader({ currentStep }) {
+export function CabecalhoApp({ currentStep }) {
   const step = WIZARD_STEPS[currentStep - 1];
 
   return (

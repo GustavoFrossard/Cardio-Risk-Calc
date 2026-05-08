@@ -53,7 +53,7 @@ function RiskGauge({ pct, maxPct }) {
   );
 }
 
-export function StepResult({ result, data }) {
+export function EtapaResultado({ result, data }) {
   const pill = PILL_COLORS[result.risk_class] ?? PILL_COLORS.low;
   const indexName = result.risk_index === "vsg" ? "VSG" : "RCRI";
   const maxPct = result.risk_index === "vsg" ? 24 : 15;
