@@ -74,7 +74,7 @@ export function generateReport(result, data) {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
     doc.setTextColor(185, 28, 28);
-    doc.text("⚠ CONDIÇÕES CARDÍACAS ATIVAS DETECTADAS", MARGIN + 4, y + 3);
+    doc.text("[!] CONDICOES CARDIACAS ATIVAS DETECTADAS", MARGIN + 4, y + 3);
     y += 8;
 
     doc.setFont("helvetica", "normal");
@@ -178,7 +178,7 @@ export function generateReport(result, data) {
     for (const rec of result.recommendations) {
       y = addPage(doc, y, 14);
       doc.setFont("helvetica", "bold");
-      doc.text(`${rec.icon} ${rec.title}`, MARGIN + 4, y);
+      doc.text(`${rec.title}`, MARGIN + 4, y);
       y += 4;
       doc.setFont("helvetica", "normal");
       const lines = doc.splitTextToSize(rec.body, CONTENT_W - 8);

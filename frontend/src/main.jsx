@@ -5,8 +5,6 @@ import App from "./App";
 // ─── Global CSS Variables & Reset ────────────────────────────────────────────
 const style = document.createElement("style");
 style.textContent = `
-  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-
   *, *::before, *::after {
     box-sizing: border-box;
     margin: 0;
@@ -28,6 +26,7 @@ style.textContent = `
     --green-soft:  #EDFAF4;
     --amber:       #C47A00;
     --amber-soft:  #FFF8E6;
+    --bg-soft:     #EDF0F5;
     --border:      #E4E7EE;
     --r:           14px;
     --r-sm:        8px;
