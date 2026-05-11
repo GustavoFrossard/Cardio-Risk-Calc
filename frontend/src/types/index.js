@@ -74,6 +74,8 @@ export const defaultPatientData = {
   known_hf: false,
   known_valvular_disease: false,
   known_cad: false,
+  recent_echo: false,
+  worsening_symptoms: false,
   uses_aas: false,
   aas_prevention: "",
   uses_clopidogrel: false,

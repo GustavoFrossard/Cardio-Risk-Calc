@@ -1,4 +1,3 @@
-import { useEffect, useRef } from "react";
 import { generateReport } from "../../services/report";
 
 const REC_COLORS = {
@@ -13,50 +12,9 @@ const PILL_COLORS = {
   high: { bg: "var(--red-soft)", color: "var(--red)" },
 };
 
-function RiskGauge({ pct, maxPct }) {
-  const fillRef = useRef(null);
-  const dotRef = useRef(null);
-
-  useEffect(() => {
-    const gaugeLen = 298;
-    const frac = Math.min(pct / maxPct, 1);
-    const offset = gaugeLen - gaugeLen * frac;
-
-    if (fillRef.current) {
-      fillRef.current.style.transition = "stroke-dashoffset 0.9s ease";
-      fillRef.current.setAttribute("stroke-dashoffset", offset.toFixed(1));
-    }
-    if (dotRef.current) {
-      const rad = -Math.PI + frac * Math.PI;
-      dotRef.current.setAttribute("cx", (110 + 95 * Math.cos(rad)).toFixed(1));
-      dotRef.current.setAttribute("cy", (110 + 95 * Math.sin(rad)).toFixed(1));
-    }
-  }, [pct, maxPct]);
-
-  return (
-    <div style={{ display: "flex", justifyContent: "center", padding: "0 20px 16px" }}>
-      <svg width={220} height={115} viewBox="0 0 220 115" style={{ overflow: "visible" }}>
-        <defs>
-          <linearGradient id="gGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#0E7B52" />
-            <stop offset="50%" stopColor="#C47A00" />
-            <stop offset="100%" stopColor="#E03131" />
-          </linearGradient>
-        </defs>
-        <path d="M 15 110 A 95 95 0 0 1 205 110" fill="none" stroke="#E4E7EE" strokeWidth={8} strokeLinecap="round" />
-        <path ref={fillRef} d="M 15 110 A 95 95 0 0 1 205 110" fill="none" stroke="url(#gGrad)" strokeWidth={8} strokeLinecap="round" strokeDasharray={298} strokeDashoffset={298} />
-        <circle ref={dotRef} cx={15} cy={110} r={6} fill="var(--blue)" />
-        <text x={15} y={102} textAnchor="middle" fill="#8B909A" fontSize={9} fontFamily="JetBrains Mono, monospace">0%</text>
-        <text x={205} y={102} textAnchor="middle" fill="#8B909A" fontSize={9} fontFamily="JetBrains Mono, monospace">≥{maxPct}%</text>
-      </svg>
-    </div>
-  );
-}
-
 export function EtapaResultado({ result, data }) {
   const pill = PILL_COLORS[result.risk_class] ?? PILL_COLORS.low;
   const indexName = result.risk_index === "vsg" ? "VSG" : "RCRI";
-  const maxPct = result.risk_index === "vsg" ? 24 : 15;
 
   return (
     <>
@@ -100,41 +58,21 @@ export function EtapaResultado({ result, data }) {
       >
         <div style={{ padding: "20px 20px 0" }}>
           <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 600, color: "var(--ink-muted)", marginBottom: 6 }}>
-            Risco de MACE estimado ({indexName})
+            Estratificação de Risco ({indexName})
           </div>
           <div style={{ display: "flex", alignItems: "flex-end", gap: 8, marginBottom: 8 }}>
-            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 52, fontWeight: 500, color: "var(--ink)", lineHeight: 1 }}>
-              {result.mace_risk_pct.toFixed(1)}
+            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 32, fontWeight: 500, color: "var(--ink)", lineHeight: 1 }}>
+              {result.risk_label}
             </span>
-            <span style={{ fontSize: 20, color: "var(--ink-muted)", paddingBottom: 6 }}>%</span>
-          </div>
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 5,
-              padding: "5px 12px",
-              borderRadius: 999,
-              fontSize: 12,
-              fontWeight: 600,
-              marginBottom: 16,
-              background: pill.bg,
-              color: pill.color,
-            }}
-          >
-            <span style={{ width: 7, height: 7, borderRadius: "50%", background: "currentColor", display: "inline-block" }} />
-            {result.risk_label}
           </div>
         </div>
 
-        <RiskGauge pct={result.mace_risk_pct} maxPct={maxPct} />
-
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", borderTop: "1px solid var(--border)" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", borderTop: "1px solid var(--border)", marginTop: "20px" }}>
           {[
-            { label: `Score ${indexName}`, value: `${result.score} pt${result.score !== 1 ? "s" : ""}` },
-            { label: "Classe", value: `Classe ${result.score_class}` },
+            { label: `Pontuação (${indexName})`, value: `${result.score} pt${result.score !== 1 ? "s" : ""}` },
             { label: "Cap. Funcional", value: `${result.mets} METs` },
             { label: "Cirurgia", value: result.surgery_label },
+            { label: "Risco do Procedimento", value: result.surgery_risk === 'low' ? 'Baixo' : result.surgery_risk === 'high' ? 'Alto' : 'Intermediário' },
           ].map((cell, i) => (
             <div
               key={cell.label}

@@ -19,7 +19,12 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://cardio-risk-calc.vercel.app",
+        "https://tomfoolish-vigilantly-zofia.ngrok-free.dev",
+        "http://localhost:5173",
+        "http://localhost:3000"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -36,6 +41,8 @@ class PatientData(BaseModel):
     known_hf: bool = Field(False, description="Known or suspected heart failure")
     known_valvular_disease: bool = Field(False, description="Known or suspected valvular disease")
     known_cad: bool = Field(False, description="Known or suspected coronary artery disease")
+    recent_echo: bool = Field(False, description="Recent echocardiogram (< 6 months)")
+    worsening_symptoms: bool = Field(False, description="Worsening of symptoms")
 
     # Medications
     uses_aas: bool = Field(False)

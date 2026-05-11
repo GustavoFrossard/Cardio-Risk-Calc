@@ -36,37 +36,25 @@ class TipoRecomendacao(str, Enum):
 # RCRI Risk Table (Duceppe et al, CMAJ 2017 / Diretriz SBC)
 # ---------------------------------------------------------------------------
 
-RCRI_TABLE: dict[int, tuple[str, float]] = {
-    0: ("I",   3.9),
-    1: ("II",  6.0),
-    2: ("III", 10.1),
-}
-# ≥3 factors → Class IV, 15.0% (ESC 2022 / Diretriz SBC 2024)
-
-
-def _obter_risco_rcri(score: int) -> tuple[str, float]:
+def _obter_classe_risco_rcri(score: int) -> tuple[str, str]:
     if score >= 3:
-        return ("IV", 15.0)
-    return RCRI_TABLE.get(score, ("I", 3.9))
-
-
-# ---------------------------------------------------------------------------
-# VSG Cardiac Risk Index Table (Bertges et al / Diretriz SBC)
-# ---------------------------------------------------------------------------
-
-def _obter_risco_vsg(score: int) -> tuple[str, float]:
-    """VSG-CRI risk classification (Tabela 7).
-
-    A diretriz SBC 2024 não fornece percentuais específicos para o VSG-CRI,
-    apenas as classes. Os valores estimados abaixo foram derivados de Bertges
-    et al. para fins de visualização no gauge.
-    """
-    if score >= 7:
-        return ("Alto", 15.0)
-    elif score >= 5:
-        return ("Intermediário", 8.0)
+        return ClasseRisco.HIGH, "Risco Alto"
+    elif score == 2:
+        return ClasseRisco.INTERMEDIATE, "Risco Intermediário"
     else:
-        return ("Baixo", 3.5)
+        return ClasseRisco.LOW, "Risco Baixo"
+
+# ---------------------------------------------------------------------------
+# VSG Cardiac Risk Index Table (Diretriz SBC 2024)
+# ---------------------------------------------------------------------------
+
+def _obter_classe_risco_vsg(score: int) -> tuple[str, str]:
+    if score >= 7:
+        return ClasseRisco.HIGH, "Risco Alto"
+    elif score >= 5:
+        return ClasseRisco.INTERMEDIATE, "Risco Intermediário"
+    else:
+        return ClasseRisco.LOW, "Risco Baixo"
 
 
 # ---------------------------------------------------------------------------
@@ -192,19 +180,6 @@ def verificar_condicoes_ativas(data: dict) -> list[str]:
          "Estenose aórtica/mitral importante sintomática"),
     ]
     return [label for active, label in conditions if active]
-
-
-# ---------------------------------------------------------------------------
-# Risk Classification
-# ---------------------------------------------------------------------------
-
-def classificar_risco(pct: float) -> tuple[str, str]:
-    if pct < 5.0:
-        return ClasseRisco.LOW, "Risco Baixo"
-    elif pct < 10.0:
-        return ClasseRisco.INTERMEDIATE, "Risco Intermediário"
-    else:
-        return ClasseRisco.HIGH, "Risco Alto"
 
 
 # ---------------------------------------------------------------------------
@@ -416,14 +391,12 @@ def montar_recomendacoes_exames(
     if surgery_risk != "low" or score > 0:
         exams.append("ECG de 12 derivações")
 
-    if data.get("known_hf") or data.get("known_valvular_disease") or has_active:
-        exams.append("Ecocardiograma transtorácico")
-
-    if (
-        data.get("cv_acute_pulmonary_edema") or data.get("cv_cardiogenic_shock")
-        or data.get("cv_hf_nyha_3_4")
-    ) and "Ecocardiograma transtorácico" not in exams:
-        exams.append("Ecocardiograma transtorácico")
+    needs_echo_from_history = (data.get("known_hf") or data.get("known_valvular_disease")) and \
+                              (not data.get("recent_echo") or data.get("worsening_symptoms"))
+    
+    if needs_echo_from_history or has_active:
+        if "Ecocardiograma transtorácico" not in exams:
+            exams.append("Ecocardiograma transtorácico")
 
     is_vascular = data.get("is_vascular", False)
     intermediate_score = score >= 5 if is_vascular else score >= 2
@@ -531,16 +504,22 @@ def montar_recomendacoes(
             ),
         })
 
+    # High/Intermediate Risk Optimization and Monitoring
+    if risk_class in (ClasseRisco.HIGH, ClasseRisco.INTERMEDIATE):
+        recs.append({
+            "type": TipoRecomendacao.RED if risk_class == ClasseRisco.HIGH else TipoRecomendacao.AMBER,
+            "icon": "🏥",
+            "title": "Monitorização avançada",
+            "body": "Considere monitorização invasiva e cuidados intensivos (CTI) pós-operatórios."
+        })
+
     # High-risk surgery
     if surgery_risk == RiscoCirurgia.HIGH:
         recs.append({
             "type": TipoRecomendacao.RED,
             "icon": "🔪",
             "title": "Cirurgia de alto risco",
-            "body": (
-                "Procedimento com risco cardíaco intrínseco > 5%. "
-                "Considere monitorização invasiva e cuidados intensivos pós-operatórios."
-            ),
+            "body": "Procedimento com risco cardíaco intrínseco > 5%.",
         })
 
     # High score optimization
@@ -625,20 +604,17 @@ def calcular_risco(data: dict) -> dict:
     if is_vascular:
         risk_index = "vsg"
         score, criteria_met = pontuar_vsg(data)
-        score_class, mace_pct = _obter_risco_vsg(score)
+        risk_class, risk_label = _obter_classe_risco_vsg(score)
     else:
         risk_index = "rcri"
         score, criteria_met = pontuar_rcri(data)
-        score_class, mace_pct = _obter_risco_rcri(score)
+        risk_class, risk_label = _obter_classe_risco_rcri(score)
 
     # 3. Override for low-risk surgery
-    # Keep the low-surgery cap, but do NOT apply it when the calculated score
+    # Low-surgery cap, do NOT apply it when the calculated score
     # already indicates high procedural risk (e.g., RCRI score >= 3).
-    if surgery_risk == RiscoCirurgia.LOW and not has_active and score < 3:
-        mace_pct = min(mace_pct, 1.0)
-
-    # 4. Classificar risco
-    risk_class, risk_label = classificar_risco(mace_pct)
+    if surgery_risk == RiscoCirurgia.LOW and not has_active and risk_class != ClasseRisco.HIGH:
+        risk_class, risk_label = ClasseRisco.LOW, "Risco Baixo"
 
     # If active conditions, always high risk
     if has_active:
@@ -674,8 +650,6 @@ def calcular_risco(data: dict) -> dict:
     return {
         "risk_index": risk_index,
         "score": score,
-        "score_class": score_class,
-        "mace_risk_pct": round(mace_pct, 1),
         "risk_class": risk_class,
         "risk_label": risk_label,
         "has_active_conditions": has_active,

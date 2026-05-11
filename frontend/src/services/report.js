@@ -104,10 +104,10 @@ export function generateReport(result, data) {
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
-  doc.text(`${result.mace_risk_pct.toFixed(1)}%  —  ${result.risk_label}`, MARGIN + 6, y + 7);
+  doc.text(`${result.risk_label}`, MARGIN + 6, y + 7);
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
-  doc.text(`Score: ${result.score} pt${result.score !== 1 ? "s" : ""}  |  Classe ${result.score_class}`, MARGIN + CONTENT_W - 4, y + 7, { align: "right" });
+  doc.text(`Score: ${result.score} pt${result.score !== 1 ? "s" : ""}`, MARGIN + CONTENT_W - 4, y + 7, { align: "right" });
 
   y += 22;
   doc.setTextColor(30, 30, 30);
@@ -195,5 +195,8 @@ export function generateReport(result, data) {
     doc.text(`Página ${i} de ${totalPages}`, PAGE_W - MARGIN, 295, { align: "right" });
   }
 
-  doc.save("cardiorisk-relatorio.pdf");
+  const patientNameSafe = data.name ? data.name.trim() : "Paciente";
+  const dateObj = new Date();
+  const dateForFile = `${dateObj.getDate().toString().padStart(2, '0')}-${(dateObj.getMonth() + 1).toString().padStart(2, '0')}-${dateObj.getFullYear()}`;
+  doc.save(`CardioRisk - ${patientNameSafe} - ${dateForFile}.pdf`);
 }

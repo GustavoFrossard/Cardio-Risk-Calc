@@ -45,7 +45,8 @@ STEP 1 — "Dados do Paciente"
 │ EFEITO:                                                                     │
 │   • NÃO altera score RCRI/VSG diretamente                                  │
 │   • ADICIONA tag "IC conhecida/suspeita" nos fatores de risco              │
-│   • ADICIONA exame: "Ecocardiograma transtorácico"                         │
+│   • ADICIONA exame: "Ecocardiograma transtorácico" (se não tiver recente   │
+│     ou houver piora dos sintomas)                                          │
 │   • ADICIONA exame: "BNP ou NT-proBNP"                                     │
 │   • ADICIONA recomendação (âmbar): otimizar IC antes da cirurgia           │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -56,7 +57,8 @@ STEP 1 — "Dados do Paciente"
 │ EFEITO:                                                                     │
 │   • NÃO altera score                                                        │
 │   • ADICIONA tag "Doença valvar" nos fatores de risco                      │
-│   • ADICIONA exame: "Ecocardiograma transtorácico"                         │
+│   • ADICIONA exame: "Ecocardiograma transtorácico" (se não tiver recente   │
+│     ou houver piora dos sintomas)                                          │
 │   • ADICIONA recomendação (âmbar): solicitar eco para gravidade            │
 └─────────────────────────────────────────────────────────────────────────────┘
 
@@ -331,18 +333,20 @@ STEP 3 — "Índice de Risco"
 
   TABELA DE RESULTADO RCRI:
   ┌────────┬────────┬──────────┬────────────────────┐
-  │ Score  │ Classe │ MACE %   │ Classe de Risco    │
+  │ Score  │ Classe │ MACE % (REMOVIDO)   │ Classe de Risco    │
   │────────│────────│──────────│────────────────────│
-  │   0    │   I    │   3.9%   │ Baixo              │
-  │   1    │  II    │   6.0%   │ Intermediário      │
-  │   2    │ III    │  10.1%   │ Alto               │
-  │  ≥ 3   │  IV    │  15.0%   │ Alto               │
+  │  0-1   │  I/II  │ 3.9-6.0% │ Baixo              │
+  │   2    │  III   │  10.1%   │ Intermediário      │
+  │  ≥ 3   │   IV   │  15.0%   │ Alto               │
   └────────┴────────┴──────────┴────────────────────┘
 
   Classificação final:
-    MACE < 5%   → Baixo
-    MACE 5–10%  → Intermediário
-    MACE ≥ 10%  → Alto
+    RCRI 0-1    → Baixo
+    RCRI 2      → Intermediário
+    RCRI ≥ 3    → Alto
+    VSG < 5     → Baixo
+    VSG 5-6     → Intermediário
+    VSG ≥ 7     → Alto
 
 
 ── VSG-CRI ─────────────────────────────────────────────────────────────────────
@@ -380,7 +384,7 @@ STEP 3 — "Índice de Risco"
 
   TABELA DE RESULTADO VSG-CRI:
   ┌────────────┬──────────────────┬──────────┐
-  │ Score      │ Classe           │ MACE %   │
+  │ Score      │ Classe           │ MACE % (REMOVIDO)   │
   │────────────│──────────────────│──────────│
   │  0 – 4     │ Baixo            │   3.5%   │
   │  5 – 6     │ Intermediário    │   8.0%   │
@@ -430,8 +434,8 @@ REGRAS ESPECIAIS / OVERRIDES
    → Recomendação vermelha: "Otimização farmacológica"
    → "Considere betabloqueadores e estatinas"
 
-4. Cirurgia de ALTO RISCO:
-   → Recomendação vermelha: monitorização invasiva + CTI
+4. Risco ALTO ou INTERMEDIÁRIO:
+   → Recomendação: monitorização invasiva + CTI (vermelha ou âmbar)
 
 5. TESTE FUNCIONAL só é recomendado quando TODOS os 3 são verdade:
    → Slider de METs < 4

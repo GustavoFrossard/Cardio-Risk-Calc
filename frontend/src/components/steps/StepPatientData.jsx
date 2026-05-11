@@ -96,9 +96,26 @@ export function EtapaDadosPaciente({ data, onChange }) {
             description={item.description}
             checked={Boolean(data[item.key])}
             onChange={(val) => onChange(item.key, val)}
-            isLast={i === COMORBIDITIES.length - 1}
+            isLast={i === COMORBIDITIES.length - 1 && !data.known_hf && !data.known_valvular_disease}
           />
         ))}
+
+        {(data.known_hf || data.known_valvular_disease) && (
+          <div style={{ padding: "8px 0 12px 16px", display: "flex", flexDirection: "column", gap: 12, borderTop: "1px solid var(--border)" }}>
+            <ToggleRow
+              label="Ecocardiograma recente (< 6 meses)"
+              checked={Boolean(data.recent_echo)}
+              onChange={(val) => onChange("recent_echo", val)}
+              isLast={false}
+            />
+            <ToggleRow
+              label="Piora dos sintomas"
+              checked={Boolean(data.worsening_symptoms)}
+              onChange={(val) => onChange("worsening_symptoms", val)}
+              isLast={true}
+            />
+          </div>
+        )}
       </Card>
 
       <Card icon="💊" title="Medicamentos em Uso">
