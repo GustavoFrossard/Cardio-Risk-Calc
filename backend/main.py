@@ -19,12 +19,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://cardio-risk-calc.vercel.app",
-        "https://tomfoolish-vigilantly-zofia.ngrok-free.dev",
-        "http://localhost:5173",
-        "http://localhost:3000"
-    ],
+    allow_origins=["*"], # Permitir acesso de qualquer front (Vercel, localhost, etc)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
