@@ -569,7 +569,7 @@ def montar_recomendacoes(
 def montar_fatores_risco(data: dict, criteria_met: list[str], mets: int) -> list[str]:
     factors = list(criteria_met)
     if mets < 4:
-        factors.append("Cap. funcional ↓")
+        factors.append("Capacidade funcional reduzida (↓)")
     if data.get("obesity"):
         factors.append("Obesidade")
     if data.get("known_hf"):

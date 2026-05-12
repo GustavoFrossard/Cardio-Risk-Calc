@@ -58,7 +58,7 @@ export function generateReport(result, data) {
   y += 5;
   doc.text(`Risco cirúrgico: ${result.surgery_risk}`, MARGIN, y);
   y += 5;
-  doc.text(`Capacidade funcional: ${result.mets} METs — ${result.mets_label}`, MARGIN, y);
+  doc.text(`Capacidade Funcional: ${result.mets} METs — ${result.mets_label}`, MARGIN, y);
   y += 10;
 
   doc.setDrawColor(200, 200, 200);
