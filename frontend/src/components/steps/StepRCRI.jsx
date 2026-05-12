@@ -153,31 +153,21 @@ export function EtapaRCRI({ data, onChange }) {
         </Card>
       )}
 
-      <div
-        style={{
-          background: score === 0 ? "var(--green-soft)" : score <= 2 ? "var(--amber-soft)" : "var(--red-soft)",
-          border: `1px solid ${score === 0 ? "#A7D4BB" : score <= 2 ? "#FCD34D" : "#F5B0AA"}`,
-          borderRadius: "var(--r-sm)",
-          padding: "12px 16px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink-mid)" }}>
-          Score {indexName} atual
-        </span>
-        <span
-          style={{
-            fontFamily: "'JetBrains Mono', monospace",
-            fontSize: 22,
-            fontWeight: 600,
-            color: score === 0 ? "var(--green)" : score <= 2 ? "var(--amber)" : "var(--red)",
-          }}
-        >
-          {score} <span style={{ fontSize: 13 }}>pt{score !== 1 ? "s" : ""}</span>
-        </span>
-      </div>
+      {(() => {
+        const isLow = isVascular ? score <= 4 : score <= 1;
+        const isInt = isVascular ? score >= 5 && score <= 6 : score === 2;
+        const bg = isLow ? "var(--green-soft)" : isInt ? "var(--amber-soft)" : "var(--red-soft)";
+        const borderC = isLow ? "#A7D4BB" : isInt ? "#FCD34D" : "#F5B0AA";
+        const color = isLow ? "var(--green)" : isInt ? "var(--amber)" : "var(--red)";
+        return (
+          <div style={{ background: bg, border: `1px solid ${borderC}`, borderRadius: "var(--r-sm)", padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink-mid)" }}>Score {indexName} atual</span>
+            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 22, fontWeight: 600, color }}>
+              {score} <span style={{ fontSize: 13 }}>pt{score !== 1 ? "s" : ""}</span>
+            </span>
+          </div>
+        );
+      })()}
     </>
   );
 }

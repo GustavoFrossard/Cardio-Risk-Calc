@@ -66,9 +66,11 @@ export function EtapaRCRI({ data, onChange }) {
     score = RCRI_CRITERIA.filter((c) => data[c.key] === true).length;
   }
 
-  const scoreColor = score === 0 ? theme.green : score <= 2 ? theme.amber : theme.red;
-  const scoreBg = score === 0 ? theme.greenSoft : score <= 2 ? theme.amberSoft : theme.redSoft;
-  const scoreBorder = score === 0 ? "#A7D4BB" : score <= 2 ? "#FCD34D" : "#F5B0AA";
+  const isLow = isVascular ? score <= 4 : score <= 1;
+  const isInt = isVascular ? score >= 5 && score <= 6 : score === 2;
+  const scoreColor = isLow ? theme.green : isInt ? theme.amber : theme.red;
+  const scoreBg = isLow ? theme.greenSoft : isInt ? theme.amberSoft : theme.redSoft;
+  const scoreBorder = isLow ? "#A7D4BB" : isInt ? "#FCD34D" : "#F5B0AA";
 
   return (
     <>
