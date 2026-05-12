@@ -1,11 +1,22 @@
+import { View, Text } from "react-native";
 import { Card, ToggleRow, InfoBox, Select } from "../ui";
 import { SURGERY_OPTIONS } from "../../types";
+import { theme } from "../../theme";
 
 const RISK_GROUPS = [
   { label: "Baixo Risco (< 1%)", risk: "low" },
   { label: "Risco Intermediário (1–5%)", risk: "intermediate" },
   { label: "Alto Risco (> 5%)", risk: "high" },
 ];
+
+// Flat options list with section headers for the modal picker
+const SURGERY_FLAT_OPTIONS = RISK_GROUPS.flatMap((group) => [
+  { value: `__header_${group.risk}`, label: group.label, isHeader: true },
+  ...SURGERY_OPTIONS.filter((o) => o.risk === group.risk).map((o) => ({
+    value: o.value,
+    label: o.label,
+  })),
+]);
 
 const CV_CONDITIONS = [
   {
@@ -81,73 +92,65 @@ export function EtapaCirurgia({ data, onChange }) {
   return (
     <>
       <Card icon="🏥" title="Identificação da Cirurgia">
-        <Select value={data.surgery_type} onChange={(e) => handleSurgeryChange(e.target.value)}>
-          <option value="">Selecione o procedimento...</option>
-          {RISK_GROUPS.map((group) => (
-            <optgroup key={group.risk} label={group.label}>
-              {SURGERY_OPTIONS.filter((o) => o.risk === group.risk).map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </Select>
+        <Select
+          value={data.surgery_type}
+          onChange={handleSurgeryChange}
+          options={SURGERY_FLAT_OPTIONS}
+          placeholder="Selecione o procedimento..."
+        />
 
-        {selectedOption && (
-          <div
-            style={{
-              marginTop: 12,
-              display: "flex",
-              gap: 8,
-              flexWrap: "wrap",
-            }}
-          >
-            <span
+        {selectedOption ? (
+          <View style={{ marginTop: 12, flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+            <Text
               style={{
                 fontSize: 11,
-                fontWeight: 600,
-                padding: "4px 10px",
+                fontWeight: "600",
+                paddingVertical: 4,
+                paddingHorizontal: 10,
                 borderRadius: 999,
-                background:
+                backgroundColor:
                   selectedOption.risk === "low"
-                    ? "var(--green-soft)"
+                    ? theme.greenSoft
                     : selectedOption.risk === "intermediate"
-                    ? "var(--amber-soft)"
-                    : "var(--red-soft)",
+                    ? theme.amberSoft
+                    : theme.redSoft,
                 color:
                   selectedOption.risk === "low"
-                    ? "var(--green)"
+                    ? theme.green
                     : selectedOption.risk === "intermediate"
-                    ? "var(--amber)"
-                    : "var(--red)",
+                    ? theme.amber
+                    : theme.red,
               }}
             >
               Risco {riskBadge}
-            </span>
-            {selectedOption.vascular && (
-              <span
+            </Text>
+            {selectedOption.vascular ? (
+              <Text
                 style={{
                   fontSize: 11,
-                  fontWeight: 600,
-                  padding: "4px 10px",
+                  fontWeight: "600",
+                  paddingVertical: 4,
+                  paddingHorizontal: 10,
                   borderRadius: 999,
-                  background: "var(--blue-soft)",
-                  color: "var(--blue)",
+                  backgroundColor: theme.blueSoft,
+                  color: theme.blue,
                 }}
               >
                 Cirurgia Vascular → VSG
-              </span>
-            )}
-          </div>
-        )}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
       </Card>
 
       <Card icon="🚨" title="Condições Cardiovasculares Ativas">
         <InfoBox icon="⚠️">
-          Condições que requerem avaliação e tratamento <strong>antes</strong> do procedimento cirúrgico.
+          <Text style={{ fontSize: 12, color: "#1A3B7A", lineHeight: 18.6 }}>
+            Condições que requerem avaliação e tratamento{" "}
+            <Text style={{ fontWeight: "bold" }}>antes</Text> do procedimento cirúrgico.
+          </Text>
         </InfoBox>
-        <div style={{ marginTop: 10 }}>
+        <View style={{ marginTop: 10 }}>
           {CV_CONDITIONS.map((item, i) => (
             <ToggleRow
               key={item.key}
@@ -158,7 +161,7 @@ export function EtapaCirurgia({ data, onChange }) {
               isLast={i === CV_CONDITIONS.length - 1}
             />
           ))}
-        </div>
+        </View>
       </Card>
     </>
   );

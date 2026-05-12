@@ -1,0 +1,21 @@
+// Equivalent to the CSS variables defined in main.jsx of the web version
+export const theme = {
+  bg: '#F7F8FA',
+  white: '#FFFFFF',
+  ink: '#0D1117',
+  inkMid: '#3D4451',
+  inkMuted: '#8B909A',
+  blue: '#1A6BF0',
+  blueSoft: '#EBF1FE',
+  blueMid: '#5B94F5',
+  red: '#E03131',
+  redSoft: '#FFF0F0',
+  green: '#0E7B52',
+  greenSoft: '#EDFAF4',
+  amber: '#C47A00',
+  amberSoft: '#FFF8E6',
+  bgSoft: '#EDF0F5',
+  border: '#E4E7EE',
+  r: 14,
+  rSm: 8,
+};

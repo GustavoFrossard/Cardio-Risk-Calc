@@ -1,4 +1,6 @@
+import { View, Text, TouchableOpacity } from "react-native";
 import { Card, ToggleRow, InfoBox } from "../ui";
+import { theme } from "../../theme";
 
 const RCRI_CRITERIA = [
   {
@@ -64,63 +66,103 @@ export function EtapaRCRI({ data, onChange }) {
     score = RCRI_CRITERIA.filter((c) => data[c.key] === true).length;
   }
 
+  const scoreColor = score === 0 ? theme.green : score <= 2 ? theme.amber : theme.red;
+  const scoreBg = score === 0 ? theme.greenSoft : score <= 2 ? theme.amberSoft : theme.redSoft;
+  const scoreBorder = score === 0 ? "#A7D4BB" : score <= 2 ? "#FCD34D" : "#F5B0AA";
+
   return (
     <>
       <InfoBox>
         {isVascular ? (
-          <>
-            Cirurgia vascular identificada → usando <strong>Índice VSG-CRI</strong>. Os pontos variam conforme o critério.
-          </>
+          <Text style={{ fontSize: 12, color: "#1A3B7A", lineHeight: 18.6 }}>
+            Cirurgia vascular identificada → usando{" "}
+            <Text style={{ fontWeight: "bold" }}>Índice VSG-CRI</Text>. Os pontos
+            variam conforme o critério.
+          </Text>
         ) : (
-          <>
-            Cirurgia não vascular → usando <strong>Índice RCRI</strong>. Marque cada critério presente. Cada item soma <strong>+1 ponto</strong>.
-          </>
+          <Text style={{ fontSize: 12, color: "#1A3B7A", lineHeight: 18.6 }}>
+            Cirurgia não vascular → usando{" "}
+            <Text style={{ fontWeight: "bold" }}>Índice RCRI</Text>. Marque cada
+            critério presente. Cada item soma{" "}
+            <Text style={{ fontWeight: "bold" }}>+1 ponto</Text>.
+          </Text>
         )}
       </InfoBox>
 
       {isVascular ? (
         <>
           <Card icon="📅" title="Faixa etária">
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <View style={{ gap: 6 }}>
               {VSG_AGE_SELECT.map((opt) => (
-                <label
+                <TouchableOpacity
                   key={opt.value}
+                  onPress={() => onChange("vsg_age_range", opt.value)}
+                  activeOpacity={0.7}
                   style={{
-                    display: "flex",
+                    flexDirection: "row",
                     alignItems: "center",
                     gap: 10,
-                    padding: "8px 4px",
-                    cursor: "pointer",
+                    paddingVertical: 8,
+                    paddingHorizontal: 4,
                     borderRadius: 6,
-                    background: data.vsg_age_range === opt.value ? "var(--blue-soft)" : "transparent",
+                    backgroundColor:
+                      data.vsg_age_range === opt.value ? theme.blueSoft : "transparent",
                   }}
                 >
-                  <input
-                    type="radio"
-                    name="vsg_age_range"
-                    checked={data.vsg_age_range === opt.value}
-                    onChange={() => onChange("vsg_age_range", opt.value)}
-                    style={{ accentColor: "var(--blue)" }}
-                  />
-                  <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>
-                    {opt.label}
-                  </span>
-                  <span
+                  {/* Custom radio button */}
+                  <View
                     style={{
-                      fontFamily: "'JetBrains Mono', monospace",
+                      width: 18,
+                      height: 18,
+                      borderRadius: 9,
+                      borderWidth: 2,
+                      borderColor:
+                        data.vsg_age_range === opt.value ? theme.blue : theme.border,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {data.vsg_age_range === opt.value ? (
+                      <View
+                        style={{
+                          width: 9,
+                          height: 9,
+                          borderRadius: 5,
+                          backgroundColor: theme.blue,
+                        }}
+                      />
+                    ) : null}
+                  </View>
+
+                  <Text
+                    style={{
+                      flex: 1,
+                      fontSize: 13,
+                      fontWeight: "500",
+                      color: theme.ink,
+                    }}
+                  >
+                    {opt.label}
+                  </Text>
+
+                  <Text
+                    style={{
+                      fontFamily: "monospace",
                       fontSize: 11,
-                      fontWeight: 500,
-                      color: opt.points > 0 ? "var(--blue)" : "var(--ink-muted)",
-                      background: opt.points > 0 ? "var(--blue-soft)" : "var(--bg-soft)",
-                      padding: "2px 7px",
+                      fontWeight: "500",
+                      color: opt.points > 0 ? theme.blue : theme.inkMuted,
+                      backgroundColor: opt.points > 0 ? theme.blueSoft : theme.bgSoft,
+                      paddingHorizontal: 7,
+                      paddingVertical: 2,
                       borderRadius: 4,
                     }}
                   >
                     {opt.points > 0 ? `+${opt.points}` : "0"}
-                  </span>
-                </label>
+                  </Text>
+                </TouchableOpacity>
               ))}
-            </div>
+            </View>
           </Card>
 
           <Card icon="🫀" title="Critérios do VSG-CRI">
@@ -153,31 +195,34 @@ export function EtapaRCRI({ data, onChange }) {
         </Card>
       )}
 
-      <div
+      <View
         style={{
-          background: score === 0 ? "var(--green-soft)" : score <= 2 ? "var(--amber-soft)" : "var(--red-soft)",
-          border: `1px solid ${score === 0 ? "#A7D4BB" : score <= 2 ? "#FCD34D" : "#F5B0AA"}`,
-          borderRadius: "var(--r-sm)",
-          padding: "12px 16px",
-          display: "flex",
+          backgroundColor: scoreBg,
+          borderWidth: 1,
+          borderColor: scoreBorder,
+          borderRadius: theme.rSm,
+          paddingVertical: 12,
+          paddingHorizontal: 16,
+          flexDirection: "row",
           justifyContent: "space-between",
           alignItems: "center",
         }}
       >
-        <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink-mid)" }}>
+        <Text style={{ fontSize: 13, fontWeight: "500", color: theme.inkMid }}>
           Score {indexName} atual
-        </span>
-        <span
+        </Text>
+        <Text
           style={{
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: "monospace",
             fontSize: 22,
-            fontWeight: 600,
-            color: score === 0 ? "var(--green)" : score <= 2 ? "var(--amber)" : "var(--red)",
+            fontWeight: "600",
+            color: scoreColor,
           }}
         >
-          {score} <span style={{ fontSize: 13 }}>pt{score !== 1 ? "s" : ""}</span>
-        </span>
-      </div>
+          {score}{" "}
+          <Text style={{ fontSize: 13 }}>pt{score !== 1 ? "s" : ""}</Text>
+        </Text>
+      </View>
     </>
   );
 }
