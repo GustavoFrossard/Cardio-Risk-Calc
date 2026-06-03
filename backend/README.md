@@ -83,7 +83,32 @@ Observação: em Windows, ajuste batch/grad-accum conforme VRAM disponível.
 | GET | `/` | App info |
 | GET | `/health` | Health check |
 | POST | `/calculate` | Calculate perioperative risk |
+| POST | `/nlp/analyze` | Extrai variáveis do texto clínico, sinaliza faltas críticas e retorna auto-preenchimento |
 | GET | `/docs` | Interactive Swagger UI |
+
+## NLP Clinical Parser
+
+Este backend inclui um parser clínico em `core/clinical_nlp.py` com duas camadas:
+
+- NER com Hugging Face (`pucpr/clinicalnerpt-medical`) quando disponível no ambiente.
+- Regras clínicas para mapear texto livre para os campos da calculadora.
+
+Configuração opcional via ambiente:
+
+```bash
+CARDIORISK_NER_MODEL=pucpr/clinicalnerpt-medical
+```
+
+Exemplo de request:
+
+```bash
+curl -X POST http://localhost:8000/nlp/analyze \
+	-H "Content-Type: application/json" \
+	-d '{
+		"text": "Paciente de 67 anos, HAS, DM2 em insulinoterapia e antecedente de AVC. Em programação de colecistectomia laparoscópica.",
+		"current_data": {}
+	}'
+```
 
 ## Architecture
 

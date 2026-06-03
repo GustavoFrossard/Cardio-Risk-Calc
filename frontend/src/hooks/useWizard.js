@@ -7,6 +7,8 @@ export function useAssistente() {
   const [formData, setFormData] = useState(defaultPatientData);
   const [result, setResult] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [nlpResult, setNlpResult] = useState(null);
   const [error, setError] = useState(null);
 
   const totalSteps = WIZARD_STEPS.length;
@@ -14,6 +16,28 @@ export function useAssistente() {
   const updateField = useCallback((key, value) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
   }, []);
+
+  const analyzeClinicalText = useCallback(async (text) => {
+    setIsAnalyzing(true);
+    setError(null);
+    try {
+      const res = await api.analyzeClinicalCase(text, formData);
+      setNlpResult(res);
+      if (res?.autofill && typeof res.autofill === "object") {
+        setFormData((prev) => ({ ...prev, ...res.autofill }));
+      }
+      return res;
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Erro ao analisar texto clínico.",
+      );
+      return null;
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }, [formData]);
 
   const submitToApi = useCallback(async () => {
     setIsLoading(true);
@@ -53,6 +77,7 @@ export function useAssistente() {
     setCurrentStep(1);
     setFormData(defaultPatientData);
     setResult(null);
+    setNlpResult(null);
     setError(null);
   }, []);
 
@@ -62,8 +87,11 @@ export function useAssistente() {
     formData,
     result,
     isLoading,
+    isAnalyzing,
+    nlpResult,
     error,
     updateField,
+    analyzeClinicalText,
     goNext,
     goBack,
     reset,

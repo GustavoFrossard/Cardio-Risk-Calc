@@ -8,8 +8,9 @@ Based on: Diretriz Brasileira de Avaliação Cardiovascular Perioperatória,
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Any, Optional
 from core.calculator import calcular_risco
+from core.clinical_nlp import analyze_clinical_text
 
 app = FastAPI(
     title="CardioRisk Periop API",
@@ -94,6 +95,11 @@ class PatientData(BaseModel):
     vsg_prior_revasc: bool = Field(False)
 
 
+class ClinicalTextRequest(BaseModel):
+    text: str = Field(..., min_length=5, description="Texto clínico livre")
+    current_data: dict[str, Any] = Field(default_factory=dict)
+
+
 @app.get("/")
 def root():
     return {
@@ -111,6 +117,15 @@ def calculate(patient: PatientData):
     """
     result = calcular_risco(patient.model_dump())
     return result
+
+
+@app.post("/nlp/analyze")
+def analyze_clinical_case(payload: ClinicalTextRequest):
+    """
+    Analyze free clinical text and infer calculator fields.
+    Returns inferred fields, missing critical information, and optional NER entities.
+    """
+    return analyze_clinical_text(payload.text, payload.current_data)
 
 
 @app.get("/health")

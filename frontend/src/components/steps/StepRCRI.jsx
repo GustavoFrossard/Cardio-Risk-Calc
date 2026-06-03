@@ -1,3 +1,4 @@
+import { CalendarDays, HeartPulse } from "lucide-react";
 import { Card, ToggleRow, InfoBox } from "../ui";
 
 const RCRI_CRITERIA = [
@@ -52,6 +53,7 @@ const VSG_CRITERIA = [
 ];
 
 export function EtapaRCRI({ data, onChange }) {
+  const iconProps = { size: 16, strokeWidth: 2.2 };
   const isVascular = data.is_vascular;
   const indexName = isVascular ? "VSG" : "RCRI";
 
@@ -80,7 +82,7 @@ export function EtapaRCRI({ data, onChange }) {
 
       {isVascular ? (
         <>
-          <Card icon="📅" title="Faixa etária">
+          <Card icon={<CalendarDays {...iconProps} />} title="Faixa etária">
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {VSG_AGE_SELECT.map((opt) => (
                 <label
@@ -123,7 +125,7 @@ export function EtapaRCRI({ data, onChange }) {
             </div>
           </Card>
 
-          <Card icon="🫀" title="Critérios do VSG-CRI">
+          <Card icon={<HeartPulse {...iconProps} />} title="Critérios do VSG-CRI">
             {VSG_CRITERIA.map((criterion, i) => (
               <ToggleRow
                 key={criterion.key}
@@ -138,7 +140,7 @@ export function EtapaRCRI({ data, onChange }) {
           </Card>
         </>
       ) : (
-        <Card icon="🫀" title="Critérios do RCRI">
+        <Card icon={<HeartPulse {...iconProps} />} title="Critérios do RCRI">
           {RCRI_CRITERIA.map((criterion, i) => (
             <ToggleRow
               key={criterion.key}

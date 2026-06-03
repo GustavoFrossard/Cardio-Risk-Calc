@@ -29,5 +29,11 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  analyzeClinicalCase: (text, currentData = {}) =>
+    request("/nlp/analyze", {
+      method: "POST",
+      body: JSON.stringify({ text, current_data: currentData }),
+    }),
+
   health: () => request("/health"),
 };

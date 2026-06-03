@@ -1,3 +1,5 @@
+import { Info } from "lucide-react";
+
 export function Toggle({ checked, onChange }) {
   return (
     <button
@@ -233,7 +235,9 @@ export function ChipGroup({ options, value, onChange }) {
   );
 }
 
-export function InfoBox({ icon = "ℹ️", children }) {
+export function InfoBox({ icon, children }) {
+  const resolvedIcon = icon ?? <Info size={16} strokeWidth={2.2} color="#1A3B7A" />;
+
   return (
     <div
       style={{
@@ -246,7 +250,7 @@ export function InfoBox({ icon = "ℹ️", children }) {
         alignItems: "flex-start",
       }}
     >
-      <span style={{ fontSize: 16, flexShrink: 0 }}>{icon}</span>
+      <span style={{ display: "inline-flex", flexShrink: 0 }}>{resolvedIcon}</span>
       <div style={{ fontSize: 12, color: "#1A3B7A", lineHeight: 1.55 }}>{children}</div>
     </div>
   );

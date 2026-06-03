@@ -1,3 +1,4 @@
+import { AlertTriangle, FileDown, FileText, FlaskConical, Pill, ShieldAlert, Stethoscope, TriangleAlert } from "lucide-react";
 import { generateReport } from "../../services/report";
 
 const REC_COLORS = {
@@ -15,6 +16,11 @@ const PILL_COLORS = {
 export function EtapaResultado({ result, data }) {
   const pill = PILL_COLORS[result.risk_class] ?? PILL_COLORS.low;
   const indexName = result.risk_index === "vsg" ? "VSG" : "RCRI";
+  const recIcon = {
+    green: <Stethoscope size={18} strokeWidth={2.2} color="var(--green)" />,
+    amber: <TriangleAlert size={18} strokeWidth={2.2} color="var(--amber)" />,
+    red: <ShieldAlert size={18} strokeWidth={2.2} color="var(--red)" />,
+  };
 
   return (
     <>
@@ -30,7 +36,7 @@ export function EtapaResultado({ result, data }) {
             alignItems: "flex-start",
           }}
         >
-          <span style={{ fontSize: 20, flexShrink: 0 }}>🚨</span>
+          <span style={{ display: "inline-flex", flexShrink: 0 }}><AlertTriangle size={20} strokeWidth={2.2} color="var(--red)" /></span>
           <div>
             <div style={{ fontSize: 13, fontWeight: 700, color: "var(--red)", marginBottom: 4 }}>
               Condições Cardíacas Ativas Detectadas
@@ -114,7 +120,10 @@ export function EtapaResultado({ result, data }) {
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                   <span style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)" }}>
-                    💊 {med.medication}
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                      <Pill size={14} strokeWidth={2.2} color="var(--ink-mid)" />
+                      {med.medication}
+                    </span>
                   </span>
                   <span
                     style={{
@@ -150,12 +159,13 @@ export function EtapaResultado({ result, data }) {
         >
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
             <div style={{ width: 28, height: 28, borderRadius: 8, background: "var(--blue-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>
-              🧪
+              <FlaskConical size={15} strokeWidth={2.2} color="var(--blue)" />
             </div>
             <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>Exames Recomendados</span>
           </div>
-          <div style={{ fontSize: 11, color: "var(--amber)", background: "var(--amber-soft)", padding: "6px 10px", borderRadius: 6, marginBottom: 10, fontWeight: 500 }}>
-            ⚠️ Realizar antes do procedimento cirúrgico
+          <div style={{ fontSize: 11, color: "var(--amber)", background: "var(--amber-soft)", padding: "6px 10px", borderRadius: 6, marginBottom: 10, fontWeight: 500, display: "flex", alignItems: "center", gap: 6 }}>
+            <TriangleAlert size={13} strokeWidth={2.2} color="var(--amber)" />
+            Realizar antes do procedimento cirúrgico
           </div>
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "var(--ink-mid)", lineHeight: 1.8 }}>
             {result.recommended_exams.map((exam, i) => (
@@ -186,7 +196,7 @@ export function EtapaResultado({ result, data }) {
               boxShadow: "0 1px 4px rgba(13,17,23,0.06)",
             }}
           >
-            <span style={{ fontSize: 18, flexShrink: 0 }}>{rec.icon}</span>
+            <span style={{ display: "inline-flex", flexShrink: 0 }}>{recIcon[rec.type] ?? recIcon.green}</span>
             <div>
               <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 3, color: "var(--ink)" }}>
                 {rec.title}
@@ -210,7 +220,7 @@ export function EtapaResultado({ result, data }) {
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
           <div style={{ width: 28, height: 28, borderRadius: 8, background: "var(--blue-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>
-            📋
+            <FileText size={15} strokeWidth={2.2} color="var(--blue)" />
           </div>
           <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>Fatores Identificados</span>
         </div>
@@ -245,7 +255,7 @@ export function EtapaResultado({ result, data }) {
           boxShadow: "0 2px 8px rgba(15,76,129,0.25)",
         }}
       >
-        <span style={{ fontSize: 18 }}>📄</span>
+        <span style={{ display: "inline-flex" }}><FileDown size={18} strokeWidth={2.2} color="#fff" /></span>
         Baixar Relatório em PDF
       </button>
 

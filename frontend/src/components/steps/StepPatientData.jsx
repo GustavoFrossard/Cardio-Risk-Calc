@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Activity, BrainCircuit, CircleAlert, CircleCheck, Pill, Stethoscope, UserRound } from "lucide-react";
 import { Card, Field, Input, ToggleRow, ChipGroup } from "../ui";
 import { FUNCTIONAL_QUESTIONS } from "../../types";
 
@@ -46,7 +47,7 @@ const warfarinThrombophiliaOptions = [
   { value: "none", label: "Não" },
 ];
 
-export function EtapaDadosPaciente({ data, onChange }) {
+export function EtapaDadosPaciente({ data, onChange, onAnalyzeClinicalText, isAnalyzing, nlpResult }) {
   const [sliderIdx, setSliderIdx] = useState(() => {
     let best = 0;
     let minDiff = Infinity;
@@ -59,10 +60,115 @@ export function EtapaDadosPaciente({ data, onChange }) {
 
   const currentActivity = SORTED_ACTIVITIES[sliderIdx];
   const mets = currentActivity.mets;
+  const [clinicalText, setClinicalText] = useState("");
+
+  const iconProps = { size: 16, strokeWidth: 2.2 };
+
+  const handleAnalyze = async () => {
+    const text = clinicalText.trim();
+    if (!text || !onAnalyzeClinicalText) {
+      return;
+    }
+    await onAnalyzeClinicalText(text);
+  };
+
+  useEffect(() => {
+    let best = 0;
+    let minDiff = Infinity;
+    for (let i = SORTED_ACTIVITIES.length - 1; i >= 0; i--) {
+      const diff = Math.abs(SORTED_ACTIVITIES[i].mets - (data.mets ?? 1));
+      if (diff < minDiff) { minDiff = diff; best = i; }
+    }
+    setSliderIdx(best);
+  }, [data.mets]);
 
   return (
     <>
-      <Card icon="👤" title="Identificação">
+      <Card icon={<BrainCircuit {...iconProps} />} title="Pré-preenchimento por texto clínico">
+        <Field label="Cole aqui o caso clínico">
+          <textarea
+            placeholder="Ex: Paciente de 67 anos com HAS e DM2 em insulinoterapia, antecedente de AVC, em programação de colecistectomia laparoscópica..."
+            value={clinicalText}
+            onChange={(e) => setClinicalText(e.target.value)}
+            rows={5}
+            style={{
+              width: "100%",
+              border: "1.5px solid var(--border)",
+              borderRadius: "var(--r-sm)",
+              padding: "10px 13px",
+              fontFamily: "'Outfit', sans-serif",
+              fontSize: 14,
+              color: "var(--ink)",
+              background: "var(--white)",
+              outline: "none",
+              resize: "vertical",
+              lineHeight: 1.45,
+            }}
+          />
+        </Field>
+
+        <button
+          type="button"
+          onClick={handleAnalyze}
+          disabled={isAnalyzing || !clinicalText.trim()}
+          style={{
+            marginTop: 12,
+            border: "none",
+            borderRadius: "var(--r-sm)",
+            background: isAnalyzing ? "#91A4CC" : "var(--blue)",
+            color: "white",
+            fontSize: 13,
+            fontWeight: 600,
+            padding: "10px 14px",
+            cursor: isAnalyzing ? "not-allowed" : "pointer",
+            width: "100%",
+          }}
+        >
+          {isAnalyzing ? "Analisando caso clínico..." : "Analisar e auto-preencher"}
+        </button>
+
+        {nlpResult && (
+          <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+            <div
+              style={{
+                borderRadius: "var(--r-sm)",
+                background: "var(--blue-soft)",
+                border: "1px solid #BDD3FB",
+                padding: "10px 12px",
+                fontSize: 12,
+                color: "#1A3B7A",
+                lineHeight: 1.45,
+              }}
+            >
+              <strong>{nlpResult?.summary?.autofill_count ?? 0}</strong> campos auto-preenchidos. Modelo: {" "}
+              <strong>{nlpResult?.model?.name}</strong> ({nlpResult?.model?.status}).
+            </div>
+
+            {Array.isArray(nlpResult?.missing_critical) && nlpResult.missing_critical.length > 0 && (
+              <div
+                style={{
+                  borderRadius: "var(--r-sm)",
+                  background: "var(--amber-soft)",
+                  border: "1px solid #FCD34D",
+                  padding: "10px 12px",
+                  fontSize: 12,
+                  color: "#7A5000",
+                  lineHeight: 1.5,
+                }}
+              >
+                <div style={{ fontWeight: 600, marginBottom: 6 }}>Informações críticas ausentes</div>
+                <ul style={{ margin: 0, paddingLeft: 18 }}>
+                  {nlpResult.missing_critical.map((item) => (
+                    <li key={item.field}>{item.label}: {item.question}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+      </Card>
+
+      <Card icon={<UserRound {...iconProps} />} title="Identificação">
         <Field label="Nome / Identificador" style={{ marginBottom: 12 }}>
           <Input
             type="text"
@@ -88,7 +194,7 @@ export function EtapaDadosPaciente({ data, onChange }) {
         </Field>
       </Card>
 
-      <Card icon="🩺" title="Comorbidades">
+      <Card icon={<Stethoscope {...iconProps} />} title="Comorbidades">
         {COMORBIDITIES.map((item, i) => (
           <ToggleRow
             key={item.key}
@@ -118,7 +224,7 @@ export function EtapaDadosPaciente({ data, onChange }) {
         )}
       </Card>
 
-      <Card icon="💊" title="Medicamentos em Uso">
+      <Card icon={<Pill {...iconProps} />} title="Medicamentos em Uso">
         {MEDICATIONS.map((item, i) => (
           <div key={item.key}>
             <ToggleRow
@@ -205,7 +311,7 @@ export function EtapaDadosPaciente({ data, onChange }) {
         ))}
       </Card>
 
-      <Card icon="📊" title="Capacidade Funcional">
+      <Card icon={<Activity {...iconProps} />} title="Capacidade Funcional">
         <div style={{ fontSize: 12, color: "var(--ink-mid)", marginBottom: 12, lineHeight: 1.5 }}>
           Deslize para indicar a <strong>atividade máxima</strong> que o paciente consegue realizar.
         </div>
@@ -253,8 +359,9 @@ export function EtapaDadosPaciente({ data, onChange }) {
           </span>
         </div>
 
-        <div style={{ marginTop: 6, fontSize: 12, fontWeight: 500, color: "var(--ink-mid)", textAlign: "center" }}>
-          {mets >= 4 ? "✅ Capacidade funcional adequada" : "⚠️ Capacidade funcional reduzida"}
+        <div style={{ marginTop: 6, fontSize: 12, fontWeight: 500, color: "var(--ink-mid)", textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+          {mets >= 4 ? <CircleCheck size={14} color="var(--green)" /> : <CircleAlert size={14} color="var(--amber)" />}
+          {mets >= 4 ? "Capacidade funcional adequada" : "Capacidade funcional reduzida"}
         </div>
       </Card>
     </>

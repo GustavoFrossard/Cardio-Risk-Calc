@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useAssistente } from "./hooks/useWizard";
 import { CabecalhoApp } from "./components/AppHeader";
 import { BarraInferior } from "./components/BottomBar";
@@ -7,8 +8,26 @@ import { EtapaRCRI } from "./components/steps/StepRCRI";
 import { EtapaResultado } from "./components/steps/StepResult";
 
 export default function App() {
-  const { currentStep, totalSteps, formData, result, isLoading, error, updateField, goNext, goBack, reset } =
+  const {
+    currentStep,
+    totalSteps,
+    formData,
+    result,
+    isLoading,
+    isAnalyzing,
+    nlpResult,
+    error,
+    updateField,
+    analyzeClinicalText,
+    goNext,
+    goBack,
+    reset,
+  } =
     useAssistente();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [currentStep]);
 
   return (
     <div
@@ -32,7 +51,13 @@ export default function App() {
         }}
       >
         {currentStep === 1 && (
-          <EtapaDadosPaciente data={formData} onChange={updateField} />
+          <EtapaDadosPaciente
+            data={formData}
+            onChange={updateField}
+            onAnalyzeClinicalText={analyzeClinicalText}
+            isAnalyzing={isAnalyzing}
+            nlpResult={nlpResult}
+          />
         )}
         {currentStep === 2 && (
           <EtapaCirurgia data={formData} onChange={updateField} />

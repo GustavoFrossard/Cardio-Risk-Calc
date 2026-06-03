@@ -1,3 +1,4 @@
+import { AlertTriangle, Hospital, Siren } from "lucide-react";
 import { Card, ToggleRow, InfoBox, Select } from "../ui";
 import { SURGERY_OPTIONS } from "../../types";
 
@@ -66,6 +67,8 @@ const CV_CONDITIONS = [
 ];
 
 export function EtapaCirurgia({ data, onChange }) {
+  const iconProps = { size: 16, strokeWidth: 2.2 };
+
   const handleSurgeryChange = (value) => {
     const option = SURGERY_OPTIONS.find((o) => o.value === value);
     onChange("surgery_type", value);
@@ -80,7 +83,7 @@ export function EtapaCirurgia({ data, onChange }) {
 
   return (
     <>
-      <Card icon="🏥" title="Identificação da Cirurgia">
+      <Card icon={<Hospital {...iconProps} />} title="Identificação da Cirurgia">
         <Select value={data.surgery_type} onChange={(e) => handleSurgeryChange(e.target.value)}>
           <option value="">Selecione o procedimento...</option>
           {RISK_GROUPS.map((group) => (
@@ -143,8 +146,8 @@ export function EtapaCirurgia({ data, onChange }) {
         )}
       </Card>
 
-      <Card icon="🚨" title="Condições Cardiovasculares Ativas">
-        <InfoBox icon="⚠️">
+      <Card icon={<Siren {...iconProps} />} title="Condições Cardiovasculares Ativas">
+        <InfoBox icon={<AlertTriangle size={16} strokeWidth={2.2} color="#1A3B7A" />}>
           Condições que requerem avaliação e tratamento <strong>antes</strong> do procedimento cirúrgico.
         </InfoBox>
         <div style={{ marginTop: 10 }}>
