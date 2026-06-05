@@ -30,6 +30,8 @@ if _as_bool(os.getenv("CARDIORISK_SUPPRESS_MODEL_WARNINGS"), default=False):
         message=r".*unauthenticated requests to the HF Hub.*",
     )
 
+ENABLE_NER = _as_bool(os.getenv("CARDIORISK_ENABLE_NER"), default=True)
+
 try:
     from transformers import (  # type: ignore
         AutoModelForTokenClassification,
@@ -128,6 +130,9 @@ def _build_ner_pipeline():
 
 def _get_ner_pipeline():
     global _NER_PIPELINE, _NER_ERROR
+
+    if not ENABLE_NER:
+        return None, "NER desativado por CARDIORISK_ENABLE_NER=false"
 
     with _NER_LOCK:
         if _NER_PIPELINE is not None:

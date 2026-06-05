@@ -5,6 +5,8 @@ Based on: Diretriz Brasileira de Avaliação Cardiovascular Perioperatória,
           RCRI (Lee Index), VSG Cardiac Risk Index
 """
 
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -18,10 +20,21 @@ app = FastAPI(
     version="2.0.0",
 )
 
+def _cors_origins_from_env() -> list[str]:
+    raw = os.getenv("CORS_ALLOW_ORIGINS")
+    if raw:
+        return [item.strip() for item in raw.split(",") if item.strip()]
+    return [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "https://cardio-risk-calc.vercel.app",
+    ]
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Permitir acesso de qualquer front (Vercel, localhost, etc)
-    allow_credentials=True,
+    allow_origins=_cors_origins_from_env(),
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
