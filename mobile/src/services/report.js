@@ -8,14 +8,55 @@ const SURGERY_RISK_LABELS = {
   high: "Alto",
 };
 
+const PDF_TEXT_REPLACEMENTS = new Map([
+  ["≥", ">="],
+  ["≤", "<="],
+  ["–", "-"],
+  ["—", "-"],
+  ["−", "-"],
+  ["₀", "0"],
+  ["₁", "1"],
+  ["₂", "2"],
+  ["₃", "3"],
+  ["₄", "4"],
+  ["₅", "5"],
+  ["₆", "6"],
+  ["₇", "7"],
+  ["₈", "8"],
+  ["₉", "9"],
+]);
+
 function getSurgeryTypeLabel(surgeryType) {
   return SURGERY_OPTIONS.find((option) => option.value === surgeryType)?.label || "Não informada";
 }
 
+function sanitizePdfText(value) {
+  if (value == null) {
+    return "";
+  }
+
+  let text = String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  for (const [from, to] of PDF_TEXT_REPLACEMENTS.entries()) {
+    text = text.split(from).join(to);
+  }
+
+  return text;
+}
+
 export async function generateReport(result, data) {
-  const indexName = result.risk_index === "vsg" ? "VSG-CRI" : "RCRI";
-  const surgeryTypeLabel = getSurgeryTypeLabel(data.surgery_type);
-  const surgeryRiskLabel = SURGERY_RISK_LABELS[result.surgery_risk] || result.surgery_risk || "Não informado";
+  const indexName = sanitizePdfText(result.risk_index === "vsg" ? "VSG-CRI" : "RCRI");
+  const surgeryTypeLabel = sanitizePdfText(getSurgeryTypeLabel(data.surgery_type));
+  const surgeryRiskLabel = sanitizePdfText(
+    SURGERY_RISK_LABELS[result.surgery_risk] || result.surgery_risk || "Não informado",
+  );
+  const patientName = sanitizePdfText(data.name || "Não informado");
+  const patientAge = sanitizePdfText(data.age != null ? `${data.age} anos` : "Não informada");
+  const metsLabel = sanitizePdfText(result.mets_label);
+  const riskLabel = sanitizePdfText(result.risk_label);
 
   const dateStr = new Date().toLocaleDateString("pt-BR", {
     day: "2-digit",
@@ -35,7 +76,7 @@ export async function generateReport(result, data) {
   const activeConditionsHtml = result.has_active_conditions
     ? `<div class="active-conditions">
         <p class="active-label">[!] CONDIÇÕES CARDÍACAS ATIVAS DETECTADAS</p>
-        ${result.active_conditions.map((c) => `<p class="active-item">• ${c}</p>`).join("")}
+        ${result.active_conditions.map((c) => `<p class="active-item">- ${sanitizePdfText(c)}</p>`).join("")}
       </div>`
     : "";
 
@@ -43,7 +84,7 @@ export async function generateReport(result, data) {
     result.risk_factors.length > 0
       ? `<div class="section">
           <p class="section-title">Fatores de Risco Identificados</p>
-          ${result.risk_factors.map((f) => `<p class="bullet">• ${f}</p>`).join("")}
+          ${result.risk_factors.map((f) => `<p class="bullet">- ${sanitizePdfText(f)}</p>`).join("")}
         </div>`
       : "";
 
@@ -55,8 +96,8 @@ export async function generateReport(result, data) {
             .map(
               (med) =>
                 `<div class="med-item">
-                  <p class="med-title">${med.medication} — ${med.action}</p>
-                  <p class="med-detail">${med.detail}</p>
+                  <p class="med-title">${sanitizePdfText(med.medication)} - ${sanitizePdfText(med.action)}</p>
+                  <p class="med-detail">${sanitizePdfText(med.detail)}</p>
                 </div>`,
             )
             .join("")}
@@ -67,7 +108,7 @@ export async function generateReport(result, data) {
     result.recommended_exams.length > 0
       ? `<div class="section">
           <p class="section-title">Exames Recomendados</p>
-          ${result.recommended_exams.map((e) => `<p class="bullet">• ${e}</p>`).join("")}
+          ${result.recommended_exams.map((e) => `<p class="bullet">- ${sanitizePdfText(e)}</p>`).join("")}
         </div>`
       : "";
 
@@ -79,8 +120,8 @@ export async function generateReport(result, data) {
             .map(
               (rec) =>
                 `<div class="med-item">
-                  <p class="med-title">${rec.title}</p>
-                  <p class="med-detail">${rec.body}</p>
+                  <p class="med-title">${sanitizePdfText(rec.title)}</p>
+                  <p class="med-detail">${sanitizePdfText(rec.body)}</p>
                 </div>`,
             )
             .join("")}
@@ -124,11 +165,11 @@ export async function generateReport(result, data) {
 
     <div class="section">
       <p class="section-title">Dados do Paciente</p>
-      <p class="line">Paciente: ${data.name || "Não informado"}</p>
-      <p class="line">Idade: ${data.age != null ? `${data.age} anos` : "Não informada"}</p>
+      <p class="line">Paciente: ${patientName}</p>
+      <p class="line">Idade: ${patientAge}</p>
       <p class="line">Cirurgia: ${surgeryTypeLabel}</p>
       <p class="line">Risco cirúrgico: ${surgeryRiskLabel}</p>
-      <p class="line">Capacidade Funcional: ${result.mets} METs — ${result.mets_label}</p>
+      <p class="line">Capacidade Funcional: ${result.mets} METs - ${metsLabel}</p>
     </div>
 
     <hr class="divider">
@@ -136,9 +177,9 @@ export async function generateReport(result, data) {
     ${activeConditionsHtml}
 
     <div class="section">
-      <p class="section-title">Resultado — Índice ${indexName}</p>
+      <p class="section-title">Resultado - Índice ${indexName}</p>
       <div class="risk-box" style="background:${riskColorHex}">
-        <span class="risk-box-label">${result.risk_label}</span>
+        <span class="risk-box-label">${riskLabel}</span>
         <span class="risk-box-score">Score: ${result.score} pt${result.score !== 1 ? "s" : ""}</span>
       </div>
     </div>
