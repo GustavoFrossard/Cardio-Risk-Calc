@@ -529,7 +529,7 @@ def montar_recomendacoes(
             "icon": "💊",
             "title": "Otimização farmacológica",
             "body": (
-                f"Score ≥ 3: considere betabloqueadores e estatinas conforme indicação. "
+                "Score >= 3: considere betabloqueadores e estatinas conforme indicação. "
                 "Avalie profilaxia antitrombótica."
             ),
         })

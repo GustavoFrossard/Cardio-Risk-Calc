@@ -1,8 +1,18 @@
 import jsPDF from "jspdf";
+import { SURGERY_OPTIONS } from "../types";
 
 const MARGIN = 20;
 const PAGE_W = 210;
 const CONTENT_W = PAGE_W - MARGIN * 2;
+const SURGERY_RISK_LABELS = {
+  low: "Baixo",
+  intermediate: "Intermediário",
+  high: "Alto",
+};
+
+function getSurgeryTypeLabel(surgeryType) {
+  return SURGERY_OPTIONS.find((option) => option.value === surgeryType)?.label || "Não informada";
+}
 
 function addPage(doc, y, needed) {
   if (y + needed > 280) {
@@ -15,6 +25,8 @@ function addPage(doc, y, needed) {
 export function generateReport(result, data) {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const indexName = result.risk_index === "vsg" ? "VSG-CRI" : "RCRI";
+  const surgeryTypeLabel = getSurgeryTypeLabel(data.surgery_type);
+  const surgeryRiskLabel = SURGERY_RISK_LABELS[result.surgery_risk] || result.surgery_risk || "Não informado";
   let y = MARGIN;
 
   // ─── Header ──────────────────────────────────────────────────────
@@ -54,9 +66,9 @@ export function generateReport(result, data) {
   y += 5;
   doc.text(`Idade: ${patientAge}`, MARGIN, y);
   y += 5;
-  doc.text(`Cirurgia: ${result.surgery_label}`, MARGIN, y);
+  doc.text(`Cirurgia: ${surgeryTypeLabel}`, MARGIN, y);
   y += 5;
-  doc.text(`Risco cirúrgico: ${result.surgery_risk}`, MARGIN, y);
+  doc.text(`Risco cirúrgico: ${surgeryRiskLabel}`, MARGIN, y);
   y += 5;
   doc.text(`Capacidade Funcional: ${result.mets} METs — ${result.mets_label}`, MARGIN, y);
   y += 10;

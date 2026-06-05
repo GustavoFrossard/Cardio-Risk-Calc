@@ -1,8 +1,21 @@
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
+import { SURGERY_OPTIONS } from "../types";
+
+const SURGERY_RISK_LABELS = {
+  low: "Baixo",
+  intermediate: "Intermediário",
+  high: "Alto",
+};
+
+function getSurgeryTypeLabel(surgeryType) {
+  return SURGERY_OPTIONS.find((option) => option.value === surgeryType)?.label || "Não informada";
+}
 
 export async function generateReport(result, data) {
   const indexName = result.risk_index === "vsg" ? "VSG-CRI" : "RCRI";
+  const surgeryTypeLabel = getSurgeryTypeLabel(data.surgery_type);
+  const surgeryRiskLabel = SURGERY_RISK_LABELS[result.surgery_risk] || result.surgery_risk || "Não informado";
 
   const dateStr = new Date().toLocaleDateString("pt-BR", {
     day: "2-digit",
@@ -113,8 +126,8 @@ export async function generateReport(result, data) {
       <p class="section-title">Dados do Paciente</p>
       <p class="line">Paciente: ${data.name || "Não informado"}</p>
       <p class="line">Idade: ${data.age != null ? `${data.age} anos` : "Não informada"}</p>
-      <p class="line">Cirurgia: ${result.surgery_label}</p>
-      <p class="line">Risco cirúrgico: ${result.surgery_risk}</p>
+      <p class="line">Cirurgia: ${surgeryTypeLabel}</p>
+      <p class="line">Risco cirúrgico: ${surgeryRiskLabel}</p>
       <p class="line">Capacidade Funcional: ${result.mets} METs — ${result.mets_label}</p>
     </div>
 
