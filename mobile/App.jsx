@@ -4,7 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 import Constants from "expo-constants";
-import * as FileSystem from "expo-file-system";
+import { File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import { theme } from "./src/theme";
 
@@ -83,15 +83,13 @@ async function handlePdfMessage(payload) {
     return;
   }
 
-  const fileUri = `${FileSystem.documentDirectory}${safeFilename}`;
+  const file = new File(Paths.document, safeFilename);
 
   try {
-    await FileSystem.writeAsStringAsync(fileUri, base64, {
-      encoding: "base64",
-    });
+    file.write(base64, { encoding: "base64" });
 
     if (await Sharing.isAvailableAsync()) {
-      await Sharing.shareAsync(fileUri, {
+      await Sharing.shareAsync(file.uri, {
         mimeType: "application/pdf",
         dialogTitle: "CardioRisk - Relatório",
         UTI: "com.adobe.pdf",
@@ -99,7 +97,7 @@ async function handlePdfMessage(payload) {
       return;
     }
 
-    Alert.alert("PDF gerado", `Arquivo salvo em: ${fileUri}`);
+    Alert.alert("PDF gerado", `Arquivo salvo em: ${file.uri}`);
   } catch (error) {
     console.error("Erro ao salvar PDF no app:", error);
     Alert.alert("Falha ao salvar PDF", "Não foi possível gravar ou compartilhar o relatório no dispositivo.");
