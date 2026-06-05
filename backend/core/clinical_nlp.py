@@ -11,9 +11,24 @@ import os
 import re
 import threading
 import unicodedata
+import warnings
 from typing import Any
 
 MODEL_NAME = os.getenv("CARDIORISK_NER_MODEL", "pucpr/clinicalnerpt-medical")
+HF_TOKEN = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACEHUB_API_TOKEN")
+
+
+def _as_bool(value: str | None, default: bool = False) -> bool:
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+if _as_bool(os.getenv("CARDIORISK_SUPPRESS_MODEL_WARNINGS"), default=False):
+    warnings.filterwarnings(
+        "ignore",
+        message=r".*unauthenticated requests to the HF Hub.*",
+    )
 
 try:
     from transformers import (  # type: ignore
@@ -102,8 +117,12 @@ def _build_ner_pipeline():
     if pipeline is None or AutoTokenizer is None or AutoModelForTokenClassification is None:
         raise RuntimeError("transformers não está instalado no ambiente")
 
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-    model = AutoModelForTokenClassification.from_pretrained(MODEL_NAME)
+    load_kwargs: dict[str, Any] = {}
+    if HF_TOKEN:
+        load_kwargs["token"] = HF_TOKEN
+
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, **load_kwargs)
+    model = AutoModelForTokenClassification.from_pretrained(MODEL_NAME, **load_kwargs)
     return pipeline("ner", model=model, tokenizer=tokenizer, aggregation_strategy="simple")
 
 
