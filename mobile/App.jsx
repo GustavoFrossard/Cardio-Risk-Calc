@@ -3,9 +3,13 @@ import { registerRootComponent } from "expo";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
+import Constants from "expo-constants";
 import { theme } from "./src/theme";
 
-const WEB_APP_URL = process.env.EXPO_PUBLIC_WEB_APP_URL || "https://cardiorisk-periop.vercel.app";
+const WEB_APP_URL =
+  process.env.EXPO_PUBLIC_WEB_APP_URL ||
+  Constants.expoConfig?.extra?.webAppUrl ||
+  "https://cardio-risk-calc.vercel.app";
 
 export default function App() {
   return (
