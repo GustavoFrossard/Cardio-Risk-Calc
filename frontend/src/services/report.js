@@ -22,6 +22,14 @@ function addPage(doc, y, needed) {
   return y;
 }
 
+function isRunningInsideReactNativeWebView() {
+  return Boolean(
+    typeof window !== "undefined" &&
+      window.ReactNativeWebView &&
+      typeof window.ReactNativeWebView.postMessage === "function",
+  );
+}
+
 export function generateReport(result, data) {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const indexName = result.risk_index === "vsg" ? "VSG-CRI" : "RCRI";
@@ -210,5 +218,16 @@ export function generateReport(result, data) {
   const patientNameSafe = data.name ? data.name.trim() : "Paciente";
   const dateObj = new Date();
   const dateForFile = `${dateObj.getDate().toString().padStart(2, '0')}-${(dateObj.getMonth() + 1).toString().padStart(2, '0')}-${dateObj.getFullYear()}`;
-  doc.save(`CardioRisk - ${patientNameSafe} - ${dateForFile}.pdf`);
+  const filename = `CardioRisk - ${patientNameSafe} - ${dateForFile}.pdf`;
+
+  if (isRunningInsideReactNativeWebView()) {
+    const dataUri = doc.output("datauristring");
+    const base64 = dataUri.includes(",") ? dataUri.split(",")[1] : "";
+    window.ReactNativeWebView.postMessage(
+      JSON.stringify({ type: "pdf-base64", filename, base64 }),
+    );
+    return;
+  }
+
+  doc.save(filename);
 }
