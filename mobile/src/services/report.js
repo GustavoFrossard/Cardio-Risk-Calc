@@ -1,5 +1,6 @@
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
+import { Alert } from "react-native";
 import { SURGERY_OPTIONS } from "../types";
 
 const SURGERY_RISK_LABELS = {
@@ -205,8 +206,15 @@ export async function generateReport(result, data) {
         dialogTitle: "CardioRisk - Relatório",
         UTI: "com.adobe.pdf",
       });
+      return;
     }
+
+    await Print.printAsync({ html });
   } catch (err) {
     console.error("Erro ao gerar relatório:", err);
+    Alert.alert(
+      "Erro ao gerar PDF",
+      "Não foi possível abrir ou compartilhar o relatório neste dispositivo.",
+    );
   }
 }
