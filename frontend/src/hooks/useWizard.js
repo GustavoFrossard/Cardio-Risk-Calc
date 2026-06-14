@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { defaultPatientData, WIZARD_STEPS } from "../types";
+import { dadosPacienteInicial, ETAPAS_WIZARD } from "../types";
 import { api } from "../services/api";
 
 const STORAGE_KEY = "cardiorisk_wizard_v1";
@@ -9,7 +9,7 @@ function loadSaved() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    // Ignore saves older than 48h
+    // Ignorar saves com mais de 48h
     if (Date.now() - (parsed.savedAt ?? 0) > 48 * 60 * 60 * 1000) {
       localStorage.removeItem(STORAGE_KEY);
       return null;
@@ -20,72 +20,72 @@ function loadSaved() {
   }
 }
 
-function saveToDisk(step, data) {
+function saveToDisk(etapa, dados) {
   try {
-    // Don't persist empty first-step state
-    if (step === 1 && !data.name && data.age === undefined) return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ step, data, savedAt: Date.now() }));
+    // Não persistir estado vazio da primeira etapa
+    if (etapa === 1 && !dados.nome && dados.idade === undefined) return;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ etapa, dados, savedAt: Date.now() }));
   } catch {}
 }
 
 export function useAssistente() {
   const savedRef = useRef(loadSaved());
-  const [hasSavedData] = useState(() => savedRef.current !== null);
+  const [temDadosSalvos] = useState(() => savedRef.current !== null);
 
-  const [currentStep, setCurrentStep] = useState(1);
-  const [highestStep, setHighestStep] = useState(1);
-  const [formData, setFormData] = useState(defaultPatientData);
-  const [result, setResult] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [nlpResult, setNlpResult] = useState(null);
+  const [etapaAtual, setEtapaAtual] = useState(1);
+  const [maiorEtapa, setMaiorEtapa] = useState(1);
+  const [dadosFormulario, setDadosFormulario] = useState(dadosPacienteInicial);
+  const [resultado, setResultado] = useState(null);
+  const [carregando, setCarregando] = useState(false);
+  const [analisando, setAnalisando] = useState(false);
+  const [resultadoNlp, setResultadoNlp] = useState(null);
   const [error, setError] = useState(null);
 
-  const totalSteps = WIZARD_STEPS.length;
+  const totalEtapas = ETAPAS_WIZARD.length;
 
-  const updateField = useCallback((key, value) => {
-    setFormData((prev) => ({ ...prev, [key]: value }));
+  const atualizarCampo = useCallback((key, value) => {
+    setDadosFormulario((prev) => ({ ...prev, [key]: value }));
   }, []);
 
-  // Persist to localStorage whenever step or data changes
+  // Persistir no localStorage sempre que a etapa ou os dados mudarem
   useEffect(() => {
-    if (currentStep < 4) saveToDisk(currentStep, formData);
-  }, [currentStep, formData]);
+    if (etapaAtual < 4) saveToDisk(etapaAtual, dadosFormulario);
+  }, [etapaAtual, dadosFormulario]);
 
-  const resumeSaved = useCallback(() => {
+  const retomar = useCallback(() => {
     if (!savedRef.current) return;
-    setFormData(savedRef.current.data);
-    const step = savedRef.current.step ?? 1;
-    setCurrentStep(step);
-    setHighestStep(step);
+    setDadosFormulario(savedRef.current.dados);
+    const etapa = savedRef.current.etapa ?? 1;
+    setEtapaAtual(etapa);
+    setMaiorEtapa(etapa);
   }, []);
 
-  const analyzeClinicalText = useCallback(async (text) => {
-    setIsAnalyzing(true);
+  const analisarTextoClinico = useCallback(async (text) => {
+    setAnalisando(true);
     setError(null);
     try {
-      const res = await api.analyzeClinicalCase(text, formData);
-      setNlpResult(res);
+      const res = await api.analisarCasoClinico(text, dadosFormulario);
+      setResultadoNlp(res);
       if (res?.autofill && typeof res.autofill === "object") {
-        setFormData((prev) => ({ ...prev, ...res.autofill }));
+        setDadosFormulario((prev) => ({ ...prev, ...res.autofill }));
       }
       return res;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao analisar texto clínico.");
       return null;
     } finally {
-      setIsAnalyzing(false);
+      setAnalisando(false);
     }
-  }, [formData]);
+  }, [dadosFormulario]);
 
   const submitToApi = useCallback(async () => {
-    setIsLoading(true);
+    setCarregando(true);
     setError(null);
     try {
-      const res = await api.calculateRisk(formData);
-      setResult(res);
-      setCurrentStep(4);
-      setHighestStep(4);
+      const res = await api.calcularRisco(dadosFormulario);
+      setResultado(res);
+      setEtapaAtual(4);
+      setMaiorEtapa(4);
       try { localStorage.removeItem(STORAGE_KEY); } catch {}
     } catch (err) {
       setError(
@@ -94,61 +94,61 @@ export function useAssistente() {
           : "Erro ao calcular risco. Verifique a conexão com o servidor.",
       );
     } finally {
-      setIsLoading(false);
+      setCarregando(false);
     }
-  }, [formData]);
+  }, [dadosFormulario]);
 
-  const goNext = useCallback(() => {
-    if (currentStep === 3) {
+  const avancar = useCallback(() => {
+    if (etapaAtual === 3) {
       submitToApi();
       return;
     }
-    if (currentStep < totalSteps) {
-      const next = currentStep + 1;
-      setCurrentStep(next);
-      setHighestStep((h) => Math.max(h, next));
+    if (etapaAtual < totalEtapas) {
+      const prox = etapaAtual + 1;
+      setEtapaAtual(prox);
+      setMaiorEtapa((h) => Math.max(h, prox));
     }
-  }, [currentStep, totalSteps, submitToApi]);
+  }, [etapaAtual, totalEtapas, submitToApi]);
 
-  const goBack = useCallback(() => {
-    if (currentStep > 1) {
-      setCurrentStep((s) => (s === 4 ? 3 : s - 1));
+  const voltar = useCallback(() => {
+    if (etapaAtual > 1) {
+      setEtapaAtual((s) => (s === 4 ? 3 : s - 1));
     }
-  }, [currentStep]);
+  }, [etapaAtual]);
 
-  const goToStep = useCallback((step) => {
-    if (step >= 1 && step < 4 && step <= highestStep) {
-      setCurrentStep(step);
+  const irParaEtapa = useCallback((etapa) => {
+    if (etapa >= 1 && etapa < 4 && etapa <= maiorEtapa) {
+      setEtapaAtual(etapa);
     }
-  }, [highestStep]);
+  }, [maiorEtapa]);
 
-  const reset = useCallback(() => {
-    setCurrentStep(1);
-    setHighestStep(1);
-    setFormData(defaultPatientData);
-    setResult(null);
-    setNlpResult(null);
+  const reiniciar = useCallback(() => {
+    setEtapaAtual(1);
+    setMaiorEtapa(1);
+    setDadosFormulario(dadosPacienteInicial);
+    setResultado(null);
+    setResultadoNlp(null);
     setError(null);
     try { localStorage.removeItem(STORAGE_KEY); } catch {}
   }, []);
 
   return {
-    currentStep,
-    totalSteps,
-    highestStep,
-    hasSavedData,
-    formData,
-    result,
-    isLoading,
-    isAnalyzing,
-    nlpResult,
+    etapaAtual,
+    totalEtapas,
+    maiorEtapa,
+    temDadosSalvos,
+    dadosFormulario,
+    resultado,
+    carregando,
+    analisando,
+    resultadoNlp,
     error,
-    updateField,
-    analyzeClinicalText,
-    goNext,
-    goBack,
-    goToStep,
-    resumeSaved,
-    reset,
+    atualizarCampo,
+    analisarTextoClinico,
+    avancar,
+    voltar,
+    irParaEtapa,
+    retomar,
+    reiniciar,
   };
 }

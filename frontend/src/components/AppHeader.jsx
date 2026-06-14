@@ -1,7 +1,7 @@
-import { WIZARD_STEPS } from "../types";
+import { ETAPAS_WIZARD } from "../types";
 
-export function CabecalhoApp({ currentStep, highestStep, onGoToStep }) {
-  const step = WIZARD_STEPS[currentStep - 1];
+export function CabecalhoApp({ etapaAtual, maiorEtapa, onIrParaEtapa }) {
+  const etapa = ETAPAS_WIZARD[etapaAtual - 1];
 
   return (
     <div
@@ -49,29 +49,29 @@ export function CabecalhoApp({ currentStep, highestStep, onGoToStep }) {
             border: "1px solid var(--border)",
           }}
         >
-          {currentStep} / {WIZARD_STEPS.length}
+          {etapaAtual} / {ETAPAS_WIZARD.length}
         </div>
       </div>
 
-      {/* Progress bars — clickable for already-visited steps */}
+      {/* Barras de progresso — clicáveis para etapas já visitadas */}
       <div style={{ display: "flex", gap: 4, marginBottom: -1 }}>
-        {WIZARD_STEPS.map((s) => {
-          const isVisited = s.id < currentStep && s.id < 4;
-          const isCurrent = s.id === currentStep;
-          const isClickable = isVisited && onGoToStep;
+        {ETAPAS_WIZARD.map((s) => {
+          const isVisited = s.id < etapaAtual && s.id < 4;
+          const isCurrent = s.id === etapaAtual;
+          const isClickable = isVisited && onIrParaEtapa;
 
           return (
             <div
               key={s.id}
-              title={isClickable ? `Ir para: ${s.title}` : undefined}
-              onClick={isClickable ? () => onGoToStep(s.id) : undefined}
+              title={isClickable ? `Ir para: ${s.titulo}` : undefined}
+              onClick={isClickable ? () => onIrParaEtapa(s.id) : undefined}
               style={{
                 height: isClickable ? 4 : 2,
                 flex: 1,
                 borderRadius: 3,
                 background: isCurrent
                   ? "var(--blue)"
-                  : s.id < currentStep
+                  : s.id < etapaAtual
                   ? "rgba(91,148,245,0.55)"
                   : "var(--border)",
                 transition: "background 0.3s, height 0.2s",
@@ -82,7 +82,7 @@ export function CabecalhoApp({ currentStep, highestStep, onGoToStep }) {
         })}
       </div>
 
-      {/* Step title row with clickable step bubbles */}
+      {/* Linha de título da etapa com bolhas clicáveis */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 0 12px" }}>
         <div
           style={{
@@ -99,21 +99,21 @@ export function CabecalhoApp({ currentStep, highestStep, onGoToStep }) {
             flexShrink: 0,
           }}
         >
-          {currentStep}
+          {etapaAtual}
         </div>
         <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink-mid)" }}>
-          {step?.title}
+          {etapa?.titulo}
         </div>
 
-        {/* Breadcrumb for visited steps */}
-        {highestStep > 1 && currentStep < highestStep && (
+        {/* Breadcrumb para etapas visitadas */}
+        {maiorEtapa > 1 && etapaAtual < maiorEtapa && (
           <div style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
-            {WIZARD_STEPS.slice(0, highestStep - 1).filter(s => s.id !== currentStep && s.id < 4).map((s) => (
+            {ETAPAS_WIZARD.slice(0, maiorEtapa - 1).filter(s => s.id !== etapaAtual && s.id < 4).map((s) => (
               <button
                 key={s.id}
                 type="button"
-                onClick={() => onGoToStep?.(s.id)}
-                title={s.title}
+                onClick={() => onIrParaEtapa?.(s.id)}
+                title={s.titulo}
                 style={{
                   width: 22,
                   height: 22,

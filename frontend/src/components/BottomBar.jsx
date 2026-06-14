@@ -1,8 +1,8 @@
-export function BarraInferior({ currentStep, totalSteps, isLoading, onBack, onNext, onReset }) {
-  const isResult = currentStep === totalSteps;
-  const isLastInput = currentStep === totalSteps - 1;
+export function BarraInferior({ etapaAtual, totalEtapas, carregando, onVoltar, onAvancar, onReiniciar }) {
+  const isResult = etapaAtual === totalEtapas;
+  const isLastInput = etapaAtual === totalEtapas - 1;
 
-  const nextLabel = isLoading
+  const nextLabel = carregando
     ? "Calculando..."
     : isResult
     ? "Nova Avaliação"
@@ -18,11 +18,11 @@ export function BarraInferior({ currentStep, totalSteps, isLoading, onBack, onNe
     fontSize: 14,
     fontWeight: 600,
     border: "none",
-    cursor: isLoading ? "not-allowed" : "pointer",
+    cursor: carregando ? "not-allowed" : "pointer",
     transition: "all 0.15s",
     background: isResult ? "var(--ink)" : "var(--blue)",
     color: "white",
-    opacity: isLoading ? 0.7 : 1,
+    opacity: carregando ? 0.7 : 1,
   };
 
   const backStyle = {
@@ -58,15 +58,15 @@ export function BarraInferior({ currentStep, totalSteps, isLoading, onBack, onNe
         zIndex: 100,
       }}
     >
-      {currentStep > 1 && !isResult && (
-        <button style={backStyle} onClick={onBack} type="button">
+      {etapaAtual > 1 && !isResult && (
+        <button style={backStyle} onClick={onVoltar} type="button">
           ← Voltar
         </button>
       )}
       <button
         style={nextStyle}
-        onClick={isResult ? onReset : onNext}
-        disabled={isLoading}
+        onClick={isResult ? onReiniciar : onAvancar}
+        disabled={carregando}
         type="button"
       >
         {nextLabel}

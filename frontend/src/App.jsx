@@ -9,26 +9,26 @@ import { EtapaResultado } from "./components/steps/StepResult";
 
 export default function App() {
   const {
-    currentStep,
-    totalSteps,
-    highestStep,
-    hasSavedData,
-    formData,
-    result,
-    isLoading,
-    isAnalyzing,
-    nlpResult,
+    etapaAtual,
+    totalEtapas,
+    maiorEtapa,
+    temDadosSalvos,
+    dadosFormulario,
+    resultado,
+    carregando,
+    analisando,
+    resultadoNlp,
     error,
-    updateField,
-    analyzeClinicalText,
-    goNext,
-    goBack,
-    goToStep,
-    resumeSaved,
-    reset,
+    atualizarCampo,
+    analisarTextoClinico,
+    avancar,
+    voltar,
+    irParaEtapa,
+    retomar,
+    reiniciar,
   } = useAssistente();
 
-  const [showResumeModal, setShowResumeModal] = useState(hasSavedData);
+  const [showResumeModal, setShowResumeModal] = useState(temDadosSalvos);
   const [maxWidth, setMaxWidth] = useState(() => window.innerWidth >= 768 ? 640 : 420);
 
   useEffect(() => {
@@ -39,9 +39,9 @@ export default function App() {
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-  }, [currentStep]);
+  }, [etapaAtual]);
 
-  // Keyboard shortcuts (desktop)
+  // Atalhos de teclado (desktop)
   useEffect(() => {
     const onKey = (e) => {
       const tag = document.activeElement?.tagName;
@@ -49,16 +49,16 @@ export default function App() {
       if (showResumeModal) return;
       if (e.key === "Enter" || e.key === "ArrowRight") {
         e.preventDefault();
-        goNext();
+        avancar();
       }
       if (e.key === "ArrowLeft") {
         e.preventDefault();
-        goBack();
+        voltar();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [goNext, goBack, showResumeModal]);
+  }, [avancar, voltar, showResumeModal]);
 
   return (
     <div
@@ -72,7 +72,7 @@ export default function App() {
         transition: "max-width 0.3s ease",
       }}
     >
-      {/* Resume modal */}
+      {/* Modal de retomada */}
       {showResumeModal && (
         <div
           style={{
@@ -131,7 +131,7 @@ export default function App() {
                   fontWeight: 600,
                   cursor: "pointer",
                 }}
-                onClick={() => { reset(); setShowResumeModal(false); }}
+                onClick={() => { reiniciar(); setShowResumeModal(false); }}
               >
                 Nova avaliação
               </button>
@@ -147,7 +147,7 @@ export default function App() {
                   fontWeight: 600,
                   cursor: "pointer",
                 }}
-                onClick={() => { resumeSaved(); setShowResumeModal(false); }}
+                onClick={() => { retomar(); setShowResumeModal(false); }}
               >
                 Retomar →
               </button>
@@ -157,9 +157,9 @@ export default function App() {
       )}
 
       <CabecalhoApp
-        currentStep={currentStep}
-        highestStep={highestStep}
-        onGoToStep={goToStep}
+        etapaAtual={etapaAtual}
+        maiorEtapa={maiorEtapa}
+        onIrParaEtapa={irParaEtapa}
       />
 
       <div
@@ -170,23 +170,23 @@ export default function App() {
           gap: 10,
         }}
       >
-        {currentStep === 1 && (
+        {etapaAtual === 1 && (
           <EtapaDadosPaciente
-            data={formData}
-            onChange={updateField}
-            onAnalyzeClinicalText={analyzeClinicalText}
-            isAnalyzing={isAnalyzing}
-            nlpResult={nlpResult}
+            data={dadosFormulario}
+            onChange={atualizarCampo}
+            onAnalisarTextoClinico={analisarTextoClinico}
+            analisando={analisando}
+            resultadoNlp={resultadoNlp}
           />
         )}
-        {currentStep === 2 && (
-          <EtapaCirurgia data={formData} onChange={updateField} />
+        {etapaAtual === 2 && (
+          <EtapaCirurgia data={dadosFormulario} onChange={atualizarCampo} />
         )}
-        {currentStep === 3 && (
-          <EtapaRCRI data={formData} onChange={updateField} />
+        {etapaAtual === 3 && (
+          <EtapaRCRI data={dadosFormulario} onChange={atualizarCampo} />
         )}
-        {currentStep === 4 && result && (
-          <EtapaResultado result={result} data={formData} />
+        {etapaAtual === 4 && resultado && (
+          <EtapaResultado resultado={resultado} dados={dadosFormulario} />
         )}
 
         {error && (
@@ -207,12 +207,12 @@ export default function App() {
       </div>
 
       <BarraInferior
-        currentStep={currentStep}
-        totalSteps={totalSteps}
-        isLoading={isLoading}
-        onBack={goBack}
-        onNext={goNext}
-        onReset={reset}
+        etapaAtual={etapaAtual}
+        totalEtapas={totalEtapas}
+        carregando={carregando}
+        onVoltar={voltar}
+        onAvancar={avancar}
+        onReiniciar={reiniciar}
       />
     </div>
   );

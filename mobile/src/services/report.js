@@ -1,64 +1,53 @@
-import * as Print from "expo-print";
-import * as Sharing from "expo-sharing";
-import { Alert } from "react-native";
-import { SURGERY_OPTIONS } from "../types";
+import jsPDF from "jspdf";
+import { OPCOES_CIRURGIA } from "../types";
 
-const SURGERY_RISK_LABELS = {
-  low: "Baixo",
-  intermediate: "Intermediário",
-  high: "Alto",
+const MARGIN = 20;
+const PAGE_W = 210;
+const CONTENT_W = PAGE_W - MARGIN * 2;
+const ROTULOS_RISCO_CIRURGIA = {
+  baixo: "Baixo",
+  intermediario: "Intermediário",
+  alto: "Alto",
 };
 
-const PDF_TEXT_REPLACEMENTS = new Map([
-  ["≥", ">="],
-  ["≤", "<="],
-  ["–", "-"],
-  ["—", "-"],
-  ["−", "-"],
-  ["₀", "0"],
-  ["₁", "1"],
-  ["₂", "2"],
-  ["₃", "3"],
-  ["₄", "4"],
-  ["₅", "5"],
-  ["₆", "6"],
-  ["₇", "7"],
-  ["₈", "8"],
-  ["₉", "9"],
-]);
-
-function getSurgeryTypeLabel(surgeryType) {
-  return SURGERY_OPTIONS.find((option) => option.value === surgeryType)?.label || "Não informada";
+function getRotuloCirurgia(tipoCirurgia) {
+  return OPCOES_CIRURGIA.find((opcao) => opcao.valor === tipoCirurgia)?.rotulo || "Não informada";
 }
 
-function sanitizePdfText(value) {
-  if (value == null) {
-    return "";
+function addPage(doc, y, needed) {
+  if (y + needed > 280) {
+    doc.addPage();
+    return MARGIN;
   }
-
-  let text = String(value)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-
-  for (const [from, to] of PDF_TEXT_REPLACEMENTS.entries()) {
-    text = text.split(from).join(to);
-  }
-
-  return text;
+  return y;
 }
 
-export async function generateReport(result, data) {
-  const indexName = sanitizePdfText(result.risk_index === "vsg" ? "VSG-CRI" : "RCRI");
-  const surgeryTypeLabel = sanitizePdfText(getSurgeryTypeLabel(data.surgery_type));
-  const surgeryRiskLabel = sanitizePdfText(
-    SURGERY_RISK_LABELS[result.surgery_risk] || result.surgery_risk || "Não informado",
+function isRunningInsideReactNativeWebView() {
+  return Boolean(
+    typeof window !== "undefined" &&
+      window.ReactNativeWebView &&
+      typeof window.ReactNativeWebView.postMessage === "function",
   );
-  const patientName = sanitizePdfText(data.name || "Não informado");
-  const patientAge = sanitizePdfText(data.age != null ? `${data.age} anos` : "Não informada");
-  const metsLabel = sanitizePdfText(result.mets_label);
-  const riskLabel = sanitizePdfText(result.risk_label);
+}
 
+export function gerarRelatorio(resultado, dados) {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const nomeIndice = resultado.indice_risco === "vsg" ? "VSG-CRI" : "RCRI";
+  const rotuloCirurgia = getRotuloCirurgia(dados.tipo_cirurgia);
+  const rotuloRiscoCirurgia = ROTULOS_RISCO_CIRURGIA[resultado.risco_cirurgia] || resultado.risco_cirurgia || "Não informado";
+  let y = MARGIN;
+
+  // ─── Header ──────────────────────────────────────────────────────
+  doc.setFillColor(15, 76, 129);
+  doc.rect(0, 0, PAGE_W, 36, "F");
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(16);
+  doc.setFont("helvetica", "bold");
+  doc.text("Avaliação de Risco Cardiovascular Perioperatório", MARGIN, 16);
+
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
   const dateStr = new Date().toLocaleDateString("pt-BR", {
     day: "2-digit",
     month: "long",
@@ -66,155 +55,179 @@ export async function generateReport(result, data) {
     hour: "2-digit",
     minute: "2-digit",
   });
+  doc.text(`Relatório gerado em ${dateStr}`, MARGIN, 26);
 
-  const riskColorHex =
-    result.risk_class === "low"
-      ? "#16a34a"
-      : result.risk_class === "intermediate"
-      ? "#ca8a04"
-      : "#dc2626";
+  y = 46;
+  doc.setTextColor(30, 30, 30);
 
-  const activeConditionsHtml = result.has_active_conditions
-    ? `<div class="active-conditions">
-        <p class="active-label">[!] CONDIÇÕES CARDÍACAS ATIVAS DETECTADAS</p>
-        ${result.active_conditions.map((c) => `<p class="active-item">- ${sanitizePdfText(c)}</p>`).join("")}
-      </div>`
-    : "";
+  // ─── Patient info ───────────────────────────────────────────────
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.text("Dados do Paciente", MARGIN, y);
+  y += 7;
 
-  const riskFactorsHtml =
-    result.risk_factors.length > 0
-      ? `<div class="section">
-          <p class="section-title">Fatores de Risco Identificados</p>
-          ${result.risk_factors.map((f) => `<p class="bullet">- ${sanitizePdfText(f)}</p>`).join("")}
-        </div>`
-      : "";
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  const nomePaciente = dados.nome || "Não informado";
+  const idadePaciente = dados.idade != null ? `${dados.idade} anos` : "Não informada";
+  doc.text(`Paciente: ${nomePaciente}`, MARGIN, y);
+  y += 5;
+  doc.text(`Idade: ${idadePaciente}`, MARGIN, y);
+  y += 5;
+  doc.text(`Cirurgia: ${rotuloCirurgia}`, MARGIN, y);
+  y += 5;
+  doc.text(`Risco cirúrgico: ${rotuloRiscoCirurgia}`, MARGIN, y);
+  y += 5;
+  doc.text(`Capacidade Funcional: ${resultado.mets} METs — ${resultado.rotulo_mets}`, MARGIN, y);
+  y += 10;
 
-  const medicationHtml =
-    result.medication_advice.length > 0
-      ? `<div class="section">
-          <p class="section-title">Manejo de Medicamentos</p>
-          ${result.medication_advice
-            .map(
-              (med) =>
-                `<div class="med-item">
-                  <p class="med-title">${sanitizePdfText(med.medication)} - ${sanitizePdfText(med.action)}</p>
-                  <p class="med-detail">${sanitizePdfText(med.detail)}</p>
-                </div>`,
-            )
-            .join("")}
-        </div>`
-      : "";
+  doc.setDrawColor(200, 200, 200);
+  doc.line(MARGIN, y, MARGIN + CONTENT_W, y);
+  y += 8;
 
-  const examsHtml =
-    result.recommended_exams.length > 0
-      ? `<div class="section">
-          <p class="section-title">Exames Recomendados</p>
-          ${result.recommended_exams.map((e) => `<p class="bullet">- ${sanitizePdfText(e)}</p>`).join("")}
-        </div>`
-      : "";
+  if (resultado.tem_condicoes_ativas) {
+    y = addPage(doc, y, 20 + resultado.condicoes_ativas.length * 5);
+    doc.setFillColor(254, 226, 226);
+    const boxH = 12 + resultado.condicoes_ativas.length * 5;
+    doc.roundedRect(MARGIN, y - 3, CONTENT_W, boxH, 2, 2, "F");
 
-  const recommendationsHtml =
-    result.recommendations.length > 0
-      ? `<div class="section">
-          <p class="section-title">Recomendações</p>
-          ${result.recommendations
-            .map(
-              (rec) =>
-                `<div class="med-item">
-                  <p class="med-title">${sanitizePdfText(rec.title)}</p>
-                  <p class="med-detail">${sanitizePdfText(rec.body)}</p>
-                </div>`,
-            )
-            .join("")}
-        </div>`
-      : "";
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(185, 28, 28);
+    doc.text("[!] CONDICOES CARDIACAS ATIVAS DETECTADAS", MARGIN + 4, y + 3);
+    y += 8;
 
-  const html = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    body { font-family: Helvetica, Arial, sans-serif; color: #1e1e1e; font-size: 10pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .header { background-color: #0f4c81 !important; color: white; padding: 12mm 20mm 10mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .header h1 { font-size: 13pt; font-weight: bold; margin-bottom: 3mm; color: white; }
-    .header p { font-size: 8pt; opacity: 0.85; color: white; }
-    .body { padding: 10mm 20mm; }
-    .section { margin-bottom: 10mm; }
-    .divider { border: none; border-top: 0.3mm solid #c8c8c8; margin: 6mm 0; }
-    .section-title { font-size: 10pt; font-weight: bold; margin-bottom: 4mm; }
-    p.line { font-size: 9pt; margin-bottom: 2mm; }
-    p.bullet { font-size: 9pt; margin-bottom: 2mm; padding-left: 4mm; }
-    .risk-box { border-radius: 2mm; padding: 4mm 5mm; margin-bottom: 6mm; display: table; width: 100%; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .risk-box-label { font-size: 13pt; font-weight: bold; color: white !important; display: table-cell; }
-    .risk-box-score { font-size: 8pt; color: white !important; display: table-cell; text-align: right; vertical-align: middle; }
-    .active-conditions { background-color: #fee2e2 !important; border: 0.3mm solid #f5b0aa; border-radius: 2mm; padding: 4mm 5mm; margin-bottom: 8mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .active-label { color: #b91c1c !important; font-weight: bold; font-size: 9pt; margin-bottom: 3mm; }
-    .active-item { font-size: 9pt; margin-bottom: 1.5mm; padding-left: 4mm; color: #7f1d1d !important; }
-    .med-item { margin-bottom: 5mm; border-left: 0.8mm solid #888; padding-left: 4mm; }
-    .med-title { font-size: 9pt; font-weight: bold; margin-bottom: 1.5mm; }
-    .med-detail { font-size: 9pt; line-height: 1.5; }
-    .footer { margin-top: 12mm; padding-top: 4mm; border-top: 0.3mm solid #eee; text-align: center; font-size: 7pt; color: #aaa; line-height: 1.6; }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <h1>Avaliação de Risco Cardiovascular Perioperatório</h1>
-    <p>Relatório gerado em ${dateStr}</p>
-  </div>
-  <div class="body">
-
-    <div class="section">
-      <p class="section-title">Dados do Paciente</p>
-      <p class="line">Paciente: ${patientName}</p>
-      <p class="line">Idade: ${patientAge}</p>
-      <p class="line">Cirurgia: ${surgeryTypeLabel}</p>
-      <p class="line">Risco cirúrgico: ${surgeryRiskLabel}</p>
-      <p class="line">Capacidade Funcional: ${result.mets} METs - ${metsLabel}</p>
-    </div>
-
-    <hr class="divider">
-
-    ${activeConditionsHtml}
-
-    <div class="section">
-      <p class="section-title">Resultado - Índice ${indexName}</p>
-      <div class="risk-box" style="background:${riskColorHex}">
-        <span class="risk-box-label">${riskLabel}</span>
-        <span class="risk-box-score">Score: ${result.score} pt${result.score !== 1 ? "s" : ""}</span>
-      </div>
-    </div>
-
-    ${riskFactorsHtml}
-    ${medicationHtml}
-    ${examsHtml}
-    ${recommendationsHtml}
-
-    <div class="footer">
-      Ferramenta de suporte clínico. Não substitui o julgamento médico individualizado.<br>
-      Baseado na Diretriz Brasileira de Avaliação Cardiovascular Perioperatória, RCRI (Lee) e VSG.
-    </div>
-  </div>
-</body>
-</html>`;
-
-  try {
-    const { uri } = await Print.printToFileAsync({ html });
-    if (await Sharing.isAvailableAsync()) {
-      await Sharing.shareAsync(uri, {
-        mimeType: "application/pdf",
-        dialogTitle: "CardioRisk - Relatório",
-        UTI: "com.adobe.pdf",
-      });
-      return;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    for (const cond of resultado.condicoes_ativas) {
+      doc.text(`• ${cond}`, MARGIN + 6, y);
+      y += 5;
     }
-
-    await Print.printAsync({ html });
-  } catch (err) {
-    console.error("Erro ao gerar relatório:", err);
-    Alert.alert(
-      "Erro ao gerar PDF",
-      "Não foi possível abrir ou compartilhar o relatório neste dispositivo.",
-    );
+    y += 6;
+    doc.setTextColor(30, 30, 30);
   }
+
+  y = addPage(doc, y, 30);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.text(`Resultado — Índice ${nomeIndice}`, MARGIN, y);
+  y += 8;
+
+  const corRisco =
+    resultado.classe_risco === "baixo" ? [22, 163, 74] :
+    resultado.classe_risco === "intermediario" ? [202, 138, 4] :
+    [220, 38, 38];
+
+  doc.setFillColor(corRisco[0], corRisco[1], corRisco[2]);
+  doc.roundedRect(MARGIN, y - 3, CONTENT_W, 18, 2, 2, "F");
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(14);
+  doc.setFont("helvetica", "bold");
+  doc.text(`${resultado.rotulo_risco}`, MARGIN + 6, y + 7);
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Score: ${resultado.pontuacao} pt${resultado.pontuacao !== 1 ? "s" : ""}`, MARGIN + CONTENT_W - 4, y + 7, { align: "right" });
+
+  y += 22;
+  doc.setTextColor(30, 30, 30);
+
+  if (resultado.fatores_risco.length > 0) {
+    y = addPage(doc, y, 10 + resultado.fatores_risco.length * 5);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("Fatores de Risco Identificados", MARGIN, y);
+    y += 6;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    for (const fator of resultado.fatores_risco) {
+      y = addPage(doc, y, 6);
+      doc.text(`• ${fator}`, MARGIN + 4, y);
+      y += 5;
+    }
+    y += 4;
+  }
+
+  if (resultado.orientacoes_medicacao.length > 0) {
+    y = addPage(doc, y, 14);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("Manejo de Medicamentos", MARGIN, y);
+    y += 7;
+
+    doc.setFontSize(9);
+    for (const med of resultado.orientacoes_medicacao) {
+      y = addPage(doc, y, 14);
+      doc.setFont("helvetica", "bold");
+      doc.text(`${med.medicamento} — ${med.acao}`, MARGIN + 4, y);
+      y += 4;
+      doc.setFont("helvetica", "normal");
+      const lines = doc.splitTextToSize(med.detalhe, CONTENT_W - 8);
+      doc.text(lines, MARGIN + 4, y);
+      y += lines.length * 4 + 4;
+    }
+    y += 2;
+  }
+
+  if (resultado.exames_recomendados.length > 0) {
+    y = addPage(doc, y, 10 + resultado.exames_recomendados.length * 5);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("Exames Recomendados", MARGIN, y);
+    y += 6;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    for (const exame of resultado.exames_recomendados) {
+      y = addPage(doc, y, 6);
+      doc.text(`• ${exame}`, MARGIN + 4, y);
+      y += 5;
+    }
+    y += 4;
+  }
+
+  if (resultado.recomendacoes.length > 0) {
+    y = addPage(doc, y, 14);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("Recomendações", MARGIN, y);
+    y += 7;
+
+    doc.setFontSize(9);
+    for (const rec of resultado.recomendacoes) {
+      y = addPage(doc, y, 14);
+      doc.setFont("helvetica", "bold");
+      doc.text(`${rec.titulo}`, MARGIN + 4, y);
+      y += 4;
+      doc.setFont("helvetica", "normal");
+      const lines = doc.splitTextToSize(rec.corpo, CONTENT_W - 8);
+      doc.text(lines, MARGIN + 4, y);
+      y += lines.length * 4 + 4;
+    }
+  }
+
+  const totalPages = doc.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i += 1) {
+    doc.setPage(i);
+    doc.setFontSize(9);
+    doc.setTextColor(150, 150, 150);
+    doc.text(`Página ${i} de ${totalPages}`, PAGE_W - MARGIN, 295, { align: "right" });
+  }
+
+  const nomeSafe = dados.nome ? dados.nome.trim() : "Paciente";
+  const dateObj = new Date();
+  const dateForFile = `${dateObj.getDate().toString().padStart(2, '0')}-${(dateObj.getMonth() + 1).toString().padStart(2, '0')}-${dateObj.getFullYear()}`;
+  const filename = `CardioRisk - ${nomeSafe} - ${dateForFile}.pdf`;
+
+  if (isRunningInsideReactNativeWebView()) {
+    const dataUri = doc.output("datauristring");
+    const base64 = dataUri.includes(",") ? dataUri.split(",")[1] : "";
+    window.ReactNativeWebView.postMessage(
+      JSON.stringify({ type: "pdf-base64", filename, base64 }),
+    );
+    return;
+  }
+
+  doc.save(filename);
 }

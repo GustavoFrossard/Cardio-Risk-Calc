@@ -1,167 +1,169 @@
-import { View, Text } from "react-native";
-import { Card, ToggleRow, InfoBox, Select } from "../ui";
-import { SURGERY_OPTIONS } from "../../types";
-import { theme } from "../../theme";
+import { AlertTriangle, Hospital, Siren } from "lucide-react";
+import { Card, ToggleRow, InfoBox, SearchSelect } from "../ui";
+import { OPCOES_CIRURGIA } from "../../types";
 
-const RISK_GROUPS = [
-  { label: "Baixo Risco (< 1%)", risk: "low" },
-  { label: "Risco Intermediário (1–5%)", risk: "intermediate" },
-  { label: "Alto Risco (> 5%)", risk: "high" },
+const GRUPOS_RISCO = [
+  { rotulo: "Baixo Risco (< 1%)", risco: "baixo" },
+  { rotulo: "Risco Intermediário (1–5%)", risco: "intermediario" },
+  { rotulo: "Alto Risco (> 5%)", risco: "alto" },
 ];
 
-// Flat options list with section headers for the modal picker
-const SURGERY_FLAT_OPTIONS = RISK_GROUPS.flatMap((group) => [
-  { value: `__header_${group.risk}`, label: group.label, isHeader: true },
-  ...SURGERY_OPTIONS.filter((o) => o.risk === group.risk).map((o) => ({
-    value: o.value,
-    label: o.label,
+const OPCOES_CIRURGIA_PLANA = GRUPOS_RISCO.flatMap((grupo) => [
+  { valor: `__header_${grupo.risco}`, rotulo: grupo.rotulo, ehCabecalho: true },
+  ...OPCOES_CIRURGIA.filter((o) => o.risco === grupo.risco).map((o) => ({
+    valor: o.valor,
+    rotulo: o.rotulo,
   })),
 ]);
 
-const CV_CONDITIONS = [
+const CV_CONDICOES = [
   {
-    key: "cv_acute_coronary",
-    label: "Síndrome coronariana aguda",
-    description: "IAM agudo (< 30 dias) ou angina instável",
+    key: "cv_coronaria_aguda",
+    rotulo: "Síndrome coronariana aguda",
+    descricao: "IAM agudo (< 30 dias) ou angina instável",
   },
   {
-    key: "cv_unstable_aortic",
-    label: "Doenças instáveis da aorta torácica",
-    description: "Dissecção aguda, aneurisma sintomático",
+    key: "cv_aorta_instavel",
+    rotulo: "Doenças instáveis da aorta torácica",
+    descricao: "Dissecção aguda, aneurisma sintomático",
   },
   {
-    key: "cv_acute_pulmonary_edema",
-    label: "Edema agudo dos pulmões",
-    description: "Episódio atual ou recente",
+    key: "cv_edema_pulmonar_agudo",
+    rotulo: "Edema agudo dos pulmões",
+    descricao: "Episódio atual ou recente",
   },
   {
-    key: "cv_cardiogenic_shock",
-    label: "Choque cardiogênico",
-    description: "Hipoperfusão por causa cardíaca",
+    key: "cv_choque_cardiogenico",
+    rotulo: "Choque cardiogênico",
+    descricao: "Hipoperfusão por causa cardíaca",
   },
   {
-    key: "cv_hf_nyha_3_4",
-    label: "IC classe funcional III/IV (NYHA)",
-    description: "Dispneia aos pequenos esforços ou em repouso",
+    key: "cv_ic_nyha_3_4",
+    rotulo: "IC classe funcional III/IV (NYHA)",
+    descricao: "Dispneia aos pequenos esforços ou em repouso",
   },
   {
     key: "cv_angina_ccs_3_4",
-    label: "Angina classe funcional CCS III/IV",
-    description: "Angina em atividades leves ou em repouso",
+    rotulo: "Angina classe funcional CCS III/IV",
+    descricao: "Angina em atividades leves ou em repouso",
   },
   {
-    key: "cv_severe_arrhythmia",
-    label: "Bradiarritmias ou taquiarritmias graves",
-    description: "BAVT, TV sustentada, arritmias sintomáticas",
+    key: "cv_arritmia_grave",
+    rotulo: "Bradiarritmias ou taquiarritmias graves",
+    descricao: "BAVT, TV sustentada, arritmias sintomáticas",
   },
   {
-    key: "cv_uncontrolled_hypertension",
-    label: "HAS não controlada",
-    description: "PA > 180 × 110 mmHg",
+    key: "cv_has_nao_controlada",
+    rotulo: "HAS não controlada",
+    descricao: "PA > 180 × 110 mmHg",
   },
   {
-    key: "cv_af_high_rate",
-    label: "FA de alta resposta ventricular",
-    description: "FC > 120 bpm",
+    key: "cv_fa_alta_resposta",
+    rotulo: "FA de alta resposta ventricular",
+    descricao: "FC > 120 bpm",
   },
   {
-    key: "cv_pulmonary_hypertension",
-    label: "HAP sintomática",
-    description: "Hipertensão arterial pulmonar com sintomas",
+    key: "cv_hap_sintomatica",
+    rotulo: "HAP sintomática",
+    descricao: "Hipertensão arterial pulmonar com sintomas",
   },
   {
-    key: "cv_severe_valvular",
-    label: "Estenose aórtica/mitral importante sintomática",
-    description: "Estenose valvar grave com repercussão hemodinâmica",
+    key: "cv_valvopatia_grave",
+    rotulo: "Estenose aórtica/mitral importante sintomática",
+    descricao: "Estenose valvar grave com repercussão hemodinâmica",
   },
 ];
 
 export function EtapaCirurgia({ data, onChange }) {
-  const handleSurgeryChange = (value) => {
-    const option = SURGERY_OPTIONS.find((o) => o.value === value);
-    onChange("surgery_type", value);
-    onChange("surgery_risk", option?.risk ?? "");
-    onChange("is_vascular", option?.vascular ?? false);
+  const iconProps = { size: 16, strokeWidth: 2.2 };
+
+  const handleSurgeryChange = (valor) => {
+    const opcao = OPCOES_CIRURGIA.find((o) => o.valor === valor);
+    onChange("tipo_cirurgia", valor);
+    onChange("risco_cirurgia", opcao?.risco ?? "");
+    onChange("eh_vascular", opcao?.vascular ?? false);
   };
 
-  const selectedOption = SURGERY_OPTIONS.find((o) => o.value === data.surgery_type);
-  const riskBadge = selectedOption
-    ? { low: "Baixo", intermediate: "Intermediário", high: "Alto" }[selectedOption.risk]
+  const opcaoSelecionada = OPCOES_CIRURGIA.find((o) => o.valor === data.tipo_cirurgia);
+  const badgeRisco = opcaoSelecionada
+    ? { baixo: "Baixo", intermediario: "Intermediário", alto: "Alto" }[opcaoSelecionada.risco]
     : null;
 
   return (
     <>
-      <Card icon="🏥" title="Identificação da Cirurgia">
-        <Select
-          value={data.surgery_type}
+      <Card icon={<Hospital {...iconProps} />} title="Identificação da Cirurgia">
+        <SearchSelect
+          value={data.tipo_cirurgia}
           onChange={handleSurgeryChange}
-          options={SURGERY_FLAT_OPTIONS}
+          options={OPCOES_CIRURGIA_PLANA}
           placeholder="Selecione o procedimento..."
         />
 
-        {selectedOption ? (
-          <View style={{ marginTop: 12, flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-            <Text
+        {opcaoSelecionada && (
+          <div
+            style={{
+              marginTop: 12,
+              display: "flex",
+              gap: 8,
+              flexWrap: "wrap",
+            }}
+          >
+            <span
               style={{
                 fontSize: 11,
-                fontWeight: "600",
-                paddingVertical: 4,
-                paddingHorizontal: 10,
+                fontWeight: 600,
+                padding: "4px 10px",
                 borderRadius: 999,
-                backgroundColor:
-                  selectedOption.risk === "low"
-                    ? theme.greenSoft
-                    : selectedOption.risk === "intermediate"
-                    ? theme.amberSoft
-                    : theme.redSoft,
+                background:
+                  opcaoSelecionada.risco === "baixo"
+                    ? "var(--green-soft)"
+                    : opcaoSelecionada.risco === "intermediario"
+                    ? "var(--amber-soft)"
+                    : "var(--red-soft)",
                 color:
-                  selectedOption.risk === "low"
-                    ? theme.green
-                    : selectedOption.risk === "intermediate"
-                    ? theme.amber
-                    : theme.red,
+                  opcaoSelecionada.risco === "baixo"
+                    ? "var(--green)"
+                    : opcaoSelecionada.risco === "intermediario"
+                    ? "var(--amber)"
+                    : "var(--red)",
               }}
             >
-              Risco {riskBadge}
-            </Text>
-            {selectedOption.vascular ? (
-              <Text
+              Risco {badgeRisco}
+            </span>
+            {opcaoSelecionada.vascular && (
+              <span
                 style={{
                   fontSize: 11,
-                  fontWeight: "600",
-                  paddingVertical: 4,
-                  paddingHorizontal: 10,
+                  fontWeight: 600,
+                  padding: "4px 10px",
                   borderRadius: 999,
-                  backgroundColor: theme.blueSoft,
-                  color: theme.blue,
+                  background: "var(--blue-soft)",
+                  color: "var(--blue)",
                 }}
               >
                 Cirurgia Vascular → VSG
-              </Text>
-            ) : null}
-          </View>
-        ) : null}
+              </span>
+            )}
+          </div>
+        )}
       </Card>
 
-      <Card icon="🚨" title="Condições Cardiovasculares Ativas">
-        <InfoBox icon="⚠️">
-          <Text style={{ fontSize: 12, color: "#1A3B7A", lineHeight: 18.6 }}>
-            Condições que requerem avaliação e tratamento{" "}
-            <Text style={{ fontWeight: "bold" }}>antes</Text> do procedimento cirúrgico.
-          </Text>
+      <Card icon={<Siren {...iconProps} />} title="Condições Cardiovasculares Ativas">
+        <InfoBox icon={<AlertTriangle size={16} strokeWidth={2.2} color="#1A3B7A" />}>
+          Condições que requerem avaliação e tratamento <strong>antes</strong> do procedimento cirúrgico.
         </InfoBox>
-        <View style={{ marginTop: 10 }}>
-          {CV_CONDITIONS.map((item, i) => (
+        <div style={{ marginTop: 10 }}>
+          {CV_CONDICOES.map((item, i) => (
             <ToggleRow
               key={item.key}
-              label={item.label}
-              description={item.description}
+              label={item.rotulo}
+              description={item.descricao}
               checked={Boolean(data[item.key])}
               onChange={(val) => onChange(item.key, val)}
-              isLast={i === CV_CONDITIONS.length - 1}
+              isLast={i === CV_CONDICOES.length - 1}
             />
           ))}
-        </View>
+        </div>
       </Card>
     </>
   );

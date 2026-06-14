@@ -1,17 +1,17 @@
 import jsPDF from "jspdf";
-import { SURGERY_OPTIONS } from "../types";
+import { OPCOES_CIRURGIA } from "../types";
 
 const MARGIN = 20;
 const PAGE_W = 210;
 const CONTENT_W = PAGE_W - MARGIN * 2;
-const SURGERY_RISK_LABELS = {
-  low: "Baixo",
-  intermediate: "Intermediário",
-  high: "Alto",
+const ROTULOS_RISCO_CIRURGIA = {
+  baixo: "Baixo",
+  intermediario: "Intermediário",
+  alto: "Alto",
 };
 
-function getSurgeryTypeLabel(surgeryType) {
-  return SURGERY_OPTIONS.find((option) => option.value === surgeryType)?.label || "Não informada";
+function getRotuloCirurgia(tipoCirurgia) {
+  return OPCOES_CIRURGIA.find((opcao) => opcao.valor === tipoCirurgia)?.rotulo || "Não informada";
 }
 
 function addPage(doc, y, needed) {
@@ -30,11 +30,11 @@ function isRunningInsideReactNativeWebView() {
   );
 }
 
-export function generateReport(result, data) {
+export function gerarRelatorio(resultado, dados) {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
-  const indexName = result.risk_index === "vsg" ? "VSG-CRI" : "RCRI";
-  const surgeryTypeLabel = getSurgeryTypeLabel(data.surgery_type);
-  const surgeryRiskLabel = SURGERY_RISK_LABELS[result.surgery_risk] || result.surgery_risk || "Não informado";
+  const nomeIndice = resultado.indice_risco === "vsg" ? "VSG-CRI" : "RCRI";
+  const rotuloCirurgia = getRotuloCirurgia(dados.tipo_cirurgia);
+  const rotuloRiscoCirurgia = ROTULOS_RISCO_CIRURGIA[resultado.risco_cirurgia] || resultado.risco_cirurgia || "Não informado";
   let y = MARGIN;
 
   // ─── Header ──────────────────────────────────────────────────────
@@ -68,27 +68,27 @@ export function generateReport(result, data) {
 
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
-  const patientName = data.name || "Não informado";
-  const patientAge = data.age != null ? `${data.age} anos` : "Não informada";
-  doc.text(`Paciente: ${patientName}`, MARGIN, y);
+  const nomePaciente = dados.nome || "Não informado";
+  const idadePaciente = dados.idade != null ? `${dados.idade} anos` : "Não informada";
+  doc.text(`Paciente: ${nomePaciente}`, MARGIN, y);
   y += 5;
-  doc.text(`Idade: ${patientAge}`, MARGIN, y);
+  doc.text(`Idade: ${idadePaciente}`, MARGIN, y);
   y += 5;
-  doc.text(`Cirurgia: ${surgeryTypeLabel}`, MARGIN, y);
+  doc.text(`Cirurgia: ${rotuloCirurgia}`, MARGIN, y);
   y += 5;
-  doc.text(`Risco cirúrgico: ${surgeryRiskLabel}`, MARGIN, y);
+  doc.text(`Risco cirúrgico: ${rotuloRiscoCirurgia}`, MARGIN, y);
   y += 5;
-  doc.text(`Capacidade Funcional: ${result.mets} METs — ${result.mets_label}`, MARGIN, y);
+  doc.text(`Capacidade Funcional: ${resultado.mets} METs — ${resultado.rotulo_mets}`, MARGIN, y);
   y += 10;
 
   doc.setDrawColor(200, 200, 200);
   doc.line(MARGIN, y, MARGIN + CONTENT_W, y);
   y += 8;
 
-  if (result.has_active_conditions) {
-    y = addPage(doc, y, 20 + result.active_conditions.length * 5);
+  if (resultado.tem_condicoes_ativas) {
+    y = addPage(doc, y, 20 + resultado.condicoes_ativas.length * 5);
     doc.setFillColor(254, 226, 226);
-    const boxH = 12 + result.active_conditions.length * 5;
+    const boxH = 12 + resultado.condicoes_ativas.length * 5;
     doc.roundedRect(MARGIN, y - 3, CONTENT_W, boxH, 2, 2, "F");
 
     doc.setFont("helvetica", "bold");
@@ -99,7 +99,7 @@ export function generateReport(result, data) {
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    for (const cond of result.active_conditions) {
+    for (const cond of resultado.condicoes_ativas) {
       doc.text(`• ${cond}`, MARGIN + 6, y);
       y += 5;
     }
@@ -110,30 +110,30 @@ export function generateReport(result, data) {
   y = addPage(doc, y, 30);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
-  doc.text(`Resultado — Índice ${indexName}`, MARGIN, y);
+  doc.text(`Resultado — Índice ${nomeIndice}`, MARGIN, y);
   y += 8;
 
-  const riskColor =
-    result.risk_class === "low" ? [22, 163, 74] :
-    result.risk_class === "intermediate" ? [202, 138, 4] :
+  const corRisco =
+    resultado.classe_risco === "baixo" ? [22, 163, 74] :
+    resultado.classe_risco === "intermediario" ? [202, 138, 4] :
     [220, 38, 38];
 
-  doc.setFillColor(riskColor[0], riskColor[1], riskColor[2]);
+  doc.setFillColor(corRisco[0], corRisco[1], corRisco[2]);
   doc.roundedRect(MARGIN, y - 3, CONTENT_W, 18, 2, 2, "F");
 
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
-  doc.text(`${result.risk_label}`, MARGIN + 6, y + 7);
+  doc.text(`${resultado.rotulo_risco}`, MARGIN + 6, y + 7);
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
-  doc.text(`Score: ${result.score} pt${result.score !== 1 ? "s" : ""}`, MARGIN + CONTENT_W - 4, y + 7, { align: "right" });
+  doc.text(`Score: ${resultado.pontuacao} pt${resultado.pontuacao !== 1 ? "s" : ""}`, MARGIN + CONTENT_W - 4, y + 7, { align: "right" });
 
   y += 22;
   doc.setTextColor(30, 30, 30);
 
-  if (result.risk_factors.length > 0) {
-    y = addPage(doc, y, 10 + result.risk_factors.length * 5);
+  if (resultado.fatores_risco.length > 0) {
+    y = addPage(doc, y, 10 + resultado.fatores_risco.length * 5);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     doc.text("Fatores de Risco Identificados", MARGIN, y);
@@ -141,15 +141,15 @@ export function generateReport(result, data) {
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    for (const factor of result.risk_factors) {
+    for (const fator of resultado.fatores_risco) {
       y = addPage(doc, y, 6);
-      doc.text(`• ${factor}`, MARGIN + 4, y);
+      doc.text(`• ${fator}`, MARGIN + 4, y);
       y += 5;
     }
     y += 4;
   }
 
-  if (result.medication_advice.length > 0) {
+  if (resultado.orientacoes_medicacao.length > 0) {
     y = addPage(doc, y, 14);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
@@ -157,21 +157,21 @@ export function generateReport(result, data) {
     y += 7;
 
     doc.setFontSize(9);
-    for (const med of result.medication_advice) {
+    for (const med of resultado.orientacoes_medicacao) {
       y = addPage(doc, y, 14);
       doc.setFont("helvetica", "bold");
-      doc.text(`${med.medication} — ${med.action}`, MARGIN + 4, y);
+      doc.text(`${med.medicamento} — ${med.acao}`, MARGIN + 4, y);
       y += 4;
       doc.setFont("helvetica", "normal");
-      const lines = doc.splitTextToSize(med.detail, CONTENT_W - 8);
+      const lines = doc.splitTextToSize(med.detalhe, CONTENT_W - 8);
       doc.text(lines, MARGIN + 4, y);
       y += lines.length * 4 + 4;
     }
     y += 2;
   }
 
-  if (result.recommended_exams.length > 0) {
-    y = addPage(doc, y, 10 + result.recommended_exams.length * 5);
+  if (resultado.exames_recomendados.length > 0) {
+    y = addPage(doc, y, 10 + resultado.exames_recomendados.length * 5);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     doc.text("Exames Recomendados", MARGIN, y);
@@ -179,15 +179,15 @@ export function generateReport(result, data) {
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    for (const exam of result.recommended_exams) {
+    for (const exame of resultado.exames_recomendados) {
       y = addPage(doc, y, 6);
-      doc.text(`• ${exam}`, MARGIN + 4, y);
+      doc.text(`• ${exame}`, MARGIN + 4, y);
       y += 5;
     }
     y += 4;
   }
 
-  if (result.recommendations.length > 0) {
+  if (resultado.recomendacoes.length > 0) {
     y = addPage(doc, y, 14);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
@@ -195,13 +195,13 @@ export function generateReport(result, data) {
     y += 7;
 
     doc.setFontSize(9);
-    for (const rec of result.recommendations) {
+    for (const rec of resultado.recomendacoes) {
       y = addPage(doc, y, 14);
       doc.setFont("helvetica", "bold");
-      doc.text(`${rec.title}`, MARGIN + 4, y);
+      doc.text(`${rec.titulo}`, MARGIN + 4, y);
       y += 4;
       doc.setFont("helvetica", "normal");
-      const lines = doc.splitTextToSize(rec.body, CONTENT_W - 8);
+      const lines = doc.splitTextToSize(rec.corpo, CONTENT_W - 8);
       doc.text(lines, MARGIN + 4, y);
       y += lines.length * 4 + 4;
     }
@@ -215,10 +215,10 @@ export function generateReport(result, data) {
     doc.text(`Página ${i} de ${totalPages}`, PAGE_W - MARGIN, 295, { align: "right" });
   }
 
-  const patientNameSafe = data.name ? data.name.trim() : "Paciente";
+  const nomeSafe = dados.nome ? dados.nome.trim() : "Paciente";
   const dateObj = new Date();
   const dateForFile = `${dateObj.getDate().toString().padStart(2, '0')}-${(dateObj.getMonth() + 1).toString().padStart(2, '0')}-${dateObj.getFullYear()}`;
-  const filename = `CardioRisk - ${patientNameSafe} - ${dateForFile}.pdf`;
+  const filename = `CardioRisk - ${nomeSafe} - ${dateForFile}.pdf`;
 
   if (isRunningInsideReactNativeWebView()) {
     const dataUri = doc.output("datauristring");

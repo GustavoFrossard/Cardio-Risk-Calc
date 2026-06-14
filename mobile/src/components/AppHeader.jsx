@@ -1,105 +1,140 @@
-import { View, Text } from "react-native";
-import { WIZARD_STEPS } from "../types";
-import { theme } from "../theme";
+import { ETAPAS_WIZARD } from "../types";
 
-export function CabecalhoApp({ currentStep }) {
-  const step = WIZARD_STEPS[currentStep - 1];
+export function CabecalhoApp({ etapaAtual, maiorEtapa, onIrParaEtapa }) {
+  const etapa = ETAPAS_WIZARD[etapaAtual - 1];
 
   return (
-    <View
+    <div
       style={{
-        backgroundColor: theme.white,
-        paddingTop: 12,
-        paddingHorizontal: 16,
-        paddingBottom: 0,
-        borderBottomWidth: 1,
-        borderBottomColor: theme.border,
+        background: "var(--white)",
+        padding: "52px 20px 0",
+        borderBottom: "1px solid var(--border)",
+        position: "sticky",
+        top: 0,
+        zIndex: 50,
       }}
     >
-      {/* Title row */}
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 }}>
-        <View
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+        <div
           style={{
             width: 34,
             height: 34,
-            backgroundColor: theme.blue,
+            background: "var(--blue)",
             borderRadius: 10,
+            display: "flex",
             alignItems: "center",
             justifyContent: "center",
             flexShrink: 0,
           }}
         >
-          <Text style={{ fontSize: 18, lineHeight: 22 }}>❤️</Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 13, fontWeight: "600", color: theme.ink }}>
-            CardioRisk Periop
-          </Text>
-          <Text style={{ fontSize: 11, color: theme.inkMuted }}>
-            AHA/ACC 2014 · Índice de Lee
-          </Text>
-        </View>
-        <View
+          <svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+            <path
+              d="M12 21C12 21 3 15.5 3 9C3 6.24 5.24 4 8 4C9.64 4 11.09 4.79 12 6.01C12.91 4.79 14.36 4 16 4C18.76 4 21 6.24 21 9C21 15.5 12 21 12 21Z"
+              fill="white"
+            />
+          </svg>
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>CardioRisk Periop</div>
+          <div style={{ fontSize: 11, color: "var(--ink-muted)" }}>AHA/ACC 2014 · Índice de Lee</div>
+        </div>
+        <div
           style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 11,
+            color: "var(--ink-muted)",
+            background: "var(--bg)",
+            padding: "4px 10px",
             borderRadius: 999,
-            borderWidth: 1,
-            borderColor: theme.border,
-            backgroundColor: theme.bg,
-            paddingHorizontal: 10,
-            paddingVertical: 4,
+            border: "1px solid var(--border)",
           }}
         >
-          <Text
-            style={{
-              fontFamily: "monospace",
-              fontSize: 11,
-              color: theme.inkMuted,
-            }}
-          >
-            {currentStep} / {WIZARD_STEPS.length}
-          </Text>
-        </View>
-      </View>
+          {etapaAtual} / {ETAPAS_WIZARD.length}
+        </div>
+      </div>
 
-      {/* Progress bars */}
-      <View style={{ flexDirection: "row", gap: 4 }}>
-        {WIZARD_STEPS.map((s) => (
-          <View
-            key={s.id}
-            style={{
-              height: 2,
-              flex: 1,
-              borderRadius: 2,
-              backgroundColor:
-                s.id === currentStep
-                  ? theme.blue
-                  : s.id < currentStep
-                  ? theme.blueMid
-                  : theme.border,
-            }}
-          />
-        ))}
-      </View>
+      {/* Barras de progresso — clicáveis para etapas já visitadas */}
+      <div style={{ display: "flex", gap: 4, marginBottom: -1 }}>
+        {ETAPAS_WIZARD.map((s) => {
+          const isVisited = s.id < etapaAtual && s.id < 4;
+          const isCurrent = s.id === etapaAtual;
+          const isClickable = isVisited && onIrParaEtapa;
 
-      {/* Step title */}
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10 }}>
-        <View
+          return (
+            <div
+              key={s.id}
+              title={isClickable ? `Ir para: ${s.titulo}` : undefined}
+              onClick={isClickable ? () => onIrParaEtapa(s.id) : undefined}
+              style={{
+                height: isClickable ? 4 : 2,
+                flex: 1,
+                borderRadius: 3,
+                background: isCurrent
+                  ? "var(--blue)"
+                  : s.id < etapaAtual
+                  ? "rgba(91,148,245,0.55)"
+                  : "var(--border)",
+                transition: "background 0.3s, height 0.2s",
+                cursor: isClickable ? "pointer" : "default",
+              }}
+            />
+          );
+        })}
+      </div>
+
+      {/* Linha de título da etapa com bolhas clicáveis */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 0 12px" }}>
+        <div
           style={{
             width: 22,
             height: 22,
-            borderRadius: 11,
-            backgroundColor: theme.blue,
+            borderRadius: "50%",
+            background: "var(--blue)",
+            color: "white",
+            fontSize: 11,
+            fontWeight: 700,
+            display: "flex",
             alignItems: "center",
             justifyContent: "center",
             flexShrink: 0,
           }}
         >
-          <Text style={{ fontSize: 11, fontWeight: "700", color: "white" }}>{currentStep}</Text>
-        </View>
-        <Text style={{ fontSize: 13, fontWeight: "600", color: theme.inkMid }}>
-          {step?.title}
-        </Text>
-      </View>
-    </View>
+          {etapaAtual}
+        </div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink-mid)" }}>
+          {etapa?.titulo}
+        </div>
+
+        {/* Breadcrumb para etapas visitadas */}
+        {maiorEtapa > 1 && etapaAtual < maiorEtapa && (
+          <div style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
+            {ETAPAS_WIZARD.slice(0, maiorEtapa - 1).filter(s => s.id !== etapaAtual && s.id < 4).map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => onIrParaEtapa?.(s.id)}
+                title={s.titulo}
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: "50%",
+                  border: "1.5px solid var(--border)",
+                  background: "var(--bg)",
+                  color: "var(--ink-muted)",
+                  fontSize: 10,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {s.id}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

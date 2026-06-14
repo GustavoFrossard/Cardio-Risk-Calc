@@ -1,43 +1,132 @@
-@startuml
-title Arquitetura Frontend / Backend
+@startuml CardioRisk_Arquitetura
+title Arquitetura de Componentes — CardioRisk Periop
 
-package Frontend {
-  [App.jsx] <<React>>
-  [AppHeader.jsx] <<React>>
-  [BottomBar.jsx] <<React>>
-  [StepPatientData.jsx] <<React>>
-  [StepSurgery.jsx] <<React>>
-  [StepRCRI.jsx] <<React>>
-  [StepResult.jsx] <<React>>
-  [hooks/useWizard.js] <<Hook>>
-  [services/api.js] <<Serviço>>
-  [services/report.js] <<Serviço>>
-  [types/index.js] <<Constantes>>
-  [components/ui] <<UI Components>>
+skinparam backgroundColor   #F7F8FA
+skinparam defaultFontName   Segoe UI
+skinparam defaultFontSize   11
+
+skinparam component {
+  BorderColor       #1A6BF0
+  BackgroundColor   #EBF1FE
+  FontColor         #0D1117
+  StereotypeFontColor #5B94F5
 }
 
-package Backend {
-  [backend/main.py] <<FastAPI>>
-  [backend/core/calculator.py] <<Calculadora>>
+skinparam package {
+  BorderColor       #8B909A
+  BackgroundColor   #FFFFFF
+  FontStyle         bold
 }
 
-[App.jsx] --> [AppHeader.jsx]
-[App.jsx] --> [BottomBar.jsx]
-[App.jsx] --> [hooks/useWizard.js]
-[App.jsx] --> [StepPatientData.jsx]
-[App.jsx] --> [StepSurgery.jsx]
-[App.jsx] --> [StepRCRI.jsx]
-[App.jsx] --> [StepResult.jsx]
-[hooks/useWizard.js] --> [services/api.js]
-[hooks/useWizard.js] --> [types/index.js]
-[StepPatientData.jsx] --> [components/ui]
-[StepPatientData.jsx] --> [types/index.js]
-[StepSurgery.jsx] --> [components/ui]
-[StepSurgery.jsx] --> [types/index.js]
-[StepRCRI.jsx] --> [components/ui]
-[StepResult.jsx] --> [services/report.js]
-[AppHeader.jsx] --> [types/index.js]
-[services/api.js] --> [backend/main.py]
-[backend/main.py] --> [backend/core/calculator.py]
+skinparam database {
+  BorderColor       #C47A00
+  BackgroundColor   #FFF8E6
+}
+
+skinparam ArrowColor  #555555
+skinparam ArrowFontSize 10
+
+' ═══════════════════════════════════════════════════════════════════
+' MOBILE (React Native / Expo)
+' ═══════════════════════════════════════════════════════════════════
+package "Mobile App · React Native / Expo" #EDF0F5 {
+  [App.jsx]           <<Expo Root>>
+  [WebView]           <<react-native-webview>>
+  [expo-sharing]      <<Sharing>>
+  [expo-file-system]  <<File I/O>>
+
+  [App.jsx]      --> [WebView]        : carrega frontend web
+  [App.jsx]      --> [expo-sharing]   : compartilha PDF
+  [App.jsx]      --> [expo-file-system] : salva PDF
+}
+
+' ═══════════════════════════════════════════════════════════════════
+' FRONTEND (React / Vite)
+' ═══════════════════════════════════════════════════════════════════
+package "Frontend Web · React + Vite" #EBF1FE {
+
+  package "Componentes de Layout" {
+    [App.jsx]           <<Root Component>>
+    [AppHeader.jsx]     <<CabecalhoApp / Wizard Nav>>
+    [BottomBar.jsx]     <<BarraInferior>>
+  }
+
+  package "Etapas do Wizard" {
+    [StepPatientData.jsx]  <<EtapaDadosPaciente — Etapa 1>>
+    [StepSurgery.jsx]      <<EtapaCirurgia — Etapa 2>>
+    [StepRCRI.jsx]         <<EtapaRCRI — Etapa 3>>
+    [StepResult.jsx]       <<EtapaResultado — Etapa 4>>
+  }
+
+  package "UI Primitivos" {
+    [ui/index.jsx] <<Toggle, Card, Field,\nInput, AgeInput,\nSelect, SearchSelect,\nChipGroup, InfoBox,\nAccordion>>
+  }
+
+  package "Hooks" {
+    [useWizard.js] <<useAssistente\nState Management\nLocalStorage\nWizard Navigation>>
+  }
+
+  package "Serviços" {
+    [api.js]    <<ServicoApi — HTTP Client>>
+    [report.js] <<gerarRelatorio — PDF Generator>>
+  }
+
+  package "Tipos e Constantes" {
+    [types/index.js] <<OPCOES_CIRURGIA\nPERGUNTAS_FUNCIONAIS\nETAPAS_WIZARD\ndadosPacienteInicial>>
+  }
+
+  ' Conexões internas do frontend
+  [App.jsx]              --> [AppHeader.jsx]
+  [App.jsx]              --> [BottomBar.jsx]
+  [App.jsx]              --> [useWizard.js]
+  [App.jsx]              --> [StepPatientData.jsx]
+  [App.jsx]              --> [StepSurgery.jsx]
+  [App.jsx]              --> [StepRCRI.jsx]
+  [App.jsx]              --> [StepResult.jsx]
+
+  [StepPatientData.jsx]  --> [ui/index.jsx]
+  [StepPatientData.jsx]  --> [types/index.js]
+  [StepSurgery.jsx]      --> [ui/index.jsx]
+  [StepSurgery.jsx]      --> [types/index.js]
+  [StepRCRI.jsx]         --> [ui/index.jsx]
+  [StepResult.jsx]       --> [ui/index.jsx]
+  [StepResult.jsx]       --> [report.js]
+
+  [AppHeader.jsx]        --> [types/index.js]
+  [useWizard.js]         --> [api.js]
+  [useWizard.js]         --> [types/index.js]
+}
+
+' ═══════════════════════════════════════════════════════════════════
+' BACKEND (Python / FastAPI)
+' ═══════════════════════════════════════════════════════════════════
+package "Backend · Python + FastAPI" #EDFAF4 {
+
+  [main.py] <<FastAPI\nCORS Middleware>>
+
+  package "Core" {
+    [core/calculator.py] <<Motor de Cálculo\nRCRI · VSG\nRecomendações>>
+    [core/clinical_nlp.py] <<NLP / LLM\nAuto-preenchimento>>
+  }
+
+  [main.py] --> [core/calculator.py]
+  [main.py] --> [core/clinical_nlp.py]
+}
+
+' ═══════════════════════════════════════════════════════════════════
+' ARMAZENAMENTO / EXTERNO
+' ═══════════════════════════════════════════════════════════════════
+database "LocalStorage\n(navegador)" as ls #FFF8E6
+[LLM externo\n(OpenAI / Anthropic)] as llm #FFF8E6
+
+' ═══════════════════════════════════════════════════════════════════
+' COMUNICAÇÃO ENTRE CAMADAS
+' ═══════════════════════════════════════════════════════════════════
+[WebView]        --> [App.jsx] : renderiza\n(bridge PDF)
+
+[api.js]         --> [main.py]               : HTTP REST\nPOST /calculate
+[api.js]         --> [main.py]               : HTTP REST\nPOST /nlp/analyze
+[core/clinical_nlp.py] --> [llm]             : API externa
+[useWizard.js]   --> [ls]                    : persiste sessão
 
 @enduml

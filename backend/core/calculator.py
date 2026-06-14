@@ -15,46 +15,46 @@ from enum import Enum
 # ---------------------------------------------------------------------------
 
 class RiscoCirurgia(str, Enum):
-    LOW = "low"
-    INTERMEDIATE = "intermediate"
-    HIGH = "high"
+    BAIXO = "baixo"
+    INTERMEDIARIO = "intermediario"
+    ALTO = "alto"
 
 
 class ClasseRisco(str, Enum):
-    LOW = "low"
-    INTERMEDIATE = "intermediate"
-    HIGH = "high"
+    BAIXO = "baixo"
+    INTERMEDIARIO = "intermediario"
+    ALTO = "alto"
 
 
 class TipoRecomendacao(str, Enum):
-    GREEN = "green"
-    AMBER = "amber"
-    RED = "red"
+    VERDE = "verde"
+    AMARELO = "amarelo"
+    VERMELHO = "vermelho"
 
 
 # ---------------------------------------------------------------------------
 # RCRI Risk Table (Duceppe et al, CMAJ 2017 / Diretriz SBC)
 # ---------------------------------------------------------------------------
 
-def _obter_classe_risco_rcri(score: int) -> tuple[str, str]:
-    if score >= 3:
-        return ClasseRisco.HIGH, "Risco Alto"
-    elif score == 2:
-        return ClasseRisco.INTERMEDIATE, "Risco Intermediário"
+def _obter_classe_risco_rcri(pontuacao: int) -> tuple[str, str]:
+    if pontuacao >= 3:
+        return ClasseRisco.ALTO, "Risco Alto"
+    elif pontuacao == 2:
+        return ClasseRisco.INTERMEDIARIO, "Risco Intermediário"
     else:
-        return ClasseRisco.LOW, "Risco Baixo"
+        return ClasseRisco.BAIXO, "Risco Baixo"
 
 # ---------------------------------------------------------------------------
 # VSG Cardiac Risk Index Table (Diretriz SBC 2024)
 # ---------------------------------------------------------------------------
 
-def _obter_classe_risco_vsg(score: int) -> tuple[str, str]:
-    if score >= 7:
-        return ClasseRisco.HIGH, "Risco Alto"
-    elif score >= 5:
-        return ClasseRisco.INTERMEDIATE, "Risco Intermediário"
+def _obter_classe_risco_vsg(pontuacao: int) -> tuple[str, str]:
+    if pontuacao >= 7:
+        return ClasseRisco.ALTO, "Risco Alto"
+    elif pontuacao >= 5:
+        return ClasseRisco.INTERMEDIARIO, "Risco Intermediário"
     else:
-        return ClasseRisco.LOW, "Risco Baixo"
+        return ClasseRisco.BAIXO, "Risco Baixo"
 
 
 # ---------------------------------------------------------------------------
@@ -75,9 +75,9 @@ METS_LABELS: dict[float, str] = {
 }
 
 ROTULOS_CIRURGIA: dict[str, str] = {
-    "low":          "Baixo Risco",
-    "intermediate": "Risco Intermediário",
-    "high":         "Alto Risco",
+    "baixo":        "Baixo Risco",
+    "intermediario": "Risco Intermediário",
+    "alto":         "Alto Risco",
 }
 
 
@@ -86,22 +86,22 @@ ROTULOS_CIRURGIA: dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 def pontuar_rcri(data: dict) -> tuple[int, list[str]]:
-    criteria: list[tuple[bool, str]] = [
-        (data.get("rcri_high_risk_surgery", False),
+    criterios: list[tuple[bool, str]] = [
+        (data.get("rcri_cirurgia_alto_risco", False),
          "Operação intraperitoneal, intratorácica ou vascular suprainguinal"),
-        (data.get("rcri_ischemic_heart", False),
+        (data.get("rcri_doenca_coronaria", False),
          "Doença arterial coronária (ondas Q, sintomas de isquemia, teste+, uso de nitrato)"),
-        (data.get("rcri_heart_failure", False),
+        (data.get("rcri_ic", False),
          "Insuficiência cardíaca congestiva (clínica, RX tórax com congestão)"),
         (data.get("rcri_cerebrovascular", False),
          "Doença cerebrovascular"),
-        (data.get("rcri_insulin_diabetes", False),
+        (data.get("rcri_diabetes_insulina", False),
          "Diabetes com insulinoterapia"),
-        (data.get("rcri_creatinine_above_2", False),
+        (data.get("rcri_creatinina_acima_2", False),
          "Creatinina pré-operatória > 2,0 mg/dL"),
     ]
-    met = [label for active, label in criteria if active]
-    return len(met), met
+    atingidos = [rotulo for ativo, rotulo in criterios if ativo]
+    return len(atingidos), atingidos
 
 
 # ---------------------------------------------------------------------------
@@ -111,43 +111,43 @@ def pontuar_rcri(data: dict) -> tuple[int, list[str]]:
 def pontuar_vsg(data: dict) -> tuple[int, list[str]]:
     """VSG-CRI scoring per Tabela 6 — variable points per criterion."""
     total = 0
-    met: list[str] = []
+    atingidos: list[str] = []
 
-    # Age (variable points)
-    age_range = data.get("vsg_age_range", "")
-    if age_range == "gte80":
-        total += 4; met.append("Idade ≥ 80 anos (+4)")
-    elif age_range == "70_79":
-        total += 3; met.append("Idade 70–79 anos (+3)")
-    elif age_range == "60_69":
-        total += 2; met.append("Idade 60–69 anos (+2)")
+    # Faixa etária (pontos variáveis)
+    faixa_etaria = data.get("vsg_faixa_etaria", "")
+    if faixa_etaria == "gte80":
+        total += 4; atingidos.append("Idade ≥ 80 anos (+4)")
+    elif faixa_etaria == "70_79":
+        total += 3; atingidos.append("Idade 70–79 anos (+3)")
+    elif faixa_etaria == "60_69":
+        total += 2; atingidos.append("Idade 60–69 anos (+2)")
 
-    # 2-point criteria
-    two_pt: list[tuple[bool, str]] = [
-        (data.get("vsg_cad", False),                "Doença arterial coronariana (+2)"),
-        (data.get("vsg_chf", False),                "Insuficiência cardíaca (+2)"),
-        (data.get("vsg_copd", False),               "DPOC (+2)"),
-        (data.get("vsg_creatinine_over_1_8", False),"Creatinina > 1,8 mg/dL (+2)"),
+    # Critérios de 2 pontos
+    dois_pt: list[tuple[bool, str]] = [
+        (data.get("vsg_dac", False),                "Doença arterial coronariana (+2)"),
+        (data.get("vsg_ic", False),                 "Insuficiência cardíaca (+2)"),
+        (data.get("vsg_dpoc", False),               "DPOC (+2)"),
+        (data.get("vsg_creatinina_acima_1_8", False),"Creatinina > 1,8 mg/dL (+2)"),
     ]
-    for active, label in two_pt:
-        if active:
-            total += 2; met.append(label)
+    for ativo, rotulo in dois_pt:
+        if ativo:
+            total += 2; atingidos.append(rotulo)
 
-    # 1-point criteria
-    one_pt: list[tuple[bool, str]] = [
-        (data.get("vsg_smoking", False),             "Tabagismo (+1)"),
-        (data.get("vsg_insulin_diabetes", False),    "Diabetes com insulina (+1)"),
-        (data.get("vsg_chronic_beta_blocker", False),"Uso crônico de betabloqueador (+1)"),
+    # Critérios de 1 ponto
+    um_pt: list[tuple[bool, str]] = [
+        (data.get("vsg_tabagismo", False),             "Tabagismo (+1)"),
+        (data.get("vsg_diabetes_insulina", False),     "Diabetes com insulina (+1)"),
+        (data.get("vsg_betabloqueador_cronico", False),"Uso crônico de betabloqueador (+1)"),
     ]
-    for active, label in one_pt:
-        if active:
-            total += 1; met.append(label)
+    for ativo, rotulo in um_pt:
+        if ativo:
+            total += 1; atingidos.append(rotulo)
 
-    # -1 point criterion
-    if data.get("vsg_prior_revasc", False):
-        total -= 1; met.append("Revascularização miocárdica prévia (−1)")
+    # Critério de -1 ponto
+    if data.get("vsg_revasc_previa", False):
+        total -= 1; atingidos.append("Revascularização miocárdica prévia (−1)")
 
-    return max(total, 0), met
+    return max(total, 0), atingidos
 
 
 # ---------------------------------------------------------------------------
@@ -155,31 +155,31 @@ def pontuar_vsg(data: dict) -> tuple[int, list[str]]:
 # ---------------------------------------------------------------------------
 
 def verificar_condicoes_ativas(data: dict) -> list[str]:
-    conditions: list[tuple[bool, str]] = [
-        (data.get("cv_acute_coronary", False),
+    condicoes: list[tuple[bool, str]] = [
+        (data.get("cv_coronaria_aguda", False),
          "Síndrome coronariana aguda"),
-        (data.get("cv_unstable_aortic", False),
+        (data.get("cv_aorta_instavel", False),
          "Doenças instáveis da aorta torácica"),
-        (data.get("cv_acute_pulmonary_edema", False),
+        (data.get("cv_edema_pulmonar_agudo", False),
          "Edema agudo dos pulmões"),
-        (data.get("cv_cardiogenic_shock", False),
+        (data.get("cv_choque_cardiogenico", False),
          "Choque cardiogênico"),
-        (data.get("cv_hf_nyha_3_4", False),
+        (data.get("cv_ic_nyha_3_4", False),
          "Insuficiência cardíaca classe funcional III/IV (NYHA)"),
         (data.get("cv_angina_ccs_3_4", False),
          "Angina classe funcional CCS III/IV"),
-        (data.get("cv_severe_arrhythmia", False),
+        (data.get("cv_arritmia_grave", False),
          "Bradiarritmias ou taquiarritmias graves (BAVT, TV)"),
-        (data.get("cv_uncontrolled_hypertension", False),
+        (data.get("cv_has_nao_controlada", False),
          "HAS não controlada (PA > 180 x 110 mmHg)"),
-        (data.get("cv_af_high_rate", False),
+        (data.get("cv_fa_alta_resposta", False),
          "Fibrilação atrial de alta resposta ventricular (FC > 120 bpm)"),
-        (data.get("cv_pulmonary_hypertension", False),
+        (data.get("cv_hap_sintomatica", False),
          "Hipertensão arterial pulmonar sintomática"),
-        (data.get("cv_severe_valvular", False),
+        (data.get("cv_valvopatia_grave", False),
          "Estenose aórtica/mitral importante sintomática"),
     ]
-    return [label for active, label in conditions if active]
+    return [rotulo for ativo, rotulo in condicoes if ativo]
 
 
 # ---------------------------------------------------------------------------
@@ -187,191 +187,190 @@ def verificar_condicoes_ativas(data: dict) -> list[str]:
 # ---------------------------------------------------------------------------
 
 def _determinar_ponte_varfarina(data: dict) -> dict:
-    indication = data.get("warfarin_indication", "")
+    indicacao = data.get("indicacao_varfarina", "")
 
-    if indication == "mechanical_valve":
+    if indicacao == "mechanical_valve":
         return {
-            "action": "Suspender + Ponte com heparina",
-            "detail": "Prótese valvar mecânica: realizar ponte com heparina de baixo peso molecular.",
-            "type": TipoRecomendacao.RED,
+            "acao": "Suspender + Ponte com heparina",
+            "detalhe": "Prótese valvar mecânica: realizar ponte com heparina de baixo peso molecular.",
+            "tipo": TipoRecomendacao.VERMELHO,
         }
 
-    if indication == "rheumatic":
+    if indicacao == "rheumatic":
         return {
-            "action": "Suspender + Ponte com heparina",
-            "detail": "Doença valvar reumática: realizar ponte com heparina de baixo peso molecular.",
-            "type": TipoRecomendacao.RED,
+            "acao": "Suspender + Ponte com heparina",
+            "detalhe": "Doença valvar reumática: realizar ponte com heparina de baixo peso molecular.",
+            "tipo": TipoRecomendacao.VERMELHO,
         }
 
-    if indication == "af":
-        chadsvasc = data.get("warfarin_chadsvasc") or 0
-        stroke_3m = data.get("warfarin_stroke_3m", False)
+    if indicacao == "af":
+        chadsvasc = data.get("chadsvasc_varfarina") or 0
+        avc_3m = data.get("avc_3m_varfarina", False)
 
-        if chadsvasc >= 5 or stroke_3m:
-            extra = " e AVC/AIT < 3 meses" if stroke_3m else ""
+        if chadsvasc >= 5 or avc_3m:
+            extra = " e AVC/AIT < 3 meses" if avc_3m else ""
             return {
-                "action": "Suspender + Ponte com heparina",
-                "detail": f"FA com CHA₂DS₂-VASc {chadsvasc}{extra}: realizar ponte com heparina.",
-                "type": TipoRecomendacao.RED,
+                "acao": "Suspender + Ponte com heparina",
+                "detalhe": f"FA com CHA₂DS₂-VASc {chadsvasc}{extra}: realizar ponte com heparina.",
+                "tipo": TipoRecomendacao.VERMELHO,
             }
         elif chadsvasc >= 3:
             return {
-                "action": "Considerar ponte com heparina",
-                "detail": f"FA com CHA₂DS₂-VASc {chadsvasc}: considerar ponte com heparina.",
-                "type": TipoRecomendacao.AMBER,
+                "acao": "Considerar ponte com heparina",
+                "detalhe": f"FA com CHA₂DS₂-VASc {chadsvasc}: considerar ponte com heparina.",
+                "tipo": TipoRecomendacao.AMARELO,
             }
         else:
             return {
-                "action": "Suspender sem ponte",
-                "detail": f"FA com CHA₂DS₂-VASc {chadsvasc} sem AVC/AIT recente: não realizar ponte.",
-                "type": TipoRecomendacao.GREEN,
+                "acao": "Suspender sem ponte",
+                "detalhe": f"FA com CHA₂DS₂-VASc {chadsvasc} sem AVC/AIT recente: não realizar ponte.",
+                "tipo": TipoRecomendacao.VERDE,
             }
 
-    if indication == "vte":
-        timing = data.get("warfarin_vte_timing", "")
-        thrombophilia = data.get("warfarin_thrombophilia", "")
-        neoplasia = data.get("warfarin_active_neoplasia", False)
+    if indicacao == "vte":
+        tempo = data.get("tempo_tev_varfarina", "")
+        trombofilia = data.get("trombofilia_varfarina", "")
+        neoplasia = data.get("neoplasia_ativa_varfarina", False)
 
-        if timing == "recent":
+        if tempo == "recent":
             return {
-                "action": "Suspender + Ponte com heparina",
-                "detail": "TEV recente: realizar ponte com heparina.",
-                "type": TipoRecomendacao.RED,
+                "acao": "Suspender + Ponte com heparina",
+                "detalhe": "TEV recente: realizar ponte com heparina.",
+                "tipo": TipoRecomendacao.VERMELHO,
             }
-        elif timing == "3_12m":
-            parts = []
-            if thrombophilia == "mild":
-                parts.append("trombofilia leve")
+        elif tempo == "3_12m":
+            partes = []
+            if trombofilia == "mild":
+                partes.append("trombofilia leve")
             if neoplasia:
-                parts.append("neoplasia ativa")
-            extra = f" com {' e '.join(parts)}" if parts else ""
+                partes.append("neoplasia ativa")
+            extra = f" com {' e '.join(partes)}" if partes else ""
             return {
-                "action": "Considerar ponte com heparina",
-                "detail": f"TEV 3–12 meses{extra}: considerar ponte com heparina.",
-                "type": TipoRecomendacao.AMBER,
+                "acao": "Considerar ponte com heparina",
+                "detalhe": f"TEV 3–12 meses{extra}: considerar ponte com heparina.",
+                "tipo": TipoRecomendacao.AMARELO,
             }
         else:
             return {
-                "action": "Suspender sem ponte",
-                "detail": "TEV > 12 meses: não realizar ponte com heparina.",
-                "type": TipoRecomendacao.GREEN,
+                "acao": "Suspender sem ponte",
+                "detalhe": "TEV > 12 meses: não realizar ponte com heparina.",
+                "tipo": TipoRecomendacao.VERDE,
             }
 
     return {
-        "action": "Avaliar individualmente",
-        "detail": "Varfarina: suspender 5 dias antes. Avaliar necessidade de ponte com heparina.",
-        "type": TipoRecomendacao.AMBER,
+        "acao": "Avaliar individualmente",
+        "detalhe": "Varfarina: suspender 5 dias antes. Avaliar necessidade de ponte com heparina.",
+        "tipo": TipoRecomendacao.AMARELO,
     }
 
 
 def montar_orientacoes_medicacao(data: dict) -> list[dict]:
-    advice: list[dict] = []
-    surgery_type = data.get("surgery_type", "")
+    orientacoes: list[dict] = []
+    tipo_cirurgia = data.get("tipo_cirurgia", "")
 
     # AAS
-    if data.get("uses_aas"):
-        prevention = data.get("aas_prevention", "")
-        if prevention == "primary":
-            advice.append({
-                "medication": "AAS",
-                "action": "Suspender 7 dias antes",
-                "detail": "Prevenção primária: suspender AAS 7 dias antes do procedimento.",
-                "type": TipoRecomendacao.AMBER,
+    if data.get("usa_aas"):
+        prevencao = data.get("prevencao_aas", "")
+        if prevencao == "primary":
+            orientacoes.append({
+                "medicamento": "AAS",
+                "acao": "Suspender 7 dias antes",
+                "detalhe": "Prevenção primária: suspender AAS 7 dias antes do procedimento.",
+                "tipo": TipoRecomendacao.AMARELO,
             })
-        elif prevention == "secondary":
-            high_bleeding = surgery_type in ("neurologic", "urologic_minor", "eye")
-            if high_bleeding:
-                advice.append({
-                    "medication": "AAS",
-                    "action": "Suspender 7 dias antes",
-                    "detail": "Prevenção secundária: suspender por neurocirurgia, RTU de próstata ou cirurgia de retina.",
-                    "type": TipoRecomendacao.RED,
+        elif prevencao == "secondary":
+            alto_sangramento = tipo_cirurgia in ("neurologic", "urologic_minor", "eye")
+            if alto_sangramento:
+                orientacoes.append({
+                    "medicamento": "AAS",
+                    "acao": "Suspender 7 dias antes",
+                    "detalhe": "Prevenção secundária: suspender por neurocirurgia, RTU de próstata ou cirurgia de retina.",
+                    "tipo": TipoRecomendacao.VERMELHO,
                 })
             else:
-                advice.append({
-                    "medication": "AAS",
-                    "action": "Manter",
-                    "detail": "Prevenção secundária: manter AAS (exceto neurocirurgia, RTU de próstata ou cirurgia de retina).",
-                    "type": TipoRecomendacao.GREEN,
+                orientacoes.append({
+                    "medicamento": "AAS",
+                    "acao": "Manter",
+                    "detalhe": "Prevenção secundária: manter AAS (exceto neurocirurgia, RTU de próstata ou cirurgia de retina).",
+                    "tipo": TipoRecomendacao.VERDE,
                 })
 
     # Clopidogrel
-    if data.get("uses_clopidogrel"):
-        advice.append({
-            "medication": "Clopidogrel",
-            "action": "Suspender 5 dias antes",
-            "detail": "Suspender 5 dias antes. Manter apenas se monoterapia em procedimentos de baixo risco de sangramento.",
-            "type": TipoRecomendacao.AMBER,
+    if data.get("usa_clopidogrel"):
+        orientacoes.append({
+            "medicamento": "Clopidogrel",
+            "acao": "Suspender 5 dias antes",
+            "detalhe": "Suspender 5 dias antes. Manter apenas se monoterapia em procedimentos de baixo risco de sangramento.",
+            "tipo": TipoRecomendacao.AMARELO,
         })
 
     # Ticagrelor
-    if data.get("uses_ticagrelor"):
-        advice.append({
-            "medication": "Ticagrelor",
-            "action": "Suspender 5 dias antes",
-            "detail": "Suspender ticagrelor 5 dias antes do procedimento.",
-            "type": TipoRecomendacao.AMBER,
+    if data.get("usa_ticagrelor"):
+        orientacoes.append({
+            "medicamento": "Ticagrelor",
+            "acao": "Suspender 5 dias antes",
+            "detalhe": "Suspender ticagrelor 5 dias antes do procedimento.",
+            "tipo": TipoRecomendacao.AMARELO,
         })
 
     # Prasugrel
-    if data.get("uses_prasugrel"):
-        advice.append({
-            "medication": "Prasugrel",
-            "action": "Suspender 7 dias antes",
-            "detail": "Suspender prasugrel 7 dias antes do procedimento.",
-            "type": TipoRecomendacao.AMBER,
+    if data.get("usa_prasugrel"):
+        orientacoes.append({
+            "medicamento": "Prasugrel",
+            "acao": "Suspender 7 dias antes",
+            "detalhe": "Suspender prasugrel 7 dias antes do procedimento.",
+            "tipo": TipoRecomendacao.AMARELO,
         })
 
     # DOACs: Rivaroxabana / Apixabana
-    # Suspender 24-48h antes e retornar no 1º ou 2º PO dependendo do risco de sangramento
     if data.get("uses_rivaroxaban") or data.get("uses_apixaban"):
-        med_name = "Rivaroxabana" if data.get("uses_rivaroxaban") else "Apixabana"
-        advice.append({
-            "medication": med_name,
-            "action": "Suspender 24-48h antes",
-            "detail": (
-                f"{med_name}: suspender 24–48 horas antes do procedimento. "
+        nome_med = "Rivaroxabana" if data.get("uses_rivaroxaban") else "Apixabana"
+        orientacoes.append({
+            "medicamento": nome_med,
+            "acao": "Suspender 24-48h antes",
+            "detalhe": (
+                f"{nome_med}: suspender 24–48 horas antes do procedimento. "
                 "Retornar no 1º ou 2º dia pós-operatório conforme risco de sangramento e hemostasia garantida."
             ),
-            "type": TipoRecomendacao.AMBER,
+            "tipo": TipoRecomendacao.AMARELO,
         })
 
-    # Dabigatrana: depende da depuração (ClCr) e risco de sangramento
+    # Dabigatrana
     if data.get("uses_dabigatran"):
         clcr = data.get("clcr")
-        high_bleeding = data.get("high_bleeding_risk", False)
-        if isinstance(clcr, (int, float)) and clcr < 50 and high_bleeding:
-            advice.append({
-                "medication": "Dabigatrana",
-                "action": "Suspender 4 dias antes",
-                "detail": (
+        alto_sangramento = data.get("high_bleeding_risk", False)
+        if isinstance(clcr, (int, float)) and clcr < 50 and alto_sangramento:
+            orientacoes.append({
+                "medicamento": "Dabigatrana",
+                "acao": "Suspender 4 dias antes",
+                "detalhe": (
                     "Dabigatrana com ClCr < 50 e alto risco de sangramento: suspender 4 dias antes. "
                     "Retornar no 2º dia pós-operatório se hemostasia garantida."
                 ),
-                "type": TipoRecomendacao.AMBER,
+                "tipo": TipoRecomendacao.AMARELO,
             })
         else:
-            advice.append({
-                "medication": "Dabigatrana",
-                "action": "Suspender 24-48h antes",
-                "detail": (
+            orientacoes.append({
+                "medicamento": "Dabigatrana",
+                "acao": "Suspender 24-48h antes",
+                "detalhe": (
                     "Dabigatrana (ClCr >= 50 ou sem risco aumentado): suspender 24–48 horas antes. "
                     "Retornar no 1º ou 2º dia pós-operatório conforme risco de sangramento e hemostasia garantida."
                 ),
-                "type": TipoRecomendacao.AMBER,
+                "tipo": TipoRecomendacao.AMARELO,
             })
 
-    # Warfarin
-    if data.get("uses_warfarin"):
-        bridging = _determinar_ponte_varfarina(data)
-        advice.append({
-            "medication": "Varfarina",
-            "action": bridging["action"],
-            "detail": bridging["detail"],
-            "type": bridging["type"],
+    # Varfarina
+    if data.get("usa_varfarina"):
+        ponte = _determinar_ponte_varfarina(data)
+        orientacoes.append({
+            "medicamento": "Varfarina",
+            "acao": ponte["acao"],
+            "detalhe": ponte["detalhe"],
+            "tipo": ponte["tipo"],
         })
 
-    return advice
+    return orientacoes
 
 
 # ---------------------------------------------------------------------------
@@ -380,45 +379,45 @@ def montar_orientacoes_medicacao(data: dict) -> list[dict]:
 
 def montar_recomendacoes_exames(
     data: dict,
-    risk_class: str,
-    score: int,
-    has_active: bool,
+    classe_risco: str,
+    pontuacao: int,
+    tem_condicoes_ativas: bool,
 ) -> list[str]:
-    exams: list[str] = []
-    surgery_risk = data.get("surgery_risk", "")
+    exames: list[str] = []
+    risco_cirurgia = data.get("risco_cirurgia", "")
     mets = data.get("mets", 4)
 
-    if surgery_risk != "low" or score > 0:
-        exams.append("ECG de 12 derivações")
+    if risco_cirurgia != "baixo" or pontuacao > 0:
+        exames.append("ECG de 12 derivações")
 
-    needs_echo_from_history = (data.get("known_hf") or data.get("known_valvular_disease")) and \
-                              (not data.get("recent_echo") or data.get("worsening_symptoms"))
-    
-    if needs_echo_from_history or has_active:
-        if "Ecocardiograma transtorácico" not in exams:
-            exams.append("Ecocardiograma transtorácico")
+    necessita_eco_historico = (data.get("ic_conhecida") or data.get("doenca_valvar_conhecida")) and \
+                              (not data.get("eco_recente") or data.get("piora_sintomas"))
 
-    is_vascular = data.get("is_vascular", False)
-    intermediate_score = score >= 5 if is_vascular else score >= 2
-    if mets < 4 and surgery_risk in ("intermediate", "high") and intermediate_score:
-        exams.append("Teste funcional (ergometria / cintilografia / eco de estresse)")
+    if necessita_eco_historico or tem_condicoes_ativas:
+        if "Ecocardiograma transtorácico" not in exames:
+            exames.append("Ecocardiograma transtorácico")
 
-    if surgery_risk in ("intermediate", "high"):
-        exams.append("Hemograma completo")
+    eh_vascular = data.get("eh_vascular", False)
+    pontuacao_intermediaria = pontuacao >= 5 if eh_vascular else pontuacao >= 2
+    if mets < 4 and risco_cirurgia in ("intermediario", "alto") and pontuacao_intermediaria:
+        exames.append("Teste funcional (ergometria / cintilografia / eco de estresse)")
 
-    if data.get("uses_warfarin"):
-        exams.append("Coagulograma (INR, TAP, TTPa)")
+    if risco_cirurgia in ("intermediario", "alto"):
+        exames.append("Hemograma completo")
 
-    if score > 0 or surgery_risk == "high":
-        exams.append("Função renal (creatinina, ureia)")
+    if data.get("usa_varfarina"):
+        exames.append("Coagulograma (INR, TAP, TTPa)")
 
-    if risk_class == ClasseRisco.HIGH or data.get("known_hf"):
-        exams.append("BNP ou NT-proBNP")
+    if pontuacao > 0 or risco_cirurgia == "alto":
+        exames.append("Função renal (creatinina, ureia)")
 
-    if data.get("rcri_insulin_diabetes") or data.get("vsg_insulin_diabetes"):
-        exams.append("Glicemia de jejum / HbA1c")
+    if classe_risco == ClasseRisco.ALTO or data.get("ic_conhecida"):
+        exames.append("BNP ou NT-proBNP")
 
-    return exams
+    if data.get("rcri_diabetes_insulina") or data.get("vsg_diabetes_insulina"):
+        exames.append("Glicemia de jejum / HbA1c")
+
+    return exames
 
 
 # ---------------------------------------------------------------------------
@@ -426,159 +425,159 @@ def montar_recomendacoes_exames(
 # ---------------------------------------------------------------------------
 
 def montar_recomendacoes(
-    risk_class: str,
-    score: int,
+    classe_risco: str,
+    pontuacao: int,
     mets: int,
-    surgery_risk: str,
-    has_active: bool,
-    active_conditions: list[str],
-    is_vascular: bool,
+    risco_cirurgia: str,
+    tem_condicoes_ativas: bool,
+    condicoes_ativas: list[str],
+    eh_vascular: bool,
     data: dict,
 ) -> list[dict]:
-    recs: list[dict] = []
+    recomendacoes: list[dict] = []
 
-    # Active conditions take priority
-    if has_active:
-        recs.append({
-            "type": TipoRecomendacao.RED,
-            "icon": "🚨",
-            "title": "Condições cardíacas ativas detectadas",
-            "body": (
+    # Condições ativas têm prioridade
+    if tem_condicoes_ativas:
+        recomendacoes.append({
+            "tipo": TipoRecomendacao.VERMELHO,
+            "icone": "🚨",
+            "titulo": "Condições cardíacas ativas detectadas",
+            "corpo": (
                 "Foram identificadas condições cardíacas ativas que requerem "
                 "avaliação e tratamento antes do procedimento cirúrgico: "
-                + ", ".join(active_conditions) + "."
+                + ", ".join(condicoes_ativas) + "."
             ),
         })
 
-    # Low-risk surgery shortcut
-    if surgery_risk == RiscoCirurgia.LOW and not has_active:
-        recs.append({
-            "type": TipoRecomendacao.GREEN,
-            "icon": "✅",
-            "title": "Cirurgia de baixo risco",
-            "body": (
+    # Atalho para cirurgia de baixo risco
+    if risco_cirurgia == RiscoCirurgia.BAIXO and not tem_condicoes_ativas:
+        recomendacoes.append({
+            "tipo": TipoRecomendacao.VERDE,
+            "icone": "✅",
+            "titulo": "Cirurgia de baixo risco",
+            "corpo": (
                 "Risco cardíaco estimado < 1%. Prosseguir com a cirurgia. "
                 "Monitorização padrão perioperatória é suficiente."
             ),
         })
-        return recs
+        return recomendacoes
 
-    # Risk-based recommendation
-    if risk_class == ClasseRisco.LOW:
-        recs.append({
-            "type": TipoRecomendacao.GREEN,
-            "icon": "✅",
-            "title": "Prosseguir com cirurgia",
-            "body": "Risco cardíaco perioperatório baixo. Monitorização padrão é suficiente.",
+    # Recomendação baseada em risco
+    if classe_risco == ClasseRisco.BAIXO:
+        recomendacoes.append({
+            "tipo": TipoRecomendacao.VERDE,
+            "icone": "✅",
+            "titulo": "Prosseguir com cirurgia",
+            "corpo": "Risco cardíaco perioperatório baixo. Monitorização padrão é suficiente.",
         })
-    elif risk_class == ClasseRisco.INTERMEDIATE:
-        recs.append({
-            "type": TipoRecomendacao.AMBER,
-            "icon": "⚠️",
-            "title": "Considerar avaliação adicional",
-            "body": (
+    elif classe_risco == ClasseRisco.INTERMEDIARIO:
+        recomendacoes.append({
+            "tipo": TipoRecomendacao.AMARELO,
+            "icone": "⚠️",
+            "titulo": "Considerar avaliação adicional",
+            "corpo": (
                 "Risco intermediário. Avalie benefício de consulta cardiológica. "
                 "Solicite ECG pré-operatório e considere dosagem de BNP."
             ),
         })
     else:
-        recs.append({
-            "type": TipoRecomendacao.RED,
-            "icon": "🚨",
-            "title": "Avaliação cardiológica indicada",
-            "body": (
+        recomendacoes.append({
+            "tipo": TipoRecomendacao.VERMELHO,
+            "icone": "🚨",
+            "titulo": "Avaliação cardiológica indicada",
+            "corpo": (
                 "Risco elevado. Recomenda-se avaliação cardiológica formal. "
                 "Discuta relação risco/benefício com equipe cirúrgica e paciente."
             ),
         })
 
-    # Functional capacity
+    # Capacidade funcional
     if mets < 4:
-        recs.append({
-            "type": TipoRecomendacao.AMBER,
-            "icon": "🏃",
-            "title": "Capacidade funcional reduzida",
-            "body": (
+        recomendacoes.append({
+            "tipo": TipoRecomendacao.AMARELO,
+            "icone": "🏃",
+            "titulo": "Capacidade funcional reduzida",
+            "corpo": (
                 "METs < 4 é preditor independente de eventos. "
                 "Considere teste funcional antes de cirurgia eletiva."
             ),
         })
 
-    # High/Intermediate Risk Optimization and Monitoring
-    if risk_class in (ClasseRisco.HIGH, ClasseRisco.INTERMEDIATE):
-        recs.append({
-            "type": TipoRecomendacao.RED if risk_class == ClasseRisco.HIGH else TipoRecomendacao.AMBER,
-            "icon": "🏥",
-            "title": "Monitorização avançada",
-            "body": "Considere monitorização invasiva e cuidados intensivos (CTI) pós-operatórios."
+    # Monitorização avançada para risco alto/intermediário
+    if classe_risco in (ClasseRisco.ALTO, ClasseRisco.INTERMEDIARIO):
+        recomendacoes.append({
+            "tipo": TipoRecomendacao.VERMELHO if classe_risco == ClasseRisco.ALTO else TipoRecomendacao.AMARELO,
+            "icone": "🏥",
+            "titulo": "Monitorização avançada",
+            "corpo": "Considere monitorização invasiva e cuidados intensivos (CTI) pós-operatórios."
         })
 
-    # High-risk surgery
-    if surgery_risk == RiscoCirurgia.HIGH:
-        recs.append({
-            "type": TipoRecomendacao.RED,
-            "icon": "🔪",
-            "title": "Cirurgia de alto risco",
-            "body": "Procedimento com risco cardíaco intrínseco > 5%.",
+    # Cirurgia de alto risco
+    if risco_cirurgia == RiscoCirurgia.ALTO:
+        recomendacoes.append({
+            "tipo": TipoRecomendacao.VERMELHO,
+            "icone": "🔪",
+            "titulo": "Cirurgia de alto risco",
+            "corpo": "Procedimento com risco cardíaco intrínseco > 5%.",
         })
 
-    # High score optimization
-    if score >= 3:
-        recs.append({
-            "type": TipoRecomendacao.RED,
-            "icon": "💊",
-            "title": "Otimização farmacológica",
-            "body": (
+    # Otimização para pontuação alta
+    if pontuacao >= 3:
+        recomendacoes.append({
+            "tipo": TipoRecomendacao.VERMELHO,
+            "icone": "💊",
+            "titulo": "Otimização farmacológica",
+            "corpo": (
                 "Score >= 3: considere betabloqueadores e estatinas conforme indicação. "
                 "Avalie profilaxia antitrombótica."
             ),
         })
 
-    # Comorbidity-specific
-    if data.get("known_hf"):
-        recs.append({
-            "type": TipoRecomendacao.AMBER,
-            "icon": "🫀",
-            "title": "IC conhecida / suspeita",
-            "body": "Avaliação ecocardiográfica recomendada. Otimize tratamento da IC antes do procedimento.",
+    # Comorbidades específicas
+    if data.get("ic_conhecida"):
+        recomendacoes.append({
+            "tipo": TipoRecomendacao.AMARELO,
+            "icone": "🫀",
+            "titulo": "IC conhecida / suspeita",
+            "corpo": "Avaliação ecocardiográfica recomendada. Otimize tratamento da IC antes do procedimento.",
         })
 
-    if data.get("known_valvular_disease"):
-        recs.append({
-            "type": TipoRecomendacao.AMBER,
-            "icon": "🫀",
-            "title": "Doença valvar conhecida / suspeita",
-            "body": "Solicite ecocardiograma para avaliação da gravidade valvar.",
+    if data.get("doenca_valvar_conhecida"):
+        recomendacoes.append({
+            "tipo": TipoRecomendacao.AMARELO,
+            "icone": "🫀",
+            "titulo": "Doença valvar conhecida / suspeita",
+            "corpo": "Solicite ecocardiograma para avaliação da gravidade valvar.",
         })
 
-    if data.get("known_cad"):
-        recs.append({
-            "type": TipoRecomendacao.AMBER,
-            "icon": "❤️",
-            "title": "DAC conhecida / suspeita",
-            "body": "Avalie controle da doença coronariana. Considere teste funcional se indicado.",
+    if data.get("dac_conhecida"):
+        recomendacoes.append({
+            "tipo": TipoRecomendacao.AMARELO,
+            "icone": "❤️",
+            "titulo": "DAC conhecida / suspeita",
+            "corpo": "Avalie controle da doença coronariana. Considere teste funcional se indicado.",
         })
 
-    return recs
+    return recomendacoes
 
 
 # ---------------------------------------------------------------------------
 # Risk Factor Tags
 # ---------------------------------------------------------------------------
 
-def montar_fatores_risco(data: dict, criteria_met: list[str], mets: int) -> list[str]:
-    factors = list(criteria_met)
+def montar_fatores_risco(data: dict, criterios_atingidos: list[str], mets: int) -> list[str]:
+    fatores = list(criterios_atingidos)
     if mets < 4:
-        factors.append("Capacidade funcional reduzida")
-    if data.get("obesity"):
-        factors.append("Obesidade")
-    if data.get("known_hf"):
-        factors.append("IC conhecida/suspeita")
-    if data.get("known_valvular_disease"):
-        factors.append("Doença valvar")
-    if data.get("known_cad"):
-        factors.append("DAC conhecida/suspeita")
-    return factors
+        fatores.append("Capacidade funcional reduzida")
+    if data.get("obesidade"):
+        fatores.append("Obesidade")
+    if data.get("ic_conhecida"):
+        fatores.append("IC conhecida/suspeita")
+    if data.get("doenca_valvar_conhecida"):
+        fatores.append("Doença valvar")
+    if data.get("dac_conhecida"):
+        fatores.append("DAC conhecida/suspeita")
+    return fatores
 
 
 # ---------------------------------------------------------------------------
@@ -587,83 +586,81 @@ def montar_fatores_risco(data: dict, criteria_met: list[str], mets: int) -> list
 
 def calcular_risco(data: dict) -> dict:
     mets: float = data.get("mets", 4)
-    surgery_risk: str = data.get("surgery_risk", "intermediate")
-    surgery_type: str = data.get("surgery_type", "")
-    # Accept multiple indicators for vascular surgery and infer from surgery_type
-    is_vascular: bool = (
-        bool(data.get("is_vascular", False))
+    risco_cirurgia: str = data.get("risco_cirurgia", "intermediario")
+    tipo_cirurgia: str = data.get("tipo_cirurgia", "")
+    # Aceita múltiplos indicadores para cirurgia vascular e infere do tipo_cirurgia
+    eh_vascular: bool = (
+        bool(data.get("eh_vascular", False))
         or bool(data.get("surgery_is_vascular", False))
-        or (str(surgery_type).lower().find("vascular") >= 0)
+        or (str(tipo_cirurgia).lower().find("vascular") >= 0)
     )
 
     # 1. Verificar condições cardiovasculares ativas (Tabela 2)
-    active_conditions = verificar_condicoes_ativas(data)
-    has_active = len(active_conditions) > 0
+    condicoes_ativas = verificar_condicoes_ativas(data)
+    tem_condicoes_ativas = len(condicoes_ativas) > 0
 
     # 2. Pontuação usando RCRI ou VSG
-    if is_vascular:
-        risk_index = "vsg"
-        score, criteria_met = pontuar_vsg(data)
-        risk_class, risk_label = _obter_classe_risco_vsg(score)
+    if eh_vascular:
+        indice_risco = "vsg"
+        pontuacao, criterios_atingidos = pontuar_vsg(data)
+        classe_risco, rotulo_risco = _obter_classe_risco_vsg(pontuacao)
     else:
-        risk_index = "rcri"
-        score, criteria_met = pontuar_rcri(data)
-        risk_class, risk_label = _obter_classe_risco_rcri(score)
+        indice_risco = "rcri"
+        pontuacao, criterios_atingidos = pontuar_rcri(data)
+        classe_risco, rotulo_risco = _obter_classe_risco_rcri(pontuacao)
 
-    # 3. Override for low-risk surgery
-    # Low-surgery cap, do NOT apply it when the calculated score
-    # already indicates high procedural risk (e.g., RCRI score >= 3).
-    if surgery_risk == RiscoCirurgia.LOW and not has_active and risk_class != ClasseRisco.HIGH:
-        risk_class, risk_label = ClasseRisco.LOW, "Risco Baixo"
+    # 3. Override para cirurgia de baixo risco
+    if risco_cirurgia == RiscoCirurgia.BAIXO and not tem_condicoes_ativas and classe_risco != ClasseRisco.ALTO:
+        classe_risco, rotulo_risco = ClasseRisco.BAIXO, "Risco Baixo"
 
-    # If active conditions, always high risk
-    if has_active:
-        risk_class = ClasseRisco.HIGH
-        risk_label = "Risco Alto (Condições Ativas)"
+    # Se condições ativas, sempre risco alto
+    if tem_condicoes_ativas:
+        classe_risco = ClasseRisco.ALTO
+        rotulo_risco = "Risco Alto (Condições Ativas)"
 
-    # 5. Build recommendations
-    recommendations = montar_recomendacoes(
-        risk_class=risk_class,
-        score=score,
+    # 5. Montar recomendações
+    recomendacoes = montar_recomendacoes(
+        classe_risco=classe_risco,
+        pontuacao=pontuacao,
         mets=mets,
-        surgery_risk=surgery_risk,
-        has_active=has_active,
-        active_conditions=active_conditions,
-        is_vascular=is_vascular,
+        risco_cirurgia=risco_cirurgia,
+        tem_condicoes_ativas=tem_condicoes_ativas,
+        condicoes_ativas=condicoes_ativas,
+        eh_vascular=eh_vascular,
         data=data,
     )
 
-    # 6. Build medication advice
-    medication_advice = montar_orientacoes_medicacao(data)
+    # 6. Montar orientações de medicação
+    orientacoes_medicacao = montar_orientacoes_medicacao(data)
 
-    # 7. Recommended exams
-    recommended_exams = montar_recomendacoes_exames(
+    # 7. Exames recomendados
+    exames_recomendados = montar_recomendacoes_exames(
         data=data,
-        risk_class=risk_class,
-        score=score,
-        has_active=has_active,
+        classe_risco=classe_risco,
+        pontuacao=pontuacao,
+        tem_condicoes_ativas=tem_condicoes_ativas,
     )
 
-    # 8. Risk factor tags
-    risk_factors = montar_fatores_risco(data, criteria_met, mets)
+    # 8. Tags de fatores de risco
+    fatores_risco = montar_fatores_risco(data, criterios_atingidos, mets)
 
     return {
-        "risk_index": risk_index,
-        "score": score,
-        "risk_class": risk_class,
-        "risk_label": risk_label,
-        "has_active_conditions": has_active,
-        "active_conditions": active_conditions,
-        "criteria_met": criteria_met,
-        "risk_factors": risk_factors if risk_factors else ["Sem fatores de risco identificados"],
-        "recommendations": recommendations,
-        "medication_advice": medication_advice,
-        "recommended_exams": recommended_exams,
+        "indice_risco": indice_risco,
+        "pontuacao": pontuacao,
+        "classe_risco": classe_risco,
+        "rotulo_risco": rotulo_risco,
+        "tem_condicoes_ativas": tem_condicoes_ativas,
+        "condicoes_ativas": condicoes_ativas,
+        "criterios_atingidos": criterios_atingidos,
+        "fatores_risco": fatores_risco if fatores_risco else ["Sem fatores de risco identificados"],
+        "recomendacoes": recomendacoes,
+        "orientacoes_medicacao": orientacoes_medicacao,
+        "exames_recomendados": exames_recomendados,
         "mets": mets,
-        "mets_label": METS_LABELS.get(mets, f"{mets} METs"),
-        "surgery_type": surgery_type,
-        "surgery_risk": surgery_risk,
-        "surgery_label": ROTULOS_CIRURGIA.get(surgery_risk, "—"),
-        "is_vascular": is_vascular,
-        "functional_capacity_adequate": mets >= 4,
+        "rotulo_mets": METS_LABELS.get(mets, f"{mets} METs"),
+        "tipo_cirurgia": tipo_cirurgia,
+        "risco_cirurgia": risco_cirurgia,
+        "rotulo_cirurgia": ROTULOS_CIRURGIA.get(risco_cirurgia, "—"),
+        "eh_vascular": eh_vascular,
+        "capacidade_funcional_adequada": mets >= 4,
     }

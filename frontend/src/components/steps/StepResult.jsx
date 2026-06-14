@@ -1,15 +1,15 @@
 import { useState } from "react";
 import { AlertTriangle, FileDown, FileText, FlaskConical, Pill, Share2, ShieldAlert, Stethoscope, TriangleAlert } from "lucide-react";
-import { generateReport } from "../../services/report";
+import { gerarRelatorio } from "../../services/report";
 
-const REC_COLORS = {
-  green: { border: "var(--green)", bg: "var(--green-soft)" },
-  amber: { border: "var(--amber)", bg: "var(--amber-soft)" },
-  red: { border: "var(--red)", bg: "var(--red-soft)" },
+const CORES_REC = {
+  verde: { border: "var(--green)", bg: "var(--green-soft)" },
+  amarelo: { border: "var(--amber)", bg: "var(--amber-soft)" },
+  vermelho: { border: "var(--red)", bg: "var(--red-soft)" },
 };
 
 const HERO = {
-  low: {
+  baixo: {
     bg: "var(--green-soft)",
     color: "var(--green)",
     border: "#A7D4BB",
@@ -20,7 +20,7 @@ const HERO = {
       </svg>
     ),
   },
-  intermediate: {
+  intermediario: {
     bg: "var(--amber-soft)",
     color: "var(--amber)",
     border: "#FCD34D",
@@ -31,7 +31,7 @@ const HERO = {
       </svg>
     ),
   },
-  high: {
+  alto: {
     bg: "var(--red-soft)",
     color: "var(--red)",
     border: "#F5B0AA",
@@ -109,19 +109,19 @@ function CollapsibleSection({ label, defaultOpen = true, children }) {
   );
 }
 
-async function handleShare(result, data, indexName) {
-  const name = data.name ? `Paciente: ${data.name}\n` : "";
+async function handleShare(resultado, dados, nomeIndice) {
+  const nome = dados.nome ? `Paciente: ${dados.nome}\n` : "";
   const text = [
     `CardioRisk Periop — Avaliação Cardiovascular Perioperatória`,
     ``,
-    `${name}Risco: ${result.risk_label}`,
-    `Score ${indexName}: ${result.score} pt${result.score !== 1 ? "s" : ""}`,
-    `Capacidade Funcional: ${result.mets} METs`,
-    `Cirurgia: ${result.surgery_label}`,
-    `Risco do Procedimento: ${result.surgery_risk === "low" ? "Baixo" : result.surgery_risk === "high" ? "Alto" : "Intermediário"}`,
+    `${nome}Risco: ${resultado.rotulo_risco}`,
+    `Score ${nomeIndice}: ${resultado.pontuacao} pt${resultado.pontuacao !== 1 ? "s" : ""}`,
+    `Capacidade Funcional: ${resultado.mets} METs`,
+    `Cirurgia: ${resultado.rotulo_cirurgia}`,
+    `Risco do Procedimento: ${resultado.risco_cirurgia === "baixo" ? "Baixo" : resultado.risco_cirurgia === "alto" ? "Alto" : "Intermediário"}`,
     ``,
-    result.recommendations.length > 0 ? `Recomendações:\n${result.recommendations.map((r) => `• ${r.title}: ${r.body}`).join("\n")}` : "",
-    result.medication_advice.length > 0 ? `\nManejo de Medicamentos:\n${result.medication_advice.map((m) => `• ${m.medication}: ${m.action} — ${m.detail}`).join("\n")}` : "",
+    resultado.recomendacoes.length > 0 ? `Recomendações:\n${resultado.recomendacoes.map((r) => `• ${r.titulo}: ${r.corpo}`).join("\n")}` : "",
+    resultado.orientacoes_medicacao.length > 0 ? `\nManejo de Medicamentos:\n${resultado.orientacoes_medicacao.map((m) => `• ${m.medicamento}: ${m.acao} — ${m.detalhe}`).join("\n")}` : "",
   ]
     .filter(Boolean)
     .join("\n");
@@ -131,26 +131,25 @@ async function handleShare(result, data, indexName) {
       await navigator.share({ title: "CardioRisk Periop", text });
     } else {
       await navigator.clipboard.writeText(text);
-      // Brief visual feedback handled by button state
     }
   } catch {
-    // User cancelled or clipboard not available
+    // Usuário cancelou ou clipboard não disponível
   }
 }
 
-export function EtapaResultado({ result, data }) {
+export function EtapaResultado({ resultado, dados }) {
   const [copied, setCopied] = useState(false);
-  const indexName = result.risk_index === "vsg" ? "VSG" : "RCRI";
-  const hero = HERO[result.risk_class] ?? HERO.low;
+  const nomeIndice = resultado.indice_risco === "vsg" ? "VSG" : "RCRI";
+  const hero = HERO[resultado.classe_risco] ?? HERO.baixo;
 
-  const recIcon = {
-    green: <Stethoscope size={18} strokeWidth={2.2} color="var(--green)" />,
-    amber: <TriangleAlert size={18} strokeWidth={2.2} color="var(--amber)" />,
-    red: <ShieldAlert size={18} strokeWidth={2.2} color="var(--red)" />,
+  const iconeRec = {
+    verde: <Stethoscope size={18} strokeWidth={2.2} color="var(--green)" />,
+    amarelo: <TriangleAlert size={18} strokeWidth={2.2} color="var(--amber)" />,
+    vermelho: <ShieldAlert size={18} strokeWidth={2.2} color="var(--red)" />,
   };
 
   const onShare = async () => {
-    await handleShare(result, data, indexName);
+    await handleShare(resultado, dados, nomeIndice);
     if (!navigator.share) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -159,8 +158,8 @@ export function EtapaResultado({ result, data }) {
 
   return (
     <>
-      {/* Active conditions alert */}
-      {result.has_active_conditions && (
+      {/* Alerta de condições ativas */}
+      {resultado.tem_condicoes_ativas && (
         <div
           style={{
             background: "var(--red-soft)",
@@ -180,7 +179,7 @@ export function EtapaResultado({ result, data }) {
               Condições Cardíacas Ativas Detectadas
             </div>
             <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "var(--ink-mid)", lineHeight: 1.6 }}>
-              {result.active_conditions.map((c, i) => (
+              {resultado.condicoes_ativas.map((c, i) => (
                 <li key={i}>{c}</li>
               ))}
             </ul>
@@ -191,7 +190,7 @@ export function EtapaResultado({ result, data }) {
         </div>
       )}
 
-      {/* ── Hero risk card ───────────────────────────────────────────── */}
+      {/* ── Card hero de risco ───────────────────────────────────────────── */}
       <div
         style={{
           borderRadius: "var(--r)",
@@ -200,7 +199,7 @@ export function EtapaResultado({ result, data }) {
           boxShadow: "0 2px 8px rgba(13,17,23,0.08)",
         }}
       >
-        {/* Colored hero area */}
+        {/* Área colorida hero */}
         <div
           style={{
             background: hero.bg,
@@ -218,7 +217,7 @@ export function EtapaResultado({ result, data }) {
               marginBottom: 10,
             }}
           >
-            Estratificação de Risco ({indexName})
+            Estratificação de Risco ({nomeIndice})
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ display: "inline-flex", flexShrink: 0 }}>{hero.icon}</span>
@@ -231,12 +230,12 @@ export function EtapaResultado({ result, data }) {
                 lineHeight: 1,
               }}
             >
-              {result.risk_label}
+              {resultado.rotulo_risco}
             </span>
           </div>
         </div>
 
-        {/* Stats grid */}
+        {/* Grid de estatísticas */}
         <div
           style={{
             display: "grid",
@@ -246,15 +245,15 @@ export function EtapaResultado({ result, data }) {
           }}
         >
           {[
-            { label: `Pontuação (${indexName})`, value: `${result.score} pt${result.score !== 1 ? "s" : ""}` },
-            { label: "Cap. Funcional", value: `${result.mets} METs` },
-            { label: "Cirurgia", value: result.surgery_label },
+            { label: `Pontuação (${nomeIndice})`, value: `${resultado.pontuacao} pt${resultado.pontuacao !== 1 ? "s" : ""}` },
+            { label: "Cap. Funcional", value: `${resultado.mets} METs` },
+            { label: "Cirurgia", value: resultado.rotulo_cirurgia },
             {
               label: "Risco do Procedimento",
               value:
-                result.surgery_risk === "low"
+                resultado.risco_cirurgia === "baixo"
                   ? "Baixo"
-                  : result.surgery_risk === "high"
+                  : resultado.risco_cirurgia === "alto"
                   ? "Alto"
                   : "Intermediário",
             },
@@ -295,11 +294,11 @@ export function EtapaResultado({ result, data }) {
         </div>
       </div>
 
-      {/* ── Medication advice ────────────────────────────────────────── */}
-      {result.medication_advice.length > 0 && (
+      {/* ── Orientações de medicação ────────────────────────────────────────── */}
+      {resultado.orientacoes_medicacao.length > 0 && (
         <CollapsibleSection label="Manejo de Medicamentos">
-          {result.medication_advice.map((med, i) => {
-            const colors = REC_COLORS[med.type] || REC_COLORS.amber;
+          {resultado.orientacoes_medicacao.map((med, i) => {
+            const cores = CORES_REC[med.tipo] || CORES_REC.amarelo;
             return (
               <div
                 key={i}
@@ -307,7 +306,7 @@ export function EtapaResultado({ result, data }) {
                   background: "var(--white)",
                   borderRadius: "var(--r)",
                   border: "1px solid var(--border)",
-                  borderLeft: `3px solid ${colors.border}`,
+                  borderLeft: `3px solid ${cores.border}`,
                   padding: "14px 16px",
                   boxShadow: "0 1px 4px rgba(13,17,23,0.06)",
                 }}
@@ -323,7 +322,7 @@ export function EtapaResultado({ result, data }) {
                   <span style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)" }}>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                       <Pill size={14} strokeWidth={2.2} color="var(--ink-mid)" />
-                      {med.medication}
+                      {med.medicamento}
                     </span>
                   </span>
                   <span
@@ -332,15 +331,15 @@ export function EtapaResultado({ result, data }) {
                       fontWeight: 600,
                       padding: "3px 8px",
                       borderRadius: 999,
-                      background: colors.bg,
-                      color: colors.border,
+                      background: cores.bg,
+                      color: cores.border,
                     }}
                   >
-                    {med.action}
+                    {med.acao}
                   </span>
                 </div>
                 <div style={{ fontSize: 12, color: "var(--ink-mid)", lineHeight: 1.55 }}>
-                  {med.detail}
+                  {med.detalhe}
                 </div>
               </div>
             );
@@ -348,8 +347,8 @@ export function EtapaResultado({ result, data }) {
         </CollapsibleSection>
       )}
 
-      {/* ── Recommended exams ────────────────────────────────────────── */}
-      {result.recommended_exams.length > 0 && (
+      {/* ── Exames recomendados ────────────────────────────────────────── */}
+      {resultado.exames_recomendados.length > 0 && (
         <CollapsibleSection label="Exames Recomendados">
           <div
             style={{
@@ -378,19 +377,19 @@ export function EtapaResultado({ result, data }) {
               Realizar antes do procedimento cirúrgico
             </div>
             <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "var(--ink-mid)", lineHeight: 1.8 }}>
-              {result.recommended_exams.map((exam, i) => (
-                <li key={i}>{exam}</li>
+              {resultado.exames_recomendados.map((exame, i) => (
+                <li key={i}>{exame}</li>
               ))}
             </ul>
           </div>
         </CollapsibleSection>
       )}
 
-      {/* ── Recommendations ──────────────────────────────────────────── */}
-      {result.recommendations.length > 0 && (
+      {/* ── Recomendações ──────────────────────────────────────────── */}
+      {resultado.recomendacoes.length > 0 && (
         <CollapsibleSection label="Recomendações" defaultOpen={true}>
-          {result.recommendations.map((rec, i) => {
-            const colors = REC_COLORS[rec.type] || REC_COLORS.green;
+          {resultado.recomendacoes.map((rec, i) => {
+            const cores = CORES_REC[rec.tipo] || CORES_REC.verde;
             return (
               <div
                 key={i}
@@ -398,7 +397,7 @@ export function EtapaResultado({ result, data }) {
                   background: "var(--white)",
                   borderRadius: "var(--r)",
                   border: "1px solid var(--border)",
-                  borderLeft: `3px solid ${colors.border}`,
+                  borderLeft: `3px solid ${cores.border}`,
                   padding: "14px 16px",
                   display: "flex",
                   gap: 12,
@@ -407,14 +406,14 @@ export function EtapaResultado({ result, data }) {
                 }}
               >
                 <span style={{ display: "inline-flex", flexShrink: 0 }}>
-                  {recIcon[rec.type] ?? recIcon.green}
+                  {iconeRec[rec.tipo] ?? iconeRec.verde}
                 </span>
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 3, color: "var(--ink)" }}>
-                    {rec.title}
+                    {rec.titulo}
                   </div>
                   <div style={{ fontSize: 12, color: "var(--ink-mid)", lineHeight: 1.55 }}>
-                    {rec.body}
+                    {rec.corpo}
                   </div>
                 </div>
               </div>
@@ -423,8 +422,8 @@ export function EtapaResultado({ result, data }) {
         </CollapsibleSection>
       )}
 
-      {/* ── Risk factors ─────────────────────────────────────────────── */}
-      {result.risk_factors.length > 0 && (
+      {/* ── Fatores de risco ─────────────────────────────────────────────── */}
+      {resultado.fatores_risco.length > 0 && (
         <CollapsibleSection label="Fatores Identificados" defaultOpen={false}>
           <div
             style={{
@@ -436,7 +435,7 @@ export function EtapaResultado({ result, data }) {
             }}
           >
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {result.risk_factors.map((f, i) => (
+              {resultado.fatores_risco.map((f, i) => (
                 <span
                   key={i}
                   style={{
@@ -457,7 +456,7 @@ export function EtapaResultado({ result, data }) {
         </CollapsibleSection>
       )}
 
-      {/* ── Actions ──────────────────────────────────────────────────── */}
+      {/* ── Ações ──────────────────────────────────────────────────── */}
       <div style={{ display: "flex", gap: 8 }}>
         <button
           onClick={onShare}
@@ -486,7 +485,7 @@ export function EtapaResultado({ result, data }) {
         </button>
 
         <button
-          onClick={() => generateReport(result, data)}
+          onClick={() => gerarRelatorio(resultado, dados)}
           style={{
             flex: 1,
             padding: "14px 20px",

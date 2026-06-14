@@ -1,444 +1,528 @@
-import { View, Text, TouchableOpacity } from "react-native";
-import { generateReport } from "../../services/report";
-import { theme } from "../../theme";
+import { useState } from "react";
+import { AlertTriangle, FileDown, FileText, FlaskConical, Pill, Share2, ShieldAlert, Stethoscope, TriangleAlert } from "lucide-react";
+import { gerarRelatorio } from "../../services/report";
 
-const REC_COLORS = {
-  green: { border: theme.green, bg: theme.greenSoft },
-  amber: { border: theme.amber, bg: theme.amberSoft },
-  red: { border: theme.red, bg: theme.redSoft },
+const CORES_REC = {
+  verde: { border: "var(--green)", bg: "var(--green-soft)" },
+  amarelo: { border: "var(--amber)", bg: "var(--amber-soft)" },
+  vermelho: { border: "var(--red)", bg: "var(--red-soft)" },
 };
 
-const PILL_COLORS = {
-  low: { bg: theme.greenSoft, color: theme.green },
-  intermediate: { bg: theme.amberSoft, color: theme.amber },
-  high: { bg: theme.redSoft, color: theme.red },
+const HERO = {
+  baixo: {
+    bg: "var(--green-soft)",
+    color: "var(--green)",
+    border: "#A7D4BB",
+    icon: (
+      <svg width={32} height={32} viewBox="0 0 24 24" fill="none">
+        <circle cx={12} cy={12} r={10} fill="#0E7B52" opacity={0.15} />
+        <path d="M9 12l2 2 4-4" stroke="#0E7B52" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  intermediario: {
+    bg: "var(--amber-soft)",
+    color: "var(--amber)",
+    border: "#FCD34D",
+    icon: (
+      <svg width={32} height={32} viewBox="0 0 24 24" fill="none">
+        <path d="M12 3L2 21h20L12 3z" fill="#C47A00" opacity={0.15} />
+        <path d="M12 9v4M12 17h.01" stroke="#C47A00" strokeWidth={2.2} strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  alto: {
+    bg: "var(--red-soft)",
+    color: "var(--red)",
+    border: "#F5B0AA",
+    icon: (
+      <svg width={32} height={32} viewBox="0 0 24 24" fill="none">
+        <circle cx={12} cy={12} r={10} fill="#E03131" opacity={0.15} />
+        <path d="M12 8v4M12 16h.01" stroke="#E03131" strokeWidth={2.2} strokeLinecap="round" />
+      </svg>
+    ),
+  },
 };
 
-export function EtapaResultado({ result, data }) {
-  const pill = PILL_COLORS[result.risk_class] ?? PILL_COLORS.low;
-  const indexName = result.risk_index === "vsg" ? "VSG" : "RCRI";
+function SectionHeader({ label }) {
+  return (
+    <div
+      style={{
+        fontSize: 10,
+        fontWeight: 700,
+        textTransform: "uppercase",
+        letterSpacing: "0.1em",
+        color: "var(--ink-muted)",
+        padding: "0 2px",
+      }}
+    >
+      {label}
+    </div>
+  );
+}
+
+function CollapsibleSection({ label, defaultOpen = true, children }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          padding: "0 2px",
+          textAlign: "left",
+          fontFamily: "'Outfit', sans-serif",
+        }}
+      >
+        <span
+          style={{
+            fontSize: 10,
+            fontWeight: 700,
+            textTransform: "uppercase",
+            letterSpacing: "0.1em",
+            color: "var(--ink-muted)",
+            flex: 1,
+          }}
+        >
+          {label}
+        </span>
+        <span
+          style={{
+            fontSize: 10,
+            color: "var(--ink-muted)",
+            transition: "transform 0.2s",
+            display: "inline-flex",
+            transform: open ? "rotate(180deg)" : "none",
+          }}
+        >
+          ▼
+        </span>
+      </button>
+      {open && children}
+    </div>
+  );
+}
+
+async function handleShare(resultado, dados, nomeIndice) {
+  const nome = dados.nome ? `Paciente: ${dados.nome}\n` : "";
+  const text = [
+    `CardioRisk Periop — Avaliação Cardiovascular Perioperatória`,
+    ``,
+    `${nome}Risco: ${resultado.rotulo_risco}`,
+    `Score ${nomeIndice}: ${resultado.pontuacao} pt${resultado.pontuacao !== 1 ? "s" : ""}`,
+    `Capacidade Funcional: ${resultado.mets} METs`,
+    `Cirurgia: ${resultado.rotulo_cirurgia}`,
+    `Risco do Procedimento: ${resultado.risco_cirurgia === "baixo" ? "Baixo" : resultado.risco_cirurgia === "alto" ? "Alto" : "Intermediário"}`,
+    ``,
+    resultado.recomendacoes.length > 0 ? `Recomendações:\n${resultado.recomendacoes.map((r) => `• ${r.titulo}: ${r.corpo}`).join("\n")}` : "",
+    resultado.orientacoes_medicacao.length > 0 ? `\nManejo de Medicamentos:\n${resultado.orientacoes_medicacao.map((m) => `• ${m.medicamento}: ${m.acao} — ${m.detalhe}`).join("\n")}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: "CardioRisk Periop", text });
+    } else {
+      await navigator.clipboard.writeText(text);
+    }
+  } catch {
+    // Usuário cancelou ou clipboard não disponível
+  }
+}
+
+export function EtapaResultado({ resultado, dados }) {
+  const [copied, setCopied] = useState(false);
+  const nomeIndice = resultado.indice_risco === "vsg" ? "VSG" : "RCRI";
+  const hero = HERO[resultado.classe_risco] ?? HERO.baixo;
+
+  const iconeRec = {
+    verde: <Stethoscope size={18} strokeWidth={2.2} color="var(--green)" />,
+    amarelo: <TriangleAlert size={18} strokeWidth={2.2} color="var(--amber)" />,
+    vermelho: <ShieldAlert size={18} strokeWidth={2.2} color="var(--red)" />,
+  };
+
+  const onShare = async () => {
+    await handleShare(resultado, dados, nomeIndice);
+    if (!navigator.share) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   return (
     <>
-      {result.has_active_conditions ? (
-        <View
+      {/* Alerta de condições ativas */}
+      {resultado.tem_condicoes_ativas && (
+        <div
           style={{
-            backgroundColor: theme.redSoft,
-            borderWidth: 1,
-            borderColor: "#F5B0AA",
-            borderRadius: theme.r,
-            padding: 14,
-            flexDirection: "row",
+            background: "var(--red-soft)",
+            border: "1px solid #F5B0AA",
+            borderRadius: "var(--r)",
+            padding: "14px 16px",
+            display: "flex",
             gap: 12,
             alignItems: "flex-start",
           }}
         >
-          <Text style={{ fontSize: 20, flexShrink: 0 }}>🚨</Text>
-          <View>
-            <Text
-              style={{
-                fontSize: 13,
-                fontWeight: "700",
-                color: theme.red,
-                marginBottom: 4,
-              }}
-            >
+          <span style={{ display: "inline-flex", flexShrink: 0 }}>
+            <AlertTriangle size={20} strokeWidth={2.2} color="var(--red)" />
+          </span>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--red)", marginBottom: 4 }}>
               Condições Cardíacas Ativas Detectadas
-            </Text>
-            {result.active_conditions.map((c, i) => (
-              <Text
-                key={i}
-                style={{ fontSize: 12, color: theme.inkMid, lineHeight: 19, marginLeft: 2 }}
-              >
-                • {c}
-              </Text>
-            ))}
-            <Text
-              style={{ fontSize: 11, color: theme.red, marginTop: 6, fontWeight: "500" }}
-            >
+            </div>
+            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "var(--ink-mid)", lineHeight: 1.6 }}>
+              {resultado.condicoes_ativas.map((c, i) => (
+                <li key={i}>{c}</li>
+              ))}
+            </ul>
+            <div style={{ fontSize: 11, color: "var(--red)", marginTop: 6, fontWeight: 500 }}>
               Avaliar e tratar antes do procedimento cirúrgico.
-            </Text>
-          </View>
-        </View>
-      ) : null}
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* Risk summary card */}
-      <View
+      {/* ── Card hero de risco ───────────────────────────────────────────── */}
+      <div
         style={{
-          backgroundColor: theme.white,
-          borderRadius: theme.r,
-          borderWidth: 1,
-          borderColor: theme.border,
+          borderRadius: "var(--r)",
+          border: `1px solid ${hero.border}`,
           overflow: "hidden",
-          shadowColor: "#0D1117",
-          shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 0.06,
-          shadowRadius: 4,
-          elevation: 2,
+          boxShadow: "0 2px 8px rgba(13,17,23,0.08)",
         }}
       >
-        <View style={{ padding: 20, paddingBottom: 0 }}>
-          <Text
+        {/* Área colorida hero */}
+        <div
+          style={{
+            background: hero.bg,
+            padding: "20px 20px 16px",
+          }}
+        >
+          <div
             style={{
               fontSize: 10,
               textTransform: "uppercase",
-              letterSpacing: 1,
-              fontWeight: "600",
-              color: theme.inkMuted,
-              marginBottom: 6,
+              letterSpacing: "0.1em",
+              fontWeight: 600,
+              color: hero.color,
+              opacity: 0.75,
+              marginBottom: 10,
             }}
           >
-            Estratificação de Risco ({indexName})
-          </Text>
-          <Text
-            style={{
-              fontFamily: "monospace",
-              fontSize: 32,
-              fontWeight: "500",
-              color: theme.ink,
-              lineHeight: 38,
-              marginBottom: 8,
-            }}
-          >
-            {result.risk_label}
-          </Text>
-        </View>
+            Estratificação de Risco ({nomeIndice})
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ display: "inline-flex", flexShrink: 0 }}>{hero.icon}</span>
+            <span
+              style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 34,
+                fontWeight: 700,
+                color: hero.color,
+                lineHeight: 1,
+              }}
+            >
+              {resultado.rotulo_risco}
+            </span>
+          </div>
+        </div>
 
-        {/* 2-column grid */}
-        <View
+        {/* Grid de estatísticas */}
+        <div
           style={{
-            flexDirection: "row",
-            flexWrap: "wrap",
-            borderTopWidth: 1,
-            borderTopColor: theme.border,
-            marginTop: 20,
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            borderTop: `1px solid ${hero.border}`,
+            background: "var(--white)",
           }}
         >
           {[
-            { label: `Pontuação (${indexName})`, value: `${result.score} pt${result.score !== 1 ? "s" : ""}` },
-            { label: "Cap. Funcional", value: `${result.mets} METs` },
-            { label: "Cirurgia", value: result.surgery_label },
+            { label: `Pontuação (${nomeIndice})`, value: `${resultado.pontuacao} pt${resultado.pontuacao !== 1 ? "s" : ""}` },
+            { label: "Cap. Funcional", value: `${resultado.mets} METs` },
+            { label: "Cirurgia", value: resultado.rotulo_cirurgia },
             {
               label: "Risco do Procedimento",
               value:
-                result.surgery_risk === "low"
+                resultado.risco_cirurgia === "baixo"
                   ? "Baixo"
-                  : result.surgery_risk === "high"
+                  : resultado.risco_cirurgia === "alto"
                   ? "Alto"
                   : "Intermediário",
             },
           ].map((cell, i) => (
-            <View
+            <div
               key={cell.label}
               style={{
-                width: "50%",
-                padding: 14,
-                borderRightWidth: i % 2 === 0 ? 1 : 0,
-                borderRightColor: theme.border,
-                borderBottomWidth: i < 2 ? 1 : 0,
-                borderBottomColor: theme.border,
+                padding: "14px 16px",
+                borderRight: i % 2 === 0 ? `1px solid ${hero.border}` : "none",
+                borderBottom: i < 2 ? `1px solid ${hero.border}` : "none",
               }}
             >
-              <Text
+              <div
                 style={{
                   fontSize: 10,
                   textTransform: "uppercase",
-                  letterSpacing: 0.8,
-                  color: theme.inkMuted,
-                  fontWeight: "600",
+                  letterSpacing: "0.08em",
+                  color: "var(--ink-muted)",
+                  fontWeight: 600,
                   marginBottom: 4,
                 }}
               >
                 {cell.label}
-              </Text>
-              <Text
+              </div>
+              <div
                 style={{
-                  fontFamily: "monospace",
+                  fontFamily: "'JetBrains Mono', monospace",
                   fontSize: 14,
-                  fontWeight: "500",
-                  color: theme.ink,
+                  fontWeight: 500,
+                  color: "var(--ink)",
+                  lineHeight: 1.3,
                 }}
-                numberOfLines={2}
               >
                 {cell.value}
-              </Text>
-            </View>
+              </div>
+            </div>
           ))}
-        </View>
-      </View>
+        </div>
+      </div>
 
-      {/* Medication advice */}
-      {result.medication_advice.length > 0 ? (
-        <>
-          <Text
-            style={{
-              fontSize: 10,
-              fontWeight: "700",
-              textTransform: "uppercase",
-              letterSpacing: 1,
-              color: theme.inkMuted,
-              paddingHorizontal: 2,
-            }}
-          >
-            Manejo de Medicamentos
-          </Text>
-          {result.medication_advice.map((med, i) => {
-            const colors = REC_COLORS[med.type] || REC_COLORS.amber;
+      {/* ── Orientações de medicação ────────────────────────────────────────── */}
+      {resultado.orientacoes_medicacao.length > 0 && (
+        <CollapsibleSection label="Manejo de Medicamentos">
+          {resultado.orientacoes_medicacao.map((med, i) => {
+            const cores = CORES_REC[med.tipo] || CORES_REC.amarelo;
             return (
-              <View
+              <div
                 key={i}
                 style={{
-                  backgroundColor: theme.white,
-                  borderRadius: theme.r,
-                  borderWidth: 1,
-                  borderColor: theme.border,
-                  borderLeftWidth: 3,
-                  borderLeftColor: colors.border,
-                  padding: 14,
-                  shadowColor: "#0D1117",
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.06,
-                  shadowRadius: 4,
-                  elevation: 2,
+                  background: "var(--white)",
+                  borderRadius: "var(--r)",
+                  border: "1px solid var(--border)",
+                  borderLeft: `3px solid ${cores.border}`,
+                  padding: "14px 16px",
+                  boxShadow: "0 1px 4px rgba(13,17,23,0.06)",
                 }}
               >
-                <View
+                <div
                   style={{
-                    flexDirection: "row",
+                    display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
                     marginBottom: 4,
                   }}
                 >
-                  <Text style={{ fontSize: 13, fontWeight: "700", color: theme.ink }}>
-                    💊 {med.medication}
-                  </Text>
-                  <Text
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)" }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                      <Pill size={14} strokeWidth={2.2} color="var(--ink-mid)" />
+                      {med.medicamento}
+                    </span>
+                  </span>
+                  <span
                     style={{
                       fontSize: 11,
-                      fontWeight: "600",
-                      paddingVertical: 3,
-                      paddingHorizontal: 8,
+                      fontWeight: 600,
+                      padding: "3px 8px",
                       borderRadius: 999,
-                      backgroundColor: colors.bg,
-                      color: colors.border,
+                      background: cores.bg,
+                      color: cores.border,
                     }}
                   >
-                    {med.action}
-                  </Text>
-                </View>
-                <Text style={{ fontSize: 12, color: theme.inkMid, lineHeight: 18.6 }}>
-                  {med.detail}
-                </Text>
-              </View>
+                    {med.acao}
+                  </span>
+                </div>
+                <div style={{ fontSize: 12, color: "var(--ink-mid)", lineHeight: 1.55 }}>
+                  {med.detalhe}
+                </div>
+              </div>
             );
           })}
-        </>
-      ) : null}
+        </CollapsibleSection>
+      )}
 
-      {/* Recommended exams */}
-      {result.recommended_exams.length > 0 ? (
-        <View
-          style={{
-            backgroundColor: theme.white,
-            borderRadius: theme.r,
-            borderWidth: 1,
-            borderColor: theme.border,
-            padding: 16,
-            shadowColor: "#0D1117",
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.06,
-            shadowRadius: 4,
-            elevation: 2,
-          }}
-        >
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-            <View
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: 8,
-                backgroundColor: theme.blueSoft,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Text style={{ fontSize: 13 }}>🧪</Text>
-            </View>
-            <Text style={{ fontSize: 13, fontWeight: "600", color: theme.ink }}>
-              Exames Recomendados
-            </Text>
-          </View>
-          <Text
+      {/* ── Exames recomendados ────────────────────────────────────────── */}
+      {resultado.exames_recomendados.length > 0 && (
+        <CollapsibleSection label="Exames Recomendados">
+          <div
             style={{
-              fontSize: 11,
-              color: theme.amber,
-              backgroundColor: theme.amberSoft,
-              padding: 8,
-              borderRadius: 6,
-              marginBottom: 10,
-              fontWeight: "500",
+              background: "var(--white)",
+              borderRadius: "var(--r)",
+              border: "1px solid var(--border)",
+              padding: 16,
+              boxShadow: "0 1px 4px rgba(13,17,23,0.06)",
             }}
           >
-            ⚠️ Realizar antes do procedimento cirúrgico
-          </Text>
-          {result.recommended_exams.map((exam, i) => (
-            <Text
-              key={i}
-              style={{ fontSize: 12, color: theme.inkMid, lineHeight: 22, marginLeft: 2 }}
-            >
-              • {exam}
-            </Text>
-          ))}
-        </View>
-      ) : null}
-
-      {/* Recommendations */}
-      <Text
-        style={{
-          fontSize: 10,
-          fontWeight: "700",
-          textTransform: "uppercase",
-          letterSpacing: 1,
-          color: theme.inkMuted,
-          paddingHorizontal: 2,
-        }}
-      >
-        Recomendações
-      </Text>
-
-      {result.recommendations.map((rec, i) => {
-        const colors = REC_COLORS[rec.type] || REC_COLORS.green;
-        return (
-          <View
-            key={i}
-            style={{
-              backgroundColor: theme.white,
-              borderRadius: theme.r,
-              borderWidth: 1,
-              borderColor: theme.border,
-              borderLeftWidth: 3,
-              borderLeftColor: colors.border,
-              padding: 14,
-              flexDirection: "row",
-              gap: 12,
-              alignItems: "flex-start",
-              shadowColor: "#0D1117",
-              shadowOffset: { width: 0, height: 1 },
-              shadowOpacity: 0.06,
-              shadowRadius: 4,
-              elevation: 2,
-            }}
-          >
-            <Text style={{ fontSize: 18, flexShrink: 0 }}>{rec.icon}</Text>
-            <View>
-              <Text
-                style={{ fontSize: 13, fontWeight: "600", marginBottom: 3, color: theme.ink }}
-              >
-                {rec.title}
-              </Text>
-              <Text style={{ fontSize: 12, color: theme.inkMid, lineHeight: 18.6 }}>
-                {rec.body}
-              </Text>
-            </View>
-          </View>
-        );
-      })}
-
-      {/* Risk factors */}
-      <View
-        style={{
-          backgroundColor: theme.white,
-          borderRadius: theme.r,
-          borderWidth: 1,
-          borderColor: theme.border,
-          padding: 16,
-          shadowColor: "#0D1117",
-          shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 0.06,
-          shadowRadius: 4,
-          elevation: 2,
-        }}
-      >
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-          <View
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 8,
-              backgroundColor: theme.blueSoft,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Text style={{ fontSize: 13 }}>📋</Text>
-          </View>
-          <Text style={{ fontSize: 13, fontWeight: "600", color: theme.ink }}>
-            Fatores Identificados
-          </Text>
-        </View>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-          {result.risk_factors.map((f, i) => (
-            <Text
-              key={i}
+            <div
               style={{
                 fontSize: 11,
-                paddingVertical: 4,
-                paddingHorizontal: 10,
-                borderRadius: 999,
-                backgroundColor: theme.bg,
-                borderWidth: 1,
-                borderColor: theme.border,
-                color: theme.inkMuted,
-                fontWeight: "500",
+                color: "var(--amber)",
+                background: "var(--amber-soft)",
+                padding: "6px 10px",
+                borderRadius: 6,
+                marginBottom: 10,
+                fontWeight: 500,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
               }}
             >
-              {f}
-            </Text>
-          ))}
-        </View>
-      </View>
+              <TriangleAlert size={13} strokeWidth={2.2} color="var(--amber)" />
+              Realizar antes do procedimento cirúrgico
+            </div>
+            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "var(--ink-mid)", lineHeight: 1.8 }}>
+              {resultado.exames_recomendados.map((exame, i) => (
+                <li key={i}>{exame}</li>
+              ))}
+            </ul>
+          </div>
+        </CollapsibleSection>
+      )}
 
-      {/* PDF button */}
-      <TouchableOpacity
-        onPress={() => generateReport(result, data)}
-        activeOpacity={0.85}
-        style={{
-          width: "100%",
-          paddingVertical: 14,
-          paddingHorizontal: 20,
-          backgroundColor: theme.blue,
-          borderRadius: theme.r,
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 8,
-          shadowColor: "#0f4c81",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.25,
-          shadowRadius: 8,
-          elevation: 4,
-        }}
-      >
-        <Text style={{ fontSize: 18 }}>📄</Text>
-        <Text style={{ fontSize: 14, fontWeight: "600", color: "white" }}>
-          Baixar Relatório em PDF
-        </Text>
-      </TouchableOpacity>
+      {/* ── Recomendações ──────────────────────────────────────────── */}
+      {resultado.recomendacoes.length > 0 && (
+        <CollapsibleSection label="Recomendações" defaultOpen={true}>
+          {resultado.recomendacoes.map((rec, i) => {
+            const cores = CORES_REC[rec.tipo] || CORES_REC.verde;
+            return (
+              <div
+                key={i}
+                style={{
+                  background: "var(--white)",
+                  borderRadius: "var(--r)",
+                  border: "1px solid var(--border)",
+                  borderLeft: `3px solid ${cores.border}`,
+                  padding: "14px 16px",
+                  display: "flex",
+                  gap: 12,
+                  alignItems: "flex-start",
+                  boxShadow: "0 1px 4px rgba(13,17,23,0.06)",
+                }}
+              >
+                <span style={{ display: "inline-flex", flexShrink: 0 }}>
+                  {iconeRec[rec.tipo] ?? iconeRec.verde}
+                </span>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 3, color: "var(--ink)" }}>
+                    {rec.titulo}
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--ink-mid)", lineHeight: 1.55 }}>
+                    {rec.corpo}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </CollapsibleSection>
+      )}
 
-      <Text
+      {/* ── Fatores de risco ─────────────────────────────────────────────── */}
+      {resultado.fatores_risco.length > 0 && (
+        <CollapsibleSection label="Fatores Identificados" defaultOpen={false}>
+          <div
+            style={{
+              background: "var(--white)",
+              borderRadius: "var(--r)",
+              border: "1px solid var(--border)",
+              padding: 16,
+              boxShadow: "0 1px 4px rgba(13,17,23,0.06)",
+            }}
+          >
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {resultado.fatores_risco.map((f, i) => (
+                <span
+                  key={i}
+                  style={{
+                    fontSize: 11,
+                    padding: "4px 10px",
+                    borderRadius: 999,
+                    background: "var(--bg)",
+                    border: "1px solid var(--border)",
+                    color: "var(--ink-muted)",
+                    fontWeight: 500,
+                  }}
+                >
+                  {f}
+                </span>
+              ))}
+            </div>
+          </div>
+        </CollapsibleSection>
+      )}
+
+      {/* ── Ações ──────────────────────────────────────────────────── */}
+      <div style={{ display: "flex", gap: 8 }}>
+        <button
+          onClick={onShare}
+          style={{
+            flex: "0 0 auto",
+            padding: "14px 16px",
+            background: "var(--white)",
+            color: "var(--ink-mid)",
+            border: "1.5px solid var(--border)",
+            borderRadius: "var(--r)",
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            transition: "all 0.15s",
+          }}
+          title="Compartilhar resumo"
+        >
+          <span style={{ display: "inline-flex" }}>
+            <Share2 size={16} strokeWidth={2.2} color={copied ? "var(--green)" : "var(--ink-mid)"} />
+          </span>
+          {copied ? "Copiado!" : "Compartilhar"}
+        </button>
+
+        <button
+          onClick={() => gerarRelatorio(resultado, dados)}
+          style={{
+            flex: 1,
+            padding: "14px 20px",
+            background: "var(--blue)",
+            color: "#fff",
+            border: "none",
+            borderRadius: "var(--r)",
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            boxShadow: "0 2px 8px rgba(15,76,129,0.25)",
+          }}
+        >
+          <span style={{ display: "inline-flex" }}>
+            <FileDown size={18} strokeWidth={2.2} color="#fff" />
+          </span>
+          Baixar PDF
+        </button>
+      </div>
+
+      <p
         style={{
           textAlign: "center",
           fontSize: 10,
-          color: theme.inkMuted,
-          lineHeight: 17,
-          paddingHorizontal: 8,
-          marginBottom: 8,
+          color: "var(--ink-muted)",
+          lineHeight: 1.7,
+          padding: "0 8px",
         }}
       >
-        Ferramenta de suporte clínico. Não substitui o julgamento médico individualizado.{"\n"}
+        Ferramenta de suporte clínico. Não substitui o julgamento médico individualizado.
+        <br />
         Baseado na Diretriz Brasileira de Avaliação Cardiovascular Perioperatória, RCRI (Lee) e VSG.
-      </Text>
+      </p>
     </>
   );
 }

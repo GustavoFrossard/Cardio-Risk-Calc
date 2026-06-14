@@ -364,17 +364,17 @@ export function SearchSelect({ value, onChange, options, placeholder = "Selecion
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
-  const selectedLabel = options?.find((o) => !o.isHeader && o.value === value)?.label ?? null;
+  const selectedLabel = options?.find((o) => !o.ehCabecalho && o.valor === value)?.rotulo ?? null;
 
   const filtered = query.trim()
-    ? options.filter((o) => o.isHeader || o.label.toLowerCase().includes(query.toLowerCase()))
+    ? options.filter((o) => o.ehCabecalho || o.rotulo.toLowerCase().includes(query.toLowerCase()))
     : options;
 
   // Remove orphan headers (header followed by another header or end)
   const displayList = filtered.filter((item, idx) => {
-    if (!item.isHeader) return true;
+    if (!item.ehCabecalho) return true;
     const next = filtered[idx + 1];
-    return next && !next.isHeader;
+    return next && !next.ehCabecalho;
   });
 
   return (
@@ -493,10 +493,10 @@ export function SearchSelect({ value, onChange, options, placeholder = "Selecion
                 </div>
               )}
               {displayList.map((item) => {
-                if (item.isHeader) {
+                if (item.ehCabecalho) {
                   return (
                     <div
-                      key={item.value}
+                      key={item.valor}
                       style={{
                         padding: "8px 16px",
                         background: "var(--bg-soft)",
@@ -507,16 +507,16 @@ export function SearchSelect({ value, onChange, options, placeholder = "Selecion
                         letterSpacing: "0.05em",
                       }}
                     >
-                      {item.label}
+                      {item.rotulo}
                     </div>
                   );
                 }
-                const isSelected = item.value === value;
+                const isSelected = item.valor === value;
                 return (
                   <button
-                    key={item.value}
+                    key={item.valor}
                     type="button"
-                    onClick={() => { onChange(item.value); setOpen(false); }}
+                    onClick={() => { onChange(item.valor); setOpen(false); }}
                     style={{
                       width: "100%",
                       padding: "13px 16px",
@@ -531,7 +531,7 @@ export function SearchSelect({ value, onChange, options, placeholder = "Selecion
                       display: "block",
                     }}
                   >
-                    {item.label}
+                    {item.rotulo}
                     {isSelected && (
                       <span style={{ float: "right", color: "var(--blue)" }}>✓</span>
                     )}
@@ -553,23 +553,23 @@ export function ChipGroup({ options, value, onChange }) {
     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
       {options.map((opt) => (
         <button
-          key={opt.value}
+          key={opt.valor}
           type="button"
-          onClick={() => onChange(opt.value)}
+          onClick={() => onChange(opt.valor)}
           style={{
             padding: "7px 14px",
             borderRadius: 999,
-            border: `1.5px solid ${value === opt.value ? "var(--blue)" : "var(--border)"}`,
+            border: `1.5px solid ${value === opt.valor ? "var(--blue)" : "var(--border)"}`,
             fontSize: 12,
             fontWeight: 500,
-            color: value === opt.value ? "white" : "var(--ink-muted)",
-            background: value === opt.value ? "var(--blue)" : "var(--white)",
+            color: value === opt.valor ? "white" : "var(--ink-muted)",
+            background: value === opt.valor ? "var(--blue)" : "var(--white)",
             cursor: "pointer",
             transition: "all 0.15s",
             fontFamily: "'Outfit', sans-serif",
           }}
         >
-          {opt.label}
+          {opt.rotulo}
         </button>
       ))}
     </div>

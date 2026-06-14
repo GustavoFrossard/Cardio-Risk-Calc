@@ -1,11 +1,8 @@
-import { View, Text, TouchableOpacity } from "react-native";
-import { theme } from "../theme";
+export function BarraInferior({ etapaAtual, totalEtapas, carregando, onVoltar, onAvancar, onReiniciar }) {
+  const isResult = etapaAtual === totalEtapas;
+  const isLastInput = etapaAtual === totalEtapas - 1;
 
-export function BarraInferior({ currentStep, totalSteps, isLoading, onBack, onNext, onReset }) {
-  const isResult = currentStep === totalSteps;
-  const isLastInput = currentStep === totalSteps - 1;
-
-  const nextLabel = isLoading
+  const nextLabel = carregando
     ? "Calculando..."
     : isResult
     ? "Nova Avaliação"
@@ -13,54 +10,67 @@ export function BarraInferior({ currentStep, totalSteps, isLoading, onBack, onNe
     ? "Calcular Risco"
     : "Próximo →";
 
+  const nextStyle = {
+    flex: 1,
+    padding: 13,
+    borderRadius: "var(--r-sm)",
+    fontFamily: "'Outfit', sans-serif",
+    fontSize: 14,
+    fontWeight: 600,
+    border: "none",
+    cursor: carregando ? "not-allowed" : "pointer",
+    transition: "all 0.15s",
+    background: isResult ? "var(--ink)" : "var(--blue)",
+    color: "white",
+    opacity: carregando ? 0.7 : 1,
+  };
+
+  const backStyle = {
+    flex: "0 0 auto",
+    padding: "13px 16px",
+    borderRadius: "var(--r-sm)",
+    fontFamily: "'Outfit', sans-serif",
+    fontSize: 14,
+    fontWeight: 600,
+    border: "1.5px solid var(--border)",
+    cursor: "pointer",
+    transition: "all 0.15s",
+    background: "var(--white)",
+    color: "var(--ink-mid)",
+  };
+
   return (
-    <View
+    <div
       style={{
-        backgroundColor: "rgba(255,255,255,0.97)",
-        paddingHorizontal: 16,
-        paddingTop: 12,
-        paddingBottom: 24,
-        borderTopWidth: 1,
-        borderTopColor: theme.border,
-        flexDirection: "row",
+        position: "fixed",
+        bottom: 0,
+        left: "50%",
+        transform: "translateX(-50%)",
+        width: "100%",
+        maxWidth: 420,
+        background: "rgba(255,255,255,0.94)",
+        backdropFilter: "blur(14px)",
+        WebkitBackdropFilter: "blur(14px)",
+        padding: "12px 16px 28px",
+        borderTop: "1px solid var(--border)",
+        display: "flex",
         gap: 8,
+        zIndex: 100,
       }}
     >
-      {currentStep > 1 && !isResult ? (
-        <TouchableOpacity
-          onPress={onBack}
-          activeOpacity={0.7}
-          style={{
-            paddingVertical: 13,
-            paddingHorizontal: 16,
-            borderRadius: theme.rSm,
-            borderWidth: 1.5,
-            borderColor: theme.border,
-            backgroundColor: theme.white,
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          <Text style={{ fontSize: 14, fontWeight: "600", color: theme.inkMid }}>← Voltar</Text>
-        </TouchableOpacity>
-      ) : null}
-
-      <TouchableOpacity
-        onPress={isResult ? onReset : onNext}
-        disabled={isLoading}
-        activeOpacity={isLoading ? 1 : 0.8}
-        style={{
-          flex: 1,
-          paddingVertical: 13,
-          borderRadius: theme.rSm,
-          backgroundColor: isResult ? theme.ink : theme.blue,
-          justifyContent: "center",
-          alignItems: "center",
-          opacity: isLoading ? 0.7 : 1,
-        }}
+      {etapaAtual > 1 && !isResult && (
+        <button style={backStyle} onClick={onVoltar} type="button">
+          ← Voltar
+        </button>
+      )}
+      <button
+        style={nextStyle}
+        onClick={isResult ? onReiniciar : onAvancar}
+        disabled={carregando}
+        type="button"
       >
-        <Text style={{ fontSize: 14, fontWeight: "600", color: "white" }}>{nextLabel}</Text>
-      </TouchableOpacity>
-    </View>
+        {nextLabel}
+      </button>
+    </div>
   );
 }

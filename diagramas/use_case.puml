@@ -1,18 +1,109 @@
-@startuml
-title Diagrama de Casos de Uso - CardioRisk Periop
+@startuml CardioRisk_CasosDeUso
+title Diagrama de Casos de Uso — CardioRisk Periop
 
-actor Médico
+skinparam backgroundColor #F7F8FA
+skinparam defaultFontName Segoe UI
+skinparam defaultFontSize 12
 
-rectangle "Aplicação CardioRisk" {
-  usecase "Preencher critérios de risco" as UC1
-  usecase "Calcular risco perioperatório" as UC2
-  usecase "Visualizar resultado" as UC3
-  usecase "Gerar relatório em PDF" as UC4
+skinparam actor {
+  BorderColor #1A6BF0
+  FontColor   #1A6BF0
+  FontStyle   bold
 }
 
-Médico --> UC1
-Médico --> UC2
-Médico --> UC3
-Médico --> UC4
+skinparam usecase {
+  BorderColor       #1A6BF0
+  BackgroundColor   #EBF1FE
+  FontSize          11
+}
+
+skinparam package {
+  BorderColor       #8B909A
+  BackgroundColor   #FFFFFF
+  FontStyle         bold
+}
+
+skinparam ArrowColor  #555555
+skinparam ArrowFontSize 10
+
+' ─── Atores ───────────────────────────────────────────────────────────────────
+actor "Médico"      as medico
+actor "Backend API" as api   #0E7B52
+actor "LLM / NLP"   as llm   #C47A00
+
+' ─── Sistema ──────────────────────────────────────────────────────────────────
+rectangle "Sistema CardioRisk Periop" {
+
+  package "Etapa 1 · Dados do Paciente" {
+    usecase "Preencher dados do paciente"               as UC1
+    usecase "Informar comorbidades"                     as UC1a
+    usecase "Informar medicamentos em uso"               as UC1b
+    usecase "Informar capacidade funcional (METs)"       as UC1c
+    usecase "Auto-preencher via texto clínico"           as UC2
+  }
+
+  package "Etapa 2 · Cirurgia e Condições Ativas" {
+    usecase "Identificar cirurgia e risco do procedimento"  as UC3
+    usecase "Informar condições cardiovasculares ativas"    as UC4
+  }
+
+  package "Etapa 3 · Índice de Risco" {
+    usecase "Preencher critérios RCRI\n(cirurgia não vascular)"  as UC5a
+    usecase "Preencher critérios VSG\n(cirurgia vascular)"       as UC5b
+    usecase "Calcular risco cardiovascular perioperatório"        as UC6
+  }
+
+  package "Etapa 4 · Resultado" {
+    usecase "Visualizar estratificação de risco"             as UC7
+    usecase "Ver recomendações clínicas e exames"            as UC8
+    usecase "Ver manejo de medicamentos"                     as UC9
+    usecase "Baixar relatório em PDF"                        as UC10
+    usecase "Compartilhar resultado (texto / clipboard)"     as UC11
+  }
+
+  package "Navegação e Sessão" {
+    usecase "Navegar entre etapas do wizard"  as UCN1
+    usecase "Retomar avaliação salva"         as UCN2
+    usecase "Iniciar nova avaliação"          as UCN3
+  }
+
+  usecase "Analisar texto clínico\ncom NLP / LLM" as UCNLP
+
+}
+
+' ─── Associações: Médico ──────────────────────────────────────────────────────
+medico --> UC1
+medico --> UC2
+medico --> UC3
+medico --> UC4
+medico --> UC5a
+medico --> UC5b
+medico --> UC7
+medico --> UC10
+medico --> UC11
+medico --> UCN1
+medico --> UCN2
+medico --> UCN3
+
+' ─── Include / Extend ─────────────────────────────────────────────────────────
+UC1  ..> UC1a   : <<include>>
+UC1  ..> UC1b   : <<include>>
+UC1  ..> UC1c   : <<include>>
+UC2  ..> UCNLP  : <<include>>
+
+UC3  ..> UC5a   : <<extend>>\n(não vascular)
+UC3  ..> UC5b   : <<extend>>\n(vascular)
+
+UC5a ..> UC6    : <<include>>
+UC5b ..> UC6    : <<include>>
+
+UC6  ..> UC7    : <<include>>
+UC7  ..> UC8    : <<include>>
+UC7  ..> UC9    : <<include>>
+
+' ─── Associações: Backend API e LLM ──────────────────────────────────────────
+api --> UC6    : executa cálculo
+api --> UCNLP  : executa análise NLP
+llm --> UCNLP  : processa texto
 
 @enduml

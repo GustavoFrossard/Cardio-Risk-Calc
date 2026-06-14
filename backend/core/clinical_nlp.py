@@ -51,7 +51,7 @@ _NER_LOCK = threading.Lock()
 
 SURGERY_TYPE_MAP: dict[str, dict[str, Any]] = {
     "intraperitoneal": {
-        "risk": "intermediate",
+        "risco": "intermediario",
         "vascular": False,
         "aliases": [
             "colecistectomia",
@@ -63,27 +63,27 @@ SURGERY_TYPE_MAP: dict[str, dict[str, Any]] = {
         ],
     },
     "intrathoracic": {
-        "risk": "intermediate",
+        "risco": "intermediario",
         "vascular": False,
         "aliases": ["intratoracica", "toracotomia", "cirurgia toracica"],
     },
     "neurologic": {
-        "risk": "intermediate",
+        "risco": "intermediario",
         "vascular": False,
         "aliases": ["neurocirurgia", "cirurgia neurologica", "craniana"],
     },
     "aortic_vascular_major": {
-        "risk": "high",
+        "risco": "alto",
         "vascular": True,
         "aliases": ["aorta", "vascular major", "aneurisma de aorta aberta"],
     },
     "endovascular_aortic": {
-        "risk": "intermediate",
+        "risco": "intermediario",
         "vascular": True,
         "aliases": ["endovascular", "aneurisma de aorta endovascular", "evaar"],
     },
     "peripheral_angioplasty": {
-        "risk": "intermediate",
+        "risco": "intermediario",
         "vascular": True,
         "aliases": [
             "angioplastia arterial periferica",
@@ -92,17 +92,17 @@ SURGERY_TYPE_MAP: dict[str, dict[str, Any]] = {
         ],
     },
     "orthopedic_major": {
-        "risk": "intermediate",
+        "risco": "intermediario",
         "vascular": False,
         "aliases": ["artroplastia", "ortopedica major", "protese de quadril", "protese de joelho"],
     },
     "urologic_major": {
-        "risk": "intermediate",
+        "risco": "intermediario",
         "vascular": False,
         "aliases": ["urologica major", "nefrectomia", "prostatectomia radical"],
     },
     "eye": {
-        "risk": "low",
+        "risco": "baixo",
         "vascular": False,
         "aliases": ["ocular", "catarata", "retina"],
     },
@@ -292,14 +292,14 @@ def _extract_surgery(normalized_text: str) -> dict[str, Any] | None:
     for surgery_id, payload in SURGERY_TYPE_MAP.items():
         if _match_any(normalized_text, payload["aliases"]):
             return {
-                "surgery_type": surgery_id,
-                "surgery_risk": payload["risk"],
-                "is_vascular": payload["vascular"],
+                "tipo_cirurgia": surgery_id,
+                "risco_cirurgia": payload["risco"],
+                "eh_vascular": payload["vascular"],
             }
     return None
 
 
-def analyze_clinical_text(text: str, current_data: dict[str, Any] | None = None) -> dict[str, Any]:
+def analisar_texto_clinico(text: str, current_data: dict[str, Any] | None = None) -> dict[str, Any]:
     current_data = current_data or {}
     normalized = _normalize(text)
 
@@ -312,81 +312,81 @@ def analyze_clinical_text(text: str, current_data: dict[str, Any] | None = None)
 
     age = _extract_age(text)
     if age is not None:
-        autofill["age"] = age
+        autofill["idade"] = age
 
     name = _extract_name(text)
     if name:
-        autofill["name"] = name
+        autofill["nome"] = name
 
     surgery = _extract_surgery(normalized)
     if surgery:
         autofill.update(surgery)
-        findings["procedures"].append(surgery["surgery_type"])
+        findings["procedures"].append(surgery["tipo_cirurgia"])
 
     if _match_any(normalized, ["insulina", "insulinoterapia", "nph", "glargina"]):
-        autofill["rcri_insulin_diabetes"] = True
-        autofill["vsg_insulin_diabetes"] = True
+        autofill["rcri_diabetes_insulina"] = True
+        autofill["vsg_diabetes_insulina"] = True
         findings["medications"].append("insulina")
 
     if _match_any(normalized, ["aas", "acido acetilsalicilico", "aspirina"]):
-        autofill["uses_aas"] = True
+        autofill["usa_aas"] = True
         findings["medications"].append("aas")
 
     if _match_any(normalized, ["clopidogrel"]):
-        autofill["uses_clopidogrel"] = True
+        autofill["usa_clopidogrel"] = True
         findings["medications"].append("clopidogrel")
 
     if _match_any(normalized, ["ticagrelor"]):
-        autofill["uses_ticagrelor"] = True
+        autofill["usa_ticagrelor"] = True
         findings["medications"].append("ticagrelor")
 
     if _match_any(normalized, ["prasugrel"]):
-        autofill["uses_prasugrel"] = True
+        autofill["usa_prasugrel"] = True
         findings["medications"].append("prasugrel")
 
     if _match_any(normalized, ["varfarina", "marevan"]):
-        autofill["uses_warfarin"] = True
+        autofill["usa_varfarina"] = True
         findings["medications"].append("varfarina")
 
     if _match_any(normalized, ["fibrilacao atrial"]) or re.search(r"\bfa\b", normalized):
-        autofill["warfarin_indication"] = "af"
+        autofill["indicacao_varfarina"] = "af"
 
     if _match_any(normalized, ["tev", "tromboembolismo venoso", "trombose venosa", "tep"]):
-        autofill["warfarin_indication"] = "vte"
+        autofill["indicacao_varfarina"] = "vte"
 
     if _match_any(normalized, ["avc", "ait", "acidente vascular cerebral", "avci"]):
         autofill["rcri_cerebrovascular"] = True
         findings["diagnoses"].append("doenca_cerebrovascular")
 
     if _match_any(normalized, ["dac", "doenca coronariana", "angina", "infarto", "iam"]):
-        autofill["known_cad"] = True
-        autofill["rcri_ischemic_heart"] = True
-        autofill["vsg_cad"] = True
+        autofill["dac_conhecida"] = True
+        autofill["rcri_doenca_coronaria"] = True
+        autofill["vsg_dac"] = True
         findings["diagnoses"].append("doenca_coronariana")
 
     if _match_any(normalized, ["insuficiencia cardiaca", "ic", "icc"]):
-        autofill["known_hf"] = True
-        autofill["rcri_heart_failure"] = True
-        autofill["vsg_chf"] = True
+        autofill["ic_conhecida"] = True
+        autofill["rcri_ic"] = True
+        autofill["vsg_ic"] = True
         findings["diagnoses"].append("insuficiencia_cardiaca")
 
     if _match_any(normalized, ["dpoc"]):
-        autofill["vsg_copd"] = True
+        autofill["vsg_dpoc"] = True
         findings["diagnoses"].append("dpoc")
 
     if _match_any(normalized, ["tabagista", "tabagismo", "fumante"]):
-        autofill["vsg_smoking"] = True
+        autofill["vsg_tabagismo"] = True
 
     if _match_any(normalized, ["obesidade", "obeso", "obesa"]):
-        autofill["obesity"] = True
+        autofill["obesidade"] = True
 
     if _match_any(normalized, ["beta bloqueador", "beta-bloqueador", "betabloqueador", "atenolol", "metoprolol", "carvedilol"]):
-        autofill["vsg_chronic_beta_blocker"] = True
+        autofill["vsg_betabloqueador_cronico"] = True
         findings["medications"].append("betabloqueador")
 
     has_revasc = _match_any(normalized, ["revascularizacao", "angioplastia coronaria", "ponte de safena"])
     if has_revasc and not _is_negated(normalized, "revascularizacao"):
-        autofill["vsg_prior_revasc"] = True
+        autofill["vsg_revasc_previa"] = True
 
     mets = _extract_mets(text)
     if mets is None:
@@ -397,29 +397,29 @@ def analyze_clinical_text(text: str, current_data: dict[str, Any] | None = None)
     creatinine = _extract_creatinine(text)
     if creatinine is not None:
         if creatinine > 2.0:
-            autofill["rcri_creatinine_above_2"] = True
+            autofill["rcri_creatinina_acima_2"] = True
         if creatinine > 1.8:
-            autofill["vsg_creatinine_over_1_8"] = True
+            autofill["vsg_creatinina_acima_1_8"] = True
 
     egfr = _extract_egfr(text)
 
     merged = {**current_data, **autofill}
     missing_critical: list[dict[str, str]] = []
 
-    if merged.get("age") is None:
+    if merged.get("idade") is None:
         missing_critical.append(
             {
-                "field": "age",
+                "campo": "idade",
                 "label": "Idade",
                 "reason": "A idade é necessária para pontuação VSG e interpretação global de risco.",
                 "question": "Qual a idade do paciente?",
             }
         )
 
-    if not merged.get("surgery_type"):
+    if not merged.get("tipo_cirurgia"):
         missing_critical.append(
             {
-                "field": "surgery_type",
+                "campo": "tipo_cirurgia",
                 "label": "Tipo de cirurgia",
                 "reason": "Sem o procedimento não é possível determinar o risco cirúrgico basal.",
                 "question": "Qual procedimento cirúrgico será realizado?",
@@ -428,13 +428,13 @@ def analyze_clinical_text(text: str, current_data: dict[str, Any] | None = None)
 
     mets_is_missing = merged.get("mets") is None
     if not mets_is_missing:
-        mets_is_default = (current_data.get("mets") in (None, "", 1)) and not current_data.get("functional_activities")
+        mets_is_default = (current_data.get("mets") in (None, "", 1)) and not current_data.get("atividades_funcionais")
         mets_is_missing = mets is None and mets_is_default
 
     if mets_is_missing:
         missing_critical.append(
             {
-                "field": "mets",
+                "campo": "mets",
                 "label": "Capacidade funcional (METs)",
                 "reason": "A capacidade funcional impacta a estratificação perioperatória.",
                 "question": "Qual a estimativa de METs ou atividade máxima tolerada?",
@@ -444,7 +444,7 @@ def analyze_clinical_text(text: str, current_data: dict[str, Any] | None = None)
     if creatinine is None and egfr is None:
         missing_critical.append(
             {
-                "field": "renal_function",
+                "campo": "funcao_renal",
                 "label": "Função renal (creatinina ou TFG)",
                 "reason": "Creatinina/TFG são dados críticos para classificar risco renal e critérios RCRI/VSG.",
                 "question": "Informe creatinina pré-operatória (mg/dL) ou TFG estimada.",
@@ -473,3 +473,7 @@ def analyze_clinical_text(text: str, current_data: dict[str, Any] | None = None)
         "summary": summary,
         "context": context,
     }
+
+
+# Alias para compatibilidade com importações existentes
+analyze_clinical_text = analisar_texto_clinico

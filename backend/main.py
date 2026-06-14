@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Any, Optional
 from core.calculator import calcular_risco
-from core.clinical_nlp import analyze_clinical_text
+from core.clinical_nlp import analisar_texto_clinico
 
 app = FastAPI(
     title="CardioRisk Periop API",
@@ -40,75 +40,75 @@ app.add_middleware(
 )
 
 
-class PatientData(BaseModel):
+class DadosPaciente(BaseModel):
     # Step 1: Patient info
-    name: Optional[str] = Field(None, description="Patient name or identifier")
-    age: Optional[int] = Field(None, ge=0, le=120, description="Patient age in years")
+    nome: Optional[str] = Field(None, description="Nome ou identificador do paciente")
+    idade: Optional[int] = Field(None, ge=0, le=120, description="Idade do paciente em anos")
 
-    # Comorbidities
-    obesity: bool = Field(False)
-    known_hf: bool = Field(False, description="Known or suspected heart failure")
-    known_valvular_disease: bool = Field(False, description="Known or suspected valvular disease")
-    known_cad: bool = Field(False, description="Known or suspected coronary artery disease")
-    recent_echo: bool = Field(False, description="Recent echocardiogram (< 6 months)")
-    worsening_symptoms: bool = Field(False, description="Worsening of symptoms")
+    # Comorbidades
+    obesidade: bool = Field(False)
+    ic_conhecida: bool = Field(False, description="Insuficiência cardíaca conhecida ou suspeita")
+    doenca_valvar_conhecida: bool = Field(False, description="Doença valvar conhecida ou suspeita")
+    dac_conhecida: bool = Field(False, description="Doença arterial coronariana conhecida ou suspeita")
+    eco_recente: bool = Field(False, description="Ecocardiograma recente (< 6 meses)")
+    piora_sintomas: bool = Field(False, description="Piora dos sintomas")
 
-    # Medications
-    uses_aas: bool = Field(False)
-    aas_prevention: str = Field("", description="'primary' or 'secondary'")
-    uses_clopidogrel: bool = Field(False)
-    uses_ticagrelor: bool = Field(False)
-    uses_prasugrel: bool = Field(False)
-    uses_warfarin: bool = Field(False)
-    warfarin_indication: str = Field("", description="'af', 'vte', 'mechanical_valve', 'rheumatic'")
-    warfarin_chadsvasc: Optional[int] = Field(None, ge=0, le=9)
-    warfarin_stroke_3m: bool = Field(False, description="Stroke/TIA in last 3 months")
-    warfarin_vte_timing: str = Field("", description="'recent', '3_12m', 'over_12m'")
-    warfarin_thrombophilia: str = Field("", description="'severe', 'mild', 'none'")
-    warfarin_active_neoplasia: bool = Field(False)
+    # Medicamentos
+    usa_aas: bool = Field(False)
+    prevencao_aas: str = Field("", description="'primary' ou 'secondary'")
+    usa_clopidogrel: bool = Field(False)
+    usa_ticagrelor: bool = Field(False)
+    usa_prasugrel: bool = Field(False)
+    usa_varfarina: bool = Field(False)
+    indicacao_varfarina: str = Field("", description="'af', 'vte', 'mechanical_valve', 'rheumatic'")
+    chadsvasc_varfarina: Optional[int] = Field(None, ge=0, le=9)
+    avc_3m_varfarina: bool = Field(False, description="AVC/AIT nos últimos 3 meses")
+    tempo_tev_varfarina: str = Field("", description="'recent', '3_12m', 'over_12m'")
+    trombofilia_varfarina: str = Field("", description="'severe', 'mild', 'none'")
+    neoplasia_ativa_varfarina: bool = Field(False)
 
-    # Functional capacity
-    functional_activities: list[str] = Field(default_factory=list, description="List of checked activity IDs")
-    mets: float = Field(4, ge=1, le=12, description="Estimated METs")
+    # Capacidade funcional
+    atividades_funcionais: list[str] = Field(default_factory=list, description="Lista de IDs de atividades marcadas")
+    mets: float = Field(4, ge=1, le=12, description="METs estimados")
 
-    # Step 2: Surgery & cardiovascular conditions
-    surgery_type: str = Field("", description="Surgery type identifier")
-    surgery_risk: str = Field("", description="'low', 'intermediate', or 'high'")
-    is_vascular: bool = Field(False)
+    # Step 2: Cirurgia e condições cardiovasculares
+    tipo_cirurgia: str = Field("", description="Identificador do tipo de cirurgia")
+    risco_cirurgia: str = Field("", description="'baixo', 'intermediario' ou 'alto'")
+    eh_vascular: bool = Field(False)
 
-    cv_acute_coronary: bool = Field(False)
-    cv_unstable_aortic: bool = Field(False)
-    cv_acute_pulmonary_edema: bool = Field(False)
-    cv_cardiogenic_shock: bool = Field(False)
-    cv_hf_nyha_3_4: bool = Field(False)
+    cv_coronaria_aguda: bool = Field(False)
+    cv_aorta_instavel: bool = Field(False)
+    cv_edema_pulmonar_agudo: bool = Field(False)
+    cv_choque_cardiogenico: bool = Field(False)
+    cv_ic_nyha_3_4: bool = Field(False)
     cv_angina_ccs_3_4: bool = Field(False)
-    cv_severe_arrhythmia: bool = Field(False)
-    cv_uncontrolled_hypertension: bool = Field(False)
-    cv_af_high_rate: bool = Field(False)
-    cv_pulmonary_hypertension: bool = Field(False)
-    cv_severe_valvular: bool = Field(False)
+    cv_arritmia_grave: bool = Field(False)
+    cv_has_nao_controlada: bool = Field(False)
+    cv_fa_alta_resposta: bool = Field(False)
+    cv_hap_sintomatica: bool = Field(False)
+    cv_valvopatia_grave: bool = Field(False)
 
-    # Step 3: RCRI criteria
-    rcri_high_risk_surgery: bool = Field(False)
-    rcri_ischemic_heart: bool = Field(False)
-    rcri_heart_failure: bool = Field(False)
+    # Step 3: Critérios RCRI
+    rcri_cirurgia_alto_risco: bool = Field(False)
+    rcri_doenca_coronaria: bool = Field(False)
+    rcri_ic: bool = Field(False)
     rcri_cerebrovascular: bool = Field(False)
-    rcri_insulin_diabetes: bool = Field(False)
-    rcri_creatinine_above_2: bool = Field(False)
+    rcri_diabetes_insulina: bool = Field(False)
+    rcri_creatinina_acima_2: bool = Field(False)
 
-    # Step 3: VSG-CRI criteria (Tabela 6)
-    vsg_age_range: str = Field("", description="'lt60', '60_69', '70_79', 'gte80'")
-    vsg_cad: bool = Field(False)
-    vsg_chf: bool = Field(False)
-    vsg_copd: bool = Field(False)
-    vsg_creatinine_over_1_8: bool = Field(False)
-    vsg_smoking: bool = Field(False)
-    vsg_insulin_diabetes: bool = Field(False)
-    vsg_chronic_beta_blocker: bool = Field(False)
-    vsg_prior_revasc: bool = Field(False)
+    # Step 3: Critérios VSG-CRI (Tabela 6)
+    vsg_faixa_etaria: str = Field("", description="'lt60', '60_69', '70_79', 'gte80'")
+    vsg_dac: bool = Field(False)
+    vsg_ic: bool = Field(False)
+    vsg_dpoc: bool = Field(False)
+    vsg_creatinina_acima_1_8: bool = Field(False)
+    vsg_tabagismo: bool = Field(False)
+    vsg_diabetes_insulina: bool = Field(False)
+    vsg_betabloqueador_cronico: bool = Field(False)
+    vsg_revasc_previa: bool = Field(False)
 
 
-class ClinicalTextRequest(BaseModel):
+class RequisicaoTextoClinico(BaseModel):
     text: str = Field(..., min_length=5, description="Texto clínico livre")
     current_data: dict[str, Any] = Field(default_factory=dict)
 
@@ -123,22 +123,22 @@ def root():
 
 
 @app.post("/calculate")
-def calculate(patient: PatientData):
+def calculate(paciente: DadosPaciente):
     """
-    Calculate perioperative cardiovascular risk.
-    Returns RCRI score, MACE risk percentage, risk class, and clinical recommendations.
+    Calcula o risco cardiovascular perioperatório.
+    Retorna pontuação RCRI, percentual de risco MACE, classe de risco e recomendações clínicas.
     """
-    result = calcular_risco(patient.model_dump())
-    return result
+    resultado = calcular_risco(paciente.model_dump())
+    return resultado
 
 
 @app.post("/nlp/analyze")
-def analyze_clinical_case(payload: ClinicalTextRequest):
+def analyze_clinical_case(payload: RequisicaoTextoClinico):
     """
-    Analyze free clinical text and infer calculator fields.
-    Returns inferred fields, missing critical information, and optional NER entities.
+    Analisa texto clínico livre e infere campos da calculadora.
+    Retorna campos inferidos, informações críticas ausentes e entidades NER opcionais.
     """
-    return analyze_clinical_text(payload.text, payload.current_data)
+    return analisar_texto_clinico(payload.text, payload.current_data)
 
 
 @app.get("/health")
