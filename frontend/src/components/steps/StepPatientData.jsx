@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Activity, BrainCircuit, CircleAlert, CircleCheck, Pill, Stethoscope, UserRound } from "lucide-react";
-import { Card, Field, Input, ToggleRow, ChipGroup } from "../ui";
+import { Card, Field, Input, AgeInput, ToggleRow, ChipGroup } from "../ui";
 import { FUNCTIONAL_QUESTIONS } from "../../types";
 
 const SORTED_ACTIVITIES = [
@@ -11,8 +11,8 @@ const SORTED_ACTIVITIES = [
 const COMORBIDITIES = [
   { key: "obesity", label: "Obesidade", description: "IMC ≥ 30" },
   { key: "known_hf", label: "IC conhecida ou suspeita", description: "Insuficiência cardíaca" },
-  { key: "known_valvular_disease", label: "Doença valvar conhecida ou suspeita" },
-  { key: "known_cad", label: "Doença coronariana conhecida ou suspeita" },
+  { key: "known_valvular_disease", label: "Doença valvar conhecida ou suspeita", description: "Valvopatia diagnosticada ou suspeita clinicamente" },
+  { key: "known_cad", label: "Doença coronariana conhecida ou suspeita", description: "Angina, IAM prévio, stent ou cirurgia de revascularização" },
 ];
 
 const MEDICATIONS = [
@@ -66,9 +66,7 @@ export function EtapaDadosPaciente({ data, onChange, onAnalyzeClinicalText, isAn
 
   const handleAnalyze = async () => {
     const text = clinicalText.trim();
-    if (!text || !onAnalyzeClinicalText) {
-      return;
-    }
+    if (!text || !onAnalyzeClinicalText) return;
     await onAnalyzeClinicalText(text);
   };
 
@@ -81,6 +79,10 @@ export function EtapaDadosPaciente({ data, onChange, onAnalyzeClinicalText, isAn
     }
     setSliderIdx(best);
   }, [data.mets]);
+
+  const sliderColor = mets >= 4 ? "var(--green)" : "var(--amber)";
+  const sliderBg = mets >= 4 ? "var(--green-soft)" : "var(--amber-soft)";
+  const sliderBorder = mets >= 4 ? "#A7D4BB" : "#FCD34D";
 
   return (
     <>
@@ -140,7 +142,7 @@ export function EtapaDadosPaciente({ data, onChange, onAnalyzeClinicalText, isAn
                 lineHeight: 1.45,
               }}
             >
-              <strong>{nlpResult?.summary?.autofill_count ?? 0}</strong> campos auto-preenchidos. Modelo: {" "}
+              <strong>{nlpResult?.summary?.autofill_count ?? 0}</strong> campos auto-preenchidos. Modelo:{" "}
               <strong>{nlpResult?.model?.name}</strong> ({nlpResult?.model?.status}).
             </div>
 
@@ -178,18 +180,9 @@ export function EtapaDadosPaciente({ data, onChange, onAnalyzeClinicalText, isAn
           />
         </Field>
         <Field label="Idade">
-          <Input
-            type="number"
-            placeholder="—"
-            unit="anos"
-            value={data.age ?? ""}
-            min={0}
-            max={120}
-            onChange={(e) => {
-              if (!e.target.value) { onChange("age", undefined); return; }
-              const v = Math.min(Math.max(Number(e.target.value), 0), 120);
-              onChange("age", v);
-            }}
+          <AgeInput
+            value={data.age}
+            onChange={(v) => onChange("age", v)}
           />
         </Field>
       </Card>
@@ -312,31 +305,57 @@ export function EtapaDadosPaciente({ data, onChange, onAnalyzeClinicalText, isAn
       </Card>
 
       <Card icon={<Activity {...iconProps} />} title="Capacidade Funcional">
-        <div style={{ fontSize: 12, color: "var(--ink-mid)", marginBottom: 12, lineHeight: 1.5 }}>
+        <div style={{ fontSize: 12, color: "var(--ink-mid)", marginBottom: 14, lineHeight: 1.5 }}>
           Deslize para indicar a <strong>atividade máxima</strong> que o paciente consegue realizar.
         </div>
 
-        <input
-          type="range"
-          min={0}
-          max={SORTED_ACTIVITIES.length - 1}
-          step={1}
-          value={sliderIdx}
-          onChange={(e) => {
-            const i = Number(e.target.value);
-            setSliderIdx(i);
-            onChange("mets", SORTED_ACTIVITIES[i].mets);
-          }}
-          style={{ width: "100%", accentColor: mets >= 4 ? "var(--green)" : "var(--amber)" }}
-        />
+        {/* Slider labels */}
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 10, color: "var(--ink-muted)", fontFamily: "'JetBrains Mono', monospace" }}>
+          <span>1 MET</span>
+          <span>{SORTED_ACTIVITIES[SORTED_ACTIVITIES.length - 1].mets} METs</span>
+        </div>
+
+        <div style={{ position: "relative", padding: "4px 0" }}>
+          <input
+            type="range"
+            min={0}
+            max={SORTED_ACTIVITIES.length - 1}
+            step={1}
+            value={sliderIdx}
+            onChange={(e) => {
+              const i = Number(e.target.value);
+              setSliderIdx(i);
+              onChange("mets", SORTED_ACTIVITIES[i].mets);
+            }}
+            style={{
+              width: "100%",
+              accentColor: sliderColor,
+            }}
+          />
+        </div>
+
+        {/* Position indicator */}
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 2, marginBottom: 10 }}>
+          {[0, Math.floor((SORTED_ACTIVITIES.length - 1) / 2), SORTED_ACTIVITIES.length - 1].map((idx) => (
+            <div
+              key={idx}
+              style={{
+                width: 2,
+                height: 6,
+                background: idx === sliderIdx ? sliderColor : "var(--border)",
+                borderRadius: 1,
+                transition: "background 0.2s",
+              }}
+            />
+          ))}
+        </div>
 
         <div
           style={{
-            marginTop: 10,
-            padding: "10px 14px",
+            padding: "12px 14px",
             borderRadius: "var(--r-sm)",
-            background: mets >= 4 ? "var(--green-soft)" : "var(--amber-soft)",
-            border: `1px solid ${mets >= 4 ? "#A7D4BB" : "#FCD34D"}`,
+            background: sliderBg,
+            border: `1px solid ${sliderBorder}`,
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
@@ -349,9 +368,9 @@ export function EtapaDadosPaciente({ data, onChange, onAnalyzeClinicalText, isAn
           <span
             style={{
               fontFamily: "'JetBrains Mono', monospace",
-              fontSize: 20,
+              fontSize: 22,
               fontWeight: 600,
-              color: mets >= 4 ? "var(--green)" : "var(--amber)",
+              color: sliderColor,
               whiteSpace: "nowrap",
             }}
           >
@@ -359,7 +378,19 @@ export function EtapaDadosPaciente({ data, onChange, onAnalyzeClinicalText, isAn
           </span>
         </div>
 
-        <div style={{ marginTop: 6, fontSize: 12, fontWeight: 500, color: "var(--ink-mid)", textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+        <div
+          style={{
+            marginTop: 8,
+            fontSize: 12,
+            fontWeight: 500,
+            color: sliderColor,
+            textAlign: "center",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+          }}
+        >
           {mets >= 4 ? <CircleCheck size={14} color="var(--green)" /> : <CircleAlert size={14} color="var(--amber)" />}
           {mets >= 4 ? "Capacidade funcional adequada" : "Capacidade funcional reduzida"}
         </div>

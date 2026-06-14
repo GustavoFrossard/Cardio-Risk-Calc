@@ -1,5 +1,5 @@
 import { AlertTriangle, Hospital, Siren } from "lucide-react";
-import { Card, ToggleRow, InfoBox, Select } from "../ui";
+import { Card, ToggleRow, InfoBox, SearchSelect } from "../ui";
 import { SURGERY_OPTIONS } from "../../types";
 
 const RISK_GROUPS = [
@@ -7,6 +7,14 @@ const RISK_GROUPS = [
   { label: "Risco Intermediário (1–5%)", risk: "intermediate" },
   { label: "Alto Risco (> 5%)", risk: "high" },
 ];
+
+const SURGERY_FLAT_OPTIONS = RISK_GROUPS.flatMap((group) => [
+  { value: `__header_${group.risk}`, label: group.label, isHeader: true },
+  ...SURGERY_OPTIONS.filter((o) => o.risk === group.risk).map((o) => ({
+    value: o.value,
+    label: o.label,
+  })),
+]);
 
 const CV_CONDITIONS = [
   {
@@ -84,18 +92,12 @@ export function EtapaCirurgia({ data, onChange }) {
   return (
     <>
       <Card icon={<Hospital {...iconProps} />} title="Identificação da Cirurgia">
-        <Select value={data.surgery_type} onChange={(e) => handleSurgeryChange(e.target.value)}>
-          <option value="">Selecione o procedimento...</option>
-          {RISK_GROUPS.map((group) => (
-            <optgroup key={group.risk} label={group.label}>
-              {SURGERY_OPTIONS.filter((o) => o.risk === group.risk).map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </Select>
+        <SearchSelect
+          value={data.surgery_type}
+          onChange={handleSurgeryChange}
+          options={SURGERY_FLAT_OPTIONS}
+          placeholder="Selecione o procedimento..."
+        />
 
         {selectedOption && (
           <div

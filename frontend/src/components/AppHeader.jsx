@@ -1,6 +1,6 @@
 import { WIZARD_STEPS } from "../types";
 
-export function CabecalhoApp({ currentStep }) {
+export function CabecalhoApp({ currentStep, highestStep, onGoToStep }) {
   const step = WIZARD_STEPS[currentStep - 1];
 
   return (
@@ -53,26 +53,36 @@ export function CabecalhoApp({ currentStep }) {
         </div>
       </div>
 
+      {/* Progress bars — clickable for already-visited steps */}
       <div style={{ display: "flex", gap: 4, marginBottom: -1 }}>
-        {WIZARD_STEPS.map((s) => (
-          <div
-            key={s.id}
-            style={{
-              height: 2,
-              flex: 1,
-              borderRadius: 2,
-              background:
-                s.id === currentStep
+        {WIZARD_STEPS.map((s) => {
+          const isVisited = s.id < currentStep && s.id < 4;
+          const isCurrent = s.id === currentStep;
+          const isClickable = isVisited && onGoToStep;
+
+          return (
+            <div
+              key={s.id}
+              title={isClickable ? `Ir para: ${s.title}` : undefined}
+              onClick={isClickable ? () => onGoToStep(s.id) : undefined}
+              style={{
+                height: isClickable ? 4 : 2,
+                flex: 1,
+                borderRadius: 3,
+                background: isCurrent
                   ? "var(--blue)"
                   : s.id < currentStep
-                  ? "rgba(91,148,245,0.5)"
+                  ? "rgba(91,148,245,0.55)"
                   : "var(--border)",
-              transition: "background 0.3s",
-            }}
-          />
-        ))}
+                transition: "background 0.3s, height 0.2s",
+                cursor: isClickable ? "pointer" : "default",
+              }}
+            />
+          );
+        })}
       </div>
 
+      {/* Step title row with clickable step bubbles */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 0 12px" }}>
         <div
           style={{
@@ -94,6 +104,36 @@ export function CabecalhoApp({ currentStep }) {
         <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink-mid)" }}>
           {step?.title}
         </div>
+
+        {/* Breadcrumb for visited steps */}
+        {highestStep > 1 && currentStep < highestStep && (
+          <div style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
+            {WIZARD_STEPS.slice(0, highestStep - 1).filter(s => s.id !== currentStep && s.id < 4).map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => onGoToStep?.(s.id)}
+                title={s.title}
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: "50%",
+                  border: "1.5px solid var(--border)",
+                  background: "var(--bg)",
+                  color: "var(--ink-muted)",
+                  fontSize: 10,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {s.id}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
