@@ -8,6 +8,16 @@ export class ErroApi extends Error {
   }
 }
 
+function extrairMensagemErro(body) {
+  const detail = body?.detail;
+  if (!detail) return null;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail.map((item) => item?.msg).filter(Boolean).join(" ") || null;
+  }
+  return null;
+}
+
 async function request(path, options) {
   const res = await fetch(`${API_BASE_URL}${path}`, {
     headers: { "Content-Type": "application/json" },
@@ -15,8 +25,9 @@ async function request(path, options) {
   });
 
   if (!res.ok) {
-    const text = await res.text().catch(() => "Erro desconhecido");
-    throw new ErroApi(res.status, text);
+    const body = await res.json().catch(() => null);
+    const message = extrairMensagemErro(body) ?? `Erro ${res.status} ao comunicar com o servidor.`;
+    throw new ErroApi(res.status, message);
   }
 
   return res.json();

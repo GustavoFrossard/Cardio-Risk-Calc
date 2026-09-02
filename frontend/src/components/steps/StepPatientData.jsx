@@ -61,12 +61,20 @@ export function EtapaDadosPaciente({ data, onChange, onAnalisarTextoClinico, ana
   const currentActivity = SORTED_ACTIVITIES[sliderIdx];
   const mets = currentActivity.mets;
   const [clinicalText, setClinicalText] = useState("");
+  const [textoInvalido, setTextoInvalido] = useState(false);
 
   const iconProps = { size: 16, strokeWidth: 2.2 };
+
+  const TAMANHO_MINIMO_TEXTO = 5;
 
   const handleAnalyze = async () => {
     const text = clinicalText.trim();
     if (!text || !onAnalisarTextoClinico) return;
+    if (text.length < TAMANHO_MINIMO_TEXTO) {
+      setTextoInvalido(true);
+      return;
+    }
+    setTextoInvalido(false);
     await onAnalisarTextoClinico(text);
   };
 
@@ -91,7 +99,7 @@ export function EtapaDadosPaciente({ data, onChange, onAnalisarTextoClinico, ana
           <textarea
             placeholder="Ex: Paciente de 67 anos com HAS e DM2 em insulinoterapia, antecedente de AVC, em programação de colecistectomia laparoscópica..."
             value={clinicalText}
-            onChange={(e) => setClinicalText(e.target.value)}
+            onChange={(e) => { setClinicalText(e.target.value); setTextoInvalido(false); }}
             rows={5}
             style={{
               width: "100%",
@@ -128,6 +136,19 @@ export function EtapaDadosPaciente({ data, onChange, onAnalisarTextoClinico, ana
         >
           {analisando ? "Analisando caso clínico..." : "Analisar e auto-preencher"}
         </button>
+
+        {textoInvalido && (
+          <div
+            style={{
+              marginTop: 10,
+              fontSize: 12,
+              color: "var(--red)",
+              lineHeight: 1.45,
+            }}
+          >
+            Descreva o caso com mais detalhes (mínimo {TAMANHO_MINIMO_TEXTO} caracteres) para a análise funcionar.
+          </div>
+        )}
 
         {resultadoNlp && (
           <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
