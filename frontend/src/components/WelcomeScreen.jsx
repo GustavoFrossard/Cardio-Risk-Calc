@@ -32,20 +32,9 @@ export function TelaBoasVindas({ onStart }) {
         </svg>
       </div>
 
-      <div>
-        <h1 style={{ fontSize: 26, fontWeight: 700, color: "var(--ink)", letterSpacing: -0.3 }}>
-          CardioRisk Periop
-        </h1>
-        <div style={{ fontSize: 14, color: "var(--ink-muted)", marginTop: 6 }}>
-          AHA/ACC 2014 · Índice de Lee (RCRI) · VSG-CRI
-        </div>
-      </div>
-
-      <p style={{ fontSize: 14, color: "var(--ink-mid)", lineHeight: 1.6, maxWidth: 380 }}>
-        Calculadora de risco cardiovascular perioperatório. Estratifique o risco do
-        paciente em poucos passos e receba recomendações clínicas baseadas em
-        evidência.
-      </p>
+      <h1 style={{ fontSize: 26, fontWeight: 700, color: "var(--ink)", letterSpacing: -0.3 }}>
+        CardioRisk Periop
+      </h1>
 
       <button
         type="button"
