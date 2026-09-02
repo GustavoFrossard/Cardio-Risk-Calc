@@ -113,7 +113,7 @@ class RequisicaoTextoClinico(BaseModel):
     current_data: dict[str, Any] = Field(default_factory=dict)
 
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 def root():
     return {
         "app": "CardioRisk Periop API",
@@ -141,6 +141,6 @@ def analyze_clinical_case(payload: RequisicaoTextoClinico):
     return analisar_texto_clinico(payload.text, payload.current_data)
 
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 def health():
     return {"status": "ok"}
