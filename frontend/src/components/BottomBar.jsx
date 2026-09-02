@@ -1,4 +1,4 @@
-export function BarraInferior({ etapaAtual, totalEtapas, carregando, onVoltar, onAvancar, onReiniciar }) {
+export function BarraInferior({ etapaAtual, totalEtapas, carregando, onVoltar, onAvancar, onReiniciar, maxWidth = 420 }) {
   const isResult = etapaAtual === totalEtapas;
   const isLastInput = etapaAtual === totalEtapas - 1;
 
@@ -47,7 +47,7 @@ export function BarraInferior({ etapaAtual, totalEtapas, carregando, onVoltar, o
         left: "50%",
         transform: "translateX(-50%)",
         width: "100%",
-        maxWidth: 420,
+        maxWidth,
         background: "var(--bar-bg)",
         backdropFilter: "blur(14px)",
         WebkitBackdropFilter: "blur(14px)",

@@ -87,8 +87,12 @@ style.textContent = `
     font-family: 'Outfit', sans-serif;
     color: var(--ink);
     -webkit-font-smoothing: antialiased;
-    display: flex;
-    justify-content: center;
+  }
+
+  @media (min-width: 768px) {
+    body {
+      background: var(--bg-soft);
+    }
   }
 
   input[type=range] {
