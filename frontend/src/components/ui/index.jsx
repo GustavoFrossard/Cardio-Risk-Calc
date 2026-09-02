@@ -579,14 +579,14 @@ export function ChipGroup({ options, value, onChange }) {
 // ─── InfoBox ──────────────────────────────────────────────────────────────────
 
 export function InfoBox({ icon, children }) {
-  const resolvedIcon = icon ?? <Info size={16} strokeWidth={2.2} color="#1A3B7A" />;
+  const resolvedIcon = icon ?? <Info size={16} strokeWidth={2.2} color="var(--blue)" />;
 
   return (
     <div
       style={{
         borderRadius: "var(--r-sm)",
         padding: "12px 14px",
-        border: "1px solid #BDD3FB",
+        border: "1px solid var(--blue-border)",
         background: "var(--blue-soft)",
         display: "flex",
         gap: 10,
@@ -594,7 +594,7 @@ export function InfoBox({ icon, children }) {
       }}
     >
       <span style={{ display: "inline-flex", flexShrink: 0 }}>{resolvedIcon}</span>
-      <div style={{ fontSize: 12, color: "#1A3B7A", lineHeight: 1.55 }}>{children}</div>
+      <div style={{ fontSize: 12, color: "var(--blue)", lineHeight: 1.55 }}>{children}</div>
     </div>
   );
 }

@@ -12,33 +12,33 @@ const HERO = {
   baixo: {
     bg: "var(--green-soft)",
     color: "var(--green)",
-    border: "#A7D4BB",
+    border: "var(--green-border)",
     icon: (
       <svg width={32} height={32} viewBox="0 0 24 24" fill="none">
-        <circle cx={12} cy={12} r={10} fill="#0E7B52" opacity={0.15} />
-        <path d="M9 12l2 2 4-4" stroke="#0E7B52" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx={12} cy={12} r={10} fill="currentColor" opacity={0.15} />
+        <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
   },
   intermediario: {
     bg: "var(--amber-soft)",
     color: "var(--amber)",
-    border: "#FCD34D",
+    border: "var(--amber-border)",
     icon: (
       <svg width={32} height={32} viewBox="0 0 24 24" fill="none">
-        <path d="M12 3L2 21h20L12 3z" fill="#C47A00" opacity={0.15} />
-        <path d="M12 9v4M12 17h.01" stroke="#C47A00" strokeWidth={2.2} strokeLinecap="round" />
+        <path d="M12 3L2 21h20L12 3z" fill="currentColor" opacity={0.15} />
+        <path d="M12 9v4M12 17h.01" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" />
       </svg>
     ),
   },
   alto: {
     bg: "var(--red-soft)",
     color: "var(--red)",
-    border: "#F5B0AA",
+    border: "var(--red-border)",
     icon: (
       <svg width={32} height={32} viewBox="0 0 24 24" fill="none">
-        <circle cx={12} cy={12} r={10} fill="#E03131" opacity={0.15} />
-        <path d="M12 8v4M12 16h.01" stroke="#E03131" strokeWidth={2.2} strokeLinecap="round" />
+        <circle cx={12} cy={12} r={10} fill="currentColor" opacity={0.15} />
+        <path d="M12 8v4M12 16h.01" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" />
       </svg>
     ),
   },
@@ -163,7 +163,7 @@ export function EtapaResultado({ resultado, dados }) {
         <div
           style={{
             background: "var(--red-soft)",
-            border: "1px solid #F5B0AA",
+            border: "1px solid var(--red-border)",
             borderRadius: "var(--r)",
             padding: "14px 16px",
             display: "flex",
@@ -220,7 +220,7 @@ export function EtapaResultado({ resultado, dados }) {
             Estratificação de Risco ({nomeIndice})
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ display: "inline-flex", flexShrink: 0 }}>{hero.icon}</span>
+            <span style={{ display: "inline-flex", flexShrink: 0, color: hero.color }}>{hero.icon}</span>
             <span
               style={{
                 fontFamily: "'JetBrains Mono', monospace",

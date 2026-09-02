@@ -21,7 +21,7 @@ export function BarraInferior({ etapaAtual, totalEtapas, carregando, onVoltar, o
     cursor: carregando ? "not-allowed" : "pointer",
     transition: "all 0.15s",
     background: isResult ? "var(--ink)" : "var(--blue)",
-    color: "white",
+    color: isResult ? "var(--bg)" : "white",
     opacity: carregando ? 0.7 : 1,
   };
 
@@ -48,7 +48,7 @@ export function BarraInferior({ etapaAtual, totalEtapas, carregando, onVoltar, o
         transform: "translateX(-50%)",
         width: "100%",
         maxWidth: 420,
-        background: "rgba(255,255,255,0.94)",
+        background: "var(--bar-bg)",
         backdropFilter: "blur(14px)",
         WebkitBackdropFilter: "blur(14px)",
         padding: "12px 16px 28px",

@@ -82,7 +82,7 @@ export function EtapaDadosPaciente({ data, onChange, onAnalisarTextoClinico, ana
 
   const sliderColor = mets >= 4 ? "var(--green)" : "var(--amber)";
   const sliderBg = mets >= 4 ? "var(--green-soft)" : "var(--amber-soft)";
-  const sliderBorder = mets >= 4 ? "#A7D4BB" : "#FCD34D";
+  const sliderBorder = mets >= 4 ? "var(--green-border)" : "var(--amber-border)";
 
   return (
     <>
@@ -135,10 +135,10 @@ export function EtapaDadosPaciente({ data, onChange, onAnalisarTextoClinico, ana
               style={{
                 borderRadius: "var(--r-sm)",
                 background: "var(--blue-soft)",
-                border: "1px solid #BDD3FB",
+                border: "1px solid var(--blue-border)",
                 padding: "10px 12px",
                 fontSize: 12,
-                color: "#1A3B7A",
+                color: "var(--blue)",
                 lineHeight: 1.45,
               }}
             >
@@ -151,10 +151,10 @@ export function EtapaDadosPaciente({ data, onChange, onAnalisarTextoClinico, ana
                 style={{
                   borderRadius: "var(--r-sm)",
                   background: "var(--amber-soft)",
-                  border: "1px solid #FCD34D",
+                  border: "1px solid var(--amber-border)",
                   padding: "10px 12px",
                   fontSize: 12,
-                  color: "#7A5000",
+                  color: "var(--amber)",
                   lineHeight: 1.5,
                 }}
               >
