@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAssistente } from "./hooks/useWizard";
+import { useTheme } from "./hooks/useTheme";
 import { CabecalhoApp } from "./components/AppHeader";
 import { BarraInferior } from "./components/BottomBar";
 import { EtapaDadosPaciente } from "./components/steps/StepPatientData";
@@ -28,6 +29,7 @@ export default function App() {
     reiniciar,
   } = useAssistente();
 
+  const { theme, toggle: toggleTheme } = useTheme();
   const [showResumeModal, setShowResumeModal] = useState(temDadosSalvos);
   const [maxWidth, setMaxWidth] = useState(() => window.innerWidth >= 768 ? 640 : 420);
 
@@ -160,6 +162,8 @@ export default function App() {
         etapaAtual={etapaAtual}
         maiorEtapa={maiorEtapa}
         onIrParaEtapa={irParaEtapa}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
 
       <div
@@ -193,7 +197,7 @@ export default function App() {
           <div
             style={{
               background: "var(--red-soft)",
-              border: "1px solid #F5B0AA",
+              border: "1px solid var(--red-border)",
               borderRadius: "var(--r-sm)",
               padding: "12px 16px",
               fontSize: 13,

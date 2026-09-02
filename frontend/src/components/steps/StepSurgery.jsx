@@ -149,7 +149,7 @@ export function EtapaCirurgia({ data, onChange }) {
       </Card>
 
       <Card icon={<Siren {...iconProps} />} title="Condições Cardiovasculares Ativas">
-        <InfoBox icon={<AlertTriangle size={16} strokeWidth={2.2} color="#1A3B7A" />}>
+        <InfoBox icon={<AlertTriangle size={16} strokeWidth={2.2} color="var(--blue)" />}>
           Condições que requerem avaliação e tratamento <strong>antes</strong> do procedimento cirúrgico.
         </InfoBox>
         <div style={{ marginTop: 10 }}>
