@@ -3,6 +3,7 @@ import { useAssistente } from "./hooks/useWizard";
 import { useTheme } from "./hooks/useTheme";
 import { CabecalhoApp } from "./components/AppHeader";
 import { BarraInferior } from "./components/BottomBar";
+import { TelaBoasVindas } from "./components/WelcomeScreen";
 import { EtapaDadosPaciente } from "./components/steps/StepPatientData";
 import { EtapaCirurgia } from "./components/steps/StepSurgery";
 import { EtapaRCRI } from "./components/steps/StepRCRI";
@@ -30,8 +31,10 @@ export default function App() {
   } = useAssistente();
 
   const { theme, toggle: toggleTheme } = useTheme();
+  const [started, setStarted] = useState(() => temDadosSalvos);
   const [showResumeModal, setShowResumeModal] = useState(temDadosSalvos);
   const [maxWidth, setMaxWidth] = useState(() => window.innerWidth >= 768 ? 640 : 420);
+  const isDesktop = maxWidth > 420;
 
   useEffect(() => {
     const onResize = () => setMaxWidth(window.innerWidth >= 768 ? 640 : 420);
@@ -48,7 +51,7 @@ export default function App() {
     const onKey = (e) => {
       const tag = document.activeElement?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
-      if (showResumeModal) return;
+      if (!started || showResumeModal) return;
       if (e.key === "Enter" || e.key === "ArrowRight") {
         e.preventDefault();
         avancar();
@@ -60,7 +63,25 @@ export default function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [avancar, voltar, showResumeModal]);
+  }, [avancar, voltar, showResumeModal, started]);
+
+  if (!started) {
+    return (
+      <div
+        style={{
+          width: "100%",
+          maxWidth,
+          minHeight: "100vh",
+          background: "var(--white)",
+          margin: "0 auto",
+          border: isDesktop ? "1px solid var(--border)" : "none",
+          boxShadow: isDesktop ? "0 1px 3px rgba(0,0,0,0.04)" : "none",
+        }}
+      >
+        <TelaBoasVindas onStart={() => setStarted(true)} />
+      </div>
+    );
+  }
 
   return (
     <div
@@ -72,6 +93,8 @@ export default function App() {
         position: "relative",
         margin: "0 auto",
         transition: "max-width 0.3s ease",
+        border: isDesktop ? "1px solid var(--border)" : "none",
+        boxShadow: isDesktop ? "0 1px 3px rgba(0,0,0,0.04)" : "none",
       }}
     >
       {/* Modal de retomada */}
@@ -217,6 +240,7 @@ export default function App() {
         onVoltar={voltar}
         onAvancar={avancar}
         onReiniciar={reiniciar}
+        maxWidth={maxWidth}
       />
     </div>
   );
