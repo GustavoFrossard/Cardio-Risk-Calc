@@ -9,10 +9,11 @@ const GRUPOS_RISCO = [
 ];
 
 const OPCOES_CIRURGIA_PLANA = GRUPOS_RISCO.flatMap((grupo) => [
-  { valor: `__header_${grupo.risco}`, rotulo: grupo.rotulo, ehCabecalho: true },
+  { valor: `__header_${grupo.risco}`, rotulo: grupo.rotulo, ehCabecalho: true, risco: grupo.risco },
   ...OPCOES_CIRURGIA.filter((o) => o.risco === grupo.risco).map((o) => ({
     valor: o.valor,
     rotulo: o.rotulo,
+    risco: o.risco,
   })),
 ]);
 
@@ -85,9 +86,6 @@ export function EtapaCirurgia({ data, onChange }) {
   };
 
   const opcaoSelecionada = OPCOES_CIRURGIA.find((o) => o.valor === data.tipo_cirurgia);
-  const badgeRisco = opcaoSelecionada
-    ? { baixo: "Baixo", intermediario: "Intermediário", alto: "Alto" }[opcaoSelecionada.risco]
-    : null;
 
   return (
     <>
@@ -97,53 +95,23 @@ export function EtapaCirurgia({ data, onChange }) {
           onChange={handleSurgeryChange}
           options={OPCOES_CIRURGIA_PLANA}
           placeholder="Selecione o procedimento..."
+          label="Procedimento"
         />
 
-        {opcaoSelecionada && (
-          <div
-            style={{
-              marginTop: 12,
-              display: "flex",
-              gap: 8,
-              flexWrap: "wrap",
-            }}
-          >
+        {opcaoSelecionada?.vascular && (
+          <div style={{ marginTop: 12 }}>
             <span
               style={{
                 fontSize: 11,
                 fontWeight: 600,
                 padding: "4px 10px",
                 borderRadius: 999,
-                background:
-                  opcaoSelecionada.risco === "baixo"
-                    ? "var(--green-soft)"
-                    : opcaoSelecionada.risco === "intermediario"
-                    ? "var(--amber-soft)"
-                    : "var(--red-soft)",
-                color:
-                  opcaoSelecionada.risco === "baixo"
-                    ? "var(--green)"
-                    : opcaoSelecionada.risco === "intermediario"
-                    ? "var(--amber)"
-                    : "var(--red)",
+                background: "var(--blue-soft)",
+                color: "var(--blue)",
               }}
             >
-              Risco {badgeRisco}
+              Cirurgia Vascular → VSG
             </span>
-            {opcaoSelecionada.vascular && (
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 600,
-                  padding: "4px 10px",
-                  borderRadius: 999,
-                  background: "var(--blue-soft)",
-                  color: "var(--blue)",
-                }}
-              >
-                Cirurgia Vascular → VSG
-              </span>
-            )}
           </div>
         )}
       </Card>

@@ -360,14 +360,30 @@ export function Select(props) {
 
 // ─── SearchSelect — modal picker with search ──────────────────────────────────
 
-export function SearchSelect({ value, onChange, options, placeholder = "Selecione..." }) {
+function normalizarBusca(texto) {
+  return texto
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase();
+}
+
+const TOM_RISCO = {
+  baixo: { texto: "var(--green)", fundo: "var(--green-soft)", borda: "var(--green-border)" },
+  intermediario: { texto: "var(--amber)", fundo: "var(--amber-soft)", borda: "var(--amber-border)" },
+  alto: { texto: "var(--red)", fundo: "var(--red-soft)", borda: "var(--red-border)" },
+};
+
+const ROTULO_RISCO = { baixo: "Risco baixo", intermediario: "Risco intermediário", alto: "Risco alto" };
+
+export function SearchSelect({ value, onChange, options, placeholder = "Selecione...", label }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
-  const selectedLabel = options?.find((o) => !o.ehCabecalho && o.valor === value)?.rotulo ?? null;
+  const selecionado = options?.find((o) => !o.ehCabecalho && o.valor === value) ?? null;
+  const tomSelecionado = selecionado?.risco ? TOM_RISCO[selecionado.risco] : null;
 
   const filtered = query.trim()
-    ? options.filter((o) => o.ehCabecalho || o.rotulo.toLowerCase().includes(query.toLowerCase()))
+    ? options.filter((o) => o.ehCabecalho || normalizarBusca(o.rotulo).includes(normalizarBusca(query)))
     : options;
 
   // Remove orphan headers (header followed by another header or end)
@@ -379,17 +395,20 @@ export function SearchSelect({ value, onChange, options, placeholder = "Selecion
 
   return (
     <>
+      {label && (
+        <div style={{ fontSize: 11, fontWeight: 600, color: "var(--ink-muted)", textTransform: "uppercase", letterSpacing: "0.03em", marginBottom: 6 }}>
+          {label}
+        </div>
+      )}
       <button
         type="button"
         onClick={() => { setQuery(""); setOpen(true); }}
         style={{
           width: "100%",
-          border: "1.5px solid var(--border)",
+          border: `1.5px solid ${tomSelecionado?.borda ?? "var(--border)"}`,
           borderRadius: "var(--r-sm)",
           background: "var(--white)",
-          padding: "10px 36px 10px 13px",
-          fontSize: 14,
-          color: selectedLabel ? "var(--ink)" : "#C8CBD4",
+          padding: selecionado ? "9px 36px 9px 13px" : "10px 36px 10px 13px",
           textAlign: "left",
           cursor: "pointer",
           minHeight: 44,
@@ -398,12 +417,27 @@ export function SearchSelect({ value, onChange, options, placeholder = "Selecion
           backgroundRepeat: "no-repeat",
           backgroundPosition: "right 12px center",
           fontFamily: "'Outfit', sans-serif",
-          overflow: "hidden",
-          whiteSpace: "nowrap",
-          textOverflow: "ellipsis",
         }}
       >
-        {selectedLabel ?? placeholder}
+        {selecionado ? (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, overflow: "hidden" }}>
+              {tomSelecionado && (
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: tomSelecionado.texto, flexShrink: 0 }} />
+              )}
+              <span style={{ fontSize: 14, color: "var(--ink)", fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {selecionado.rotulo}
+              </span>
+            </div>
+            {tomSelecionado && (
+              <div style={{ fontSize: 11, fontWeight: 600, color: tomSelecionado.texto, marginTop: 3, marginLeft: 16 }}>
+                {ROTULO_RISCO[selecionado.risco]}
+              </div>
+            )}
+          </>
+        ) : (
+          <span style={{ fontSize: 14, color: "#C8CBD4" }}>{placeholder}</span>
+        )}
       </button>
 
       {open && (
@@ -486,25 +520,29 @@ export function SearchSelect({ value, onChange, options, placeholder = "Selecion
             </div>
 
             {/* List */}
-            <div style={{ overflowY: "auto", flex: 1, paddingBottom: 24 }}>
+            <div style={{ overflowY: "auto", flex: 1, background: "var(--bg)", padding: "12px 14px 20px", display: "flex", flexDirection: "column", gap: 8 }}>
               {displayList.length === 0 && (
                 <div style={{ padding: "24px 16px", textAlign: "center", fontSize: 13, color: "var(--ink-muted)" }}>
                   Nenhum procedimento encontrado
                 </div>
               )}
-              {displayList.map((item) => {
+              {displayList.map((item, idx) => {
                 if (item.ehCabecalho) {
+                  const tom = TOM_RISCO[item.risco] ?? { texto: "var(--ink-muted)", fundo: "var(--bg-soft)" };
                   return (
                     <div
                       key={item.valor}
                       style={{
-                        padding: "8px 16px",
-                        background: "var(--bg-soft)",
+                        alignSelf: "flex-start",
+                        marginTop: idx === 0 ? 0 : 8,
+                        padding: "4px 10px",
+                        borderRadius: 999,
+                        background: tom.fundo,
                         fontSize: 10,
                         fontWeight: 700,
-                        color: "var(--ink-muted)",
+                        color: tom.texto,
                         textTransform: "uppercase",
-                        letterSpacing: "0.05em",
+                        letterSpacing: "0.04em",
                       }}
                     >
                       {item.rotulo}
@@ -512,6 +550,7 @@ export function SearchSelect({ value, onChange, options, placeholder = "Selecion
                   );
                 }
                 const isSelected = item.valor === value;
+                const tom = TOM_RISCO[item.risco];
                 return (
                   <button
                     key={item.valor}
@@ -519,21 +558,27 @@ export function SearchSelect({ value, onChange, options, placeholder = "Selecion
                     onClick={() => { onChange(item.valor); setOpen(false); }}
                     style={{
                       width: "100%",
-                      padding: "13px 16px",
-                      background: isSelected ? "var(--blue-soft)" : "transparent",
-                      borderBottom: "1px solid var(--border)",
+                      padding: "12px 14px",
+                      background: isSelected ? "var(--blue-soft)" : "var(--white)",
+                      border: `1px solid ${isSelected ? "var(--blue-border)" : "var(--border)"}`,
+                      borderLeft: `3px solid ${isSelected ? "var(--blue)" : tom?.borda ?? "var(--border)"}`,
+                      borderRadius: "var(--r-sm)",
                       textAlign: "left",
                       fontSize: 13,
                       color: isSelected ? "var(--blue)" : "var(--ink)",
                       fontWeight: isSelected ? 500 : 400,
                       cursor: "pointer",
                       fontFamily: "'Outfit', sans-serif",
-                      display: "block",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
                     }}
                   >
-                    {item.rotulo}
+                    <span style={{ flex: 1 }}>{item.rotulo}</span>
                     {isSelected && (
-                      <span style={{ float: "right", color: "var(--blue)" }}>✓</span>
+                      <svg width={16} height={16} viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
+                        <path d="M20 6L9 17l-5-5" stroke="var(--blue)" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
                     )}
                   </button>
                 );
