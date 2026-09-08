@@ -1,21 +1,14 @@
 @startuml CardioRisk_Arquitetura
-title Arquitetura de Componentes — CardioRisk Periop
+title Arquitetura — CardioRisk Periop
 
-skinparam backgroundColor   #F7F8FA
-skinparam defaultFontName   Segoe UI
-skinparam defaultFontSize   11
+skinparam backgroundColor #F7F8FA
+skinparam defaultFontName Segoe UI
+skinparam defaultFontSize 12
 
 skinparam component {
   BorderColor       #1A6BF0
   BackgroundColor   #EBF1FE
   FontColor         #0D1117
-  StereotypeFontColor #5B94F5
-}
-
-skinparam package {
-  BorderColor       #8B909A
-  BackgroundColor   #FFFFFF
-  FontStyle         bold
 }
 
 skinparam database {
@@ -24,130 +17,21 @@ skinparam database {
 }
 
 skinparam ArrowColor  #555555
-skinparam ArrowFontSize 10
+skinparam ArrowFontSize 11
 
-' ═══════════════════════════════════════════════════════════════════
-' MOBILE (React Native / Expo) — cópia paralela do frontend, não coberta
-' pelas mudanças mais recentes do Frontend Web (ver README do mobile)
-' ═══════════════════════════════════════════════════════════════════
-package "Mobile App · React Native / Expo" #EDF0F5 {
-  [mobile/App.jsx]     <<Expo Root>>
-  [WebView]            <<react-native-webview>>
-  [expo-sharing]       <<Sharing>>
-  [expo-file-system]   <<File I/O>>
+[Mobile App\n(React Native / Expo)]        as mobile    #EDF0F5
+[Frontend Web\n(React + Vite)]             as frontend  #EBF1FE
+[Backend API\n(FastAPI)]                   as api       #EDFAF4
+[Motor de Cálculo\n(RCRI / VSG)]           as calc      #EDFAF4
+[Analisador de Texto Clínico\n(regras + NER opcional)] as nlp #EDFAF4
+[Modelo NER local\n(opcional)]             as ner       #FFF8E6
+database "LocalStorage\n(navegador)"       as ls        #FFF8E6
 
-  [mobile/App.jsx] --> [WebView]          : carrega frontend web
-  [mobile/App.jsx] --> [expo-sharing]     : compartilha PDF
-  [mobile/App.jsx] --> [expo-file-system] : salva PDF
-}
-
-' ═══════════════════════════════════════════════════════════════════
-' FRONTEND (React / Vite)
-' ═══════════════════════════════════════════════════════════════════
-package "Frontend Web · React + Vite" #EBF1FE {
-
-  package "Componentes de Layout" {
-    [App.jsx]              <<Root Component>>
-    [WelcomeScreen.jsx]     <<TelaBoasVindas>>
-    [AppHeader.jsx]         <<CabecalhoApp / Wizard Nav>>
-    [BottomBar.jsx]         <<BarraInferior>>
-    [SummaryPanel.jsx]      <<PainelResumo — desktop ≥1320px>>
-  }
-
-  package "Etapas do Wizard" {
-    [StepPatientData.jsx]  <<EtapaDadosPaciente — Etapa 1>>
-    [StepSurgery.jsx]      <<EtapaCirurgia — Etapa 2>>
-    [StepRCRI.jsx]         <<EtapaRCRI — Etapa 3\n+ CardRevisao (mobile/tablet)>>
-    [StepResult.jsx]       <<EtapaResultado — Etapa 4>>
-  }
-
-  package "Componentes de Resultado" {
-    [MedicationTimeline.jsx] <<LinhaTempoMedicacoes>>
-  }
-
-  package "UI Primitivos" {
-    [ui/index.jsx] <<Toggle, Card, Field,\nInput, AgeInput,\nSearchSelect, ChipGroup,\nInfoBox, Accordion, Eyebrow>>
-  }
-
-  package "Hooks" {
-    [useWizard.js] <<useAssistente\nState Management\nLocalStorage\nWizard Navigation>>
-    [useTheme.js]  <<useTheme\nClaro/Escuro\nLocalStorage>>
-  }
-
-  package "Serviços" {
-    [api.js]    <<ServicoApi — HTTP Client>>
-    [report.js] <<gerarRelatorio — PDF Generator>>
-  }
-
-  package "Utilitários" {
-    [utils/resumo.js] <<resumirPaciente, resumirCirurgia,\nresumirComorbidades,\nresumirMedicamentos>>
-  }
-
-  package "Tipos e Constantes" {
-    [types/index.js] <<OPCOES_CIRURGIA\nPERGUNTAS_FUNCIONAIS\nCOMORBIDADES · MEDICAMENTOS\nETAPAS_WIZARD\ndadosPacienteInicial>>
-  }
-
-  ' Conexões internas do frontend
-  [App.jsx]              --> [WelcomeScreen.jsx]
-  [App.jsx]              --> [AppHeader.jsx]
-  [App.jsx]              --> [BottomBar.jsx]
-  [App.jsx]              --> [SummaryPanel.jsx]
-  [App.jsx]              --> [useWizard.js]
-  [App.jsx]              --> [useTheme.js]
-  [App.jsx]              --> [StepPatientData.jsx]
-  [App.jsx]              --> [StepSurgery.jsx]
-  [App.jsx]              --> [StepRCRI.jsx]
-  [App.jsx]              --> [StepResult.jsx]
-
-  [StepPatientData.jsx]  --> [ui/index.jsx]
-  [StepPatientData.jsx]  --> [types/index.js]
-  [StepSurgery.jsx]      --> [ui/index.jsx]
-  [StepSurgery.jsx]      --> [types/index.js]
-  [StepRCRI.jsx]         --> [ui/index.jsx]
-  [StepRCRI.jsx]         --> [utils/resumo.js]
-  [StepResult.jsx]       --> [ui/index.jsx]
-  [StepResult.jsx]       --> [MedicationTimeline.jsx]
-  [StepResult.jsx]       --> [report.js]
-
-  [SummaryPanel.jsx]     --> [ui/index.jsx]
-  [SummaryPanel.jsx]     --> [utils/resumo.js]
-  [utils/resumo.js]      --> [types/index.js]
-
-  [AppHeader.jsx]        --> [types/index.js]
-  [useWizard.js]         --> [api.js]
-  [useWizard.js]         --> [types/index.js]
-}
-
-' ═══════════════════════════════════════════════════════════════════
-' BACKEND (Python / FastAPI)
-' ═══════════════════════════════════════════════════════════════════
-package "Backend · Python + FastAPI" #EDFAF4 {
-
-  [main.py] <<FastAPI\nCORS Middleware>>
-
-  package "Core" {
-    [core/calculator.py] <<Motor de Cálculo\nRCRI · VSG\nRecomendações>>
-    [core/clinical_nlp.py] <<NLP\nRegras + NER local opcional\nAuto-preenchimento>>
-  }
-
-  [main.py] --> [core/calculator.py]
-  [main.py] --> [core/clinical_nlp.py]
-}
-
-' ═══════════════════════════════════════════════════════════════════
-' ARMAZENAMENTO / EXTERNO
-' ═══════════════════════════════════════════════════════════════════
-database "LocalStorage\n(navegador)" as ls #FFF8E6
-[Modelo NER local\n(Hugging Face,\npucpr/clinicalnerpt-medical,\nopcional)] as ner #FFF8E6
-
-' ═══════════════════════════════════════════════════════════════════
-' COMUNICAÇÃO ENTRE CAMADAS
-' ═══════════════════════════════════════════════════════════════════
-[WebView]        --> [App.jsx] : renderiza\n(bridge PDF)
-
-[api.js]         --> [main.py]               : HTTP REST\nPOST /calculate
-[api.js]         --> [main.py]               : HTTP REST\nPOST /nlp/analyze
-[core/clinical_nlp.py] --> [ner]             : inferência local\n(sem chamada externa)
-[useWizard.js]   --> [ls]                    : persiste sessão
+mobile    --> frontend : carrega via WebView
+frontend  --> api      : HTTP REST\n(/calculate, /nlp/analyze)
+frontend  --> ls       : salva sessão
+api       --> calc     : calcula risco
+api       --> nlp      : extrai dados do texto
+nlp       --> ner      : inferência local\n(sem chamada externa)
 
 @enduml
