@@ -2,6 +2,7 @@ import { useState } from "react";
 import { AlertTriangle, FileDown, FileText, FlaskConical, Pill, Share2, ShieldAlert, Stethoscope, TriangleAlert } from "lucide-react";
 import { gerarRelatorio } from "../../services/report";
 import { LinhaTempoMedicacoes } from "../MedicationTimeline";
+import { EYEBROW_STYLE } from "../ui";
 
 const CORES_REC = {
   verde: { border: "var(--green)", bg: "var(--green-soft)" },
@@ -45,23 +46,6 @@ const HERO = {
   },
 };
 
-function SectionHeader({ label }) {
-  return (
-    <div
-      style={{
-        fontSize: 10,
-        fontWeight: 700,
-        textTransform: "uppercase",
-        letterSpacing: "0.1em",
-        color: "var(--ink-muted)",
-        padding: "0 2px",
-      }}
-    >
-      {label}
-    </div>
-  );
-}
-
 function CollapsibleSection({ label, defaultOpen = true, children }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
@@ -81,16 +65,7 @@ function CollapsibleSection({ label, defaultOpen = true, children }) {
           fontFamily: "'Outfit', sans-serif",
         }}
       >
-        <span
-          style={{
-            fontSize: 10,
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: "0.1em",
-            color: "var(--ink-muted)",
-            flex: 1,
-          }}
-        >
+        <span style={{ ...EYEBROW_STYLE, flex: 1 }}>
           {label}
         </span>
         <span
@@ -461,6 +436,7 @@ export function EtapaResultado({ resultado, dados }) {
       {/* ── Ações ──────────────────────────────────────────────────── */}
       <div style={{ display: "flex", gap: 8 }}>
         <button
+          type="button"
           onClick={onShare}
           style={{
             flex: "0 0 auto",
@@ -487,12 +463,13 @@ export function EtapaResultado({ resultado, dados }) {
         </button>
 
         <button
+          type="button"
           onClick={() => gerarRelatorio(resultado, dados)}
           style={{
             flex: 1,
             padding: "14px 20px",
             background: "var(--blue)",
-            color: "#fff",
+            color: "white",
             border: "none",
             borderRadius: "var(--r)",
             fontSize: 14,
@@ -506,7 +483,7 @@ export function EtapaResultado({ resultado, dados }) {
           }}
         >
           <span style={{ display: "inline-flex" }}>
-            <FileDown size={18} strokeWidth={2.2} color="#fff" />
+            <FileDown size={18} strokeWidth={2.2} color="white" />
           </span>
           Baixar PDF
         </button>

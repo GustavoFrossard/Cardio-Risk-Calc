@@ -1,4 +1,5 @@
 import { resumirPaciente, resumirCirurgia, resumirComorbidades, resumirMedicamentos } from "../utils/resumo";
+import { Eyebrow } from "./ui";
 
 function Chip({ children, tone = "blue" }) {
   const tones = {
@@ -26,7 +27,7 @@ function Chip({ children, tone = "blue" }) {
 function Secao({ titulo, children }) {
   return (
     <div style={{ marginBottom: 16 }}>
-      <div style={{ fontSize: 11, fontWeight: 600, color: "var(--ink-muted)", marginBottom: 8 }}>{titulo}</div>
+      <Eyebrow style={{ padding: 0, marginBottom: 8 }}>{titulo}</Eyebrow>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{children}</div>
     </div>
   );
@@ -44,16 +45,14 @@ export function PainelResumo({ dados }) {
   return (
     <div style={{ width: 300, display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ background: "var(--white)", border: "1px solid var(--border)", borderRadius: "var(--r)", padding: 18 }}>
-        <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.04em", color: "var(--ink-muted)", textTransform: "uppercase", marginBottom: 14 }}>
-          Resumo da avaliação
-        </div>
+        <Eyebrow style={{ padding: 0, marginBottom: 14 }}>Resumo da avaliação</Eyebrow>
 
-        <Secao titulo="PACIENTE">
+        <Secao titulo="Paciente">
           {paciente.idade != null ? <Chip>{paciente.idade} anos</Chip> : <Chip tone="amber">Idade não informada</Chip>}
           {paciente.mets != null && <Chip>{paciente.mets} METs</Chip>}
         </Secao>
 
-        <Secao titulo="COMORBIDADES">
+        <Secao titulo="Comorbidades">
           {comorbidades.length > 0 ? (
             comorbidades.map((c) => <Chip key={c}>{c}</Chip>)
           ) : (
@@ -62,14 +61,14 @@ export function PainelResumo({ dados }) {
         </Secao>
 
         {medicamentos.length > 0 && (
-          <Secao titulo="MEDICAMENTOS">
+          <Secao titulo="Medicamentos">
             {medicamentos.map((m) => (
               <Chip key={m}>{m}</Chip>
             ))}
           </Secao>
         )}
 
-        <Secao titulo="CIRURGIA">
+        <Secao titulo="Cirurgia">
           {cirurgia.definida ? <Chip>{cirurgia.rotulo}</Chip> : <Chip tone="amber">Ainda não definida</Chip>}
         </Secao>
 

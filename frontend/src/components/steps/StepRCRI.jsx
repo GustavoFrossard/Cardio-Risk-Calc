@@ -1,5 +1,5 @@
 import { CalendarDays, HeartPulse, ClipboardList, Pencil } from "lucide-react";
-import { Card, ToggleRow, InfoBox } from "../ui";
+import { Card, ToggleRow, InfoBox, Eyebrow } from "../ui";
 import { resumirPaciente, resumirCirurgia } from "../../utils/resumo";
 
 const CRITERIOS_RCRI = [
@@ -217,14 +217,14 @@ function CardRevisao({ data, onIrParaEtapa }) {
   return (
     <Card icon={<ClipboardList size={16} strokeWidth={2.2} />} title="Revisão rápida">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-        <span style={{ fontSize: 11, fontWeight: 600, color: "var(--ink-muted)", textTransform: "uppercase", letterSpacing: "0.03em" }}>Paciente</span>
+        <Eyebrow style={{ padding: 0 }}>Paciente</Eyebrow>
         <LinkEditar onClick={() => onIrParaEtapa?.(1)} />
       </div>
       <LinhaRevisao rotulo="Idade" valor={paciente.idade != null ? `${paciente.idade} anos` : "—"} />
       <LinhaRevisao rotulo="Cap. funcional" valor={paciente.mets != null ? `${paciente.mets} METs` : "—"} />
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "14px 0 4px" }}>
-        <span style={{ fontSize: 11, fontWeight: 600, color: "var(--ink-muted)", textTransform: "uppercase", letterSpacing: "0.03em" }}>Cirurgia</span>
+        <Eyebrow style={{ padding: 0 }}>Cirurgia</Eyebrow>
         <LinkEditar onClick={() => onIrParaEtapa?.(2)} />
       </div>
       <LinhaRevisao rotulo="Procedimento" valor={cirurgia.rotulo ?? "Não definida"} />

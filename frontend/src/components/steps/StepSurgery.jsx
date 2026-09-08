@@ -1,5 +1,5 @@
 import { AlertTriangle, Hospital, Siren } from "lucide-react";
-import { Card, ToggleRow, InfoBox, SearchSelect } from "../ui";
+import { Card, Field, ToggleRow, InfoBox, SearchSelect } from "../ui";
 import { OPCOES_CIRURGIA } from "../../types";
 
 const GRUPOS_RISCO = [
@@ -90,13 +90,14 @@ export function EtapaCirurgia({ data, onChange }) {
   return (
     <>
       <Card icon={<Hospital {...iconProps} />} title="Identificação da Cirurgia">
-        <SearchSelect
-          value={data.tipo_cirurgia}
-          onChange={handleSurgeryChange}
-          options={OPCOES_CIRURGIA_PLANA}
-          placeholder="Selecione o procedimento..."
-          label="Procedimento"
-        />
+        <Field label="Procedimento">
+          <SearchSelect
+            value={data.tipo_cirurgia}
+            onChange={handleSurgeryChange}
+            options={OPCOES_CIRURGIA_PLANA}
+            placeholder="Selecione o procedimento..."
+          />
+        </Field>
 
         {opcaoSelecionada?.vascular && (
           <div style={{ marginTop: 12 }}>

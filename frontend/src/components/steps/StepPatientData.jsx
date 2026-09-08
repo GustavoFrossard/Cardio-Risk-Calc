@@ -95,7 +95,6 @@ export function EtapaDadosPaciente({ data, onChange, onAnalisarTextoClinico, ana
               fontSize: 14,
               color: "var(--ink)",
               background: "var(--white)",
-              outline: "none",
               resize: "vertical",
               lineHeight: 1.45,
             }}
@@ -110,7 +109,8 @@ export function EtapaDadosPaciente({ data, onChange, onAnalisarTextoClinico, ana
             marginTop: 12,
             border: "none",
             borderRadius: "var(--r-sm)",
-            background: analisando ? "#91A4CC" : "var(--blue)",
+            background: "var(--blue)",
+            opacity: analisando ? 0.7 : 1,
             color: "white",
             fontSize: 13,
             fontWeight: 600,

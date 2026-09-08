@@ -199,7 +199,6 @@ export function Input({ unit, style, ...props }) {
     fontSize: 14,
     color: "var(--ink)",
     background: "var(--white)",
-    outline: "none",
     WebkitAppearance: "none",
     ...style,
   };
@@ -293,7 +292,6 @@ export function AgeInput({ value, onChange, min = 0, max = 120 }) {
           fontWeight: 600,
           color: "var(--ink)",
           background: "var(--white)",
-          outline: "none",
           textAlign: "center",
           WebkitAppearance: "none",
           MozAppearance: "textfield",
@@ -330,34 +328,6 @@ export function AgeInput({ value, onChange, min = 0, max = 120 }) {
   );
 }
 
-// ─── Select (native) ──────────────────────────────────────────────────────────
-
-export function Select(props) {
-  return (
-    <select
-      style={{
-        width: "100%",
-        border: "1.5px solid var(--border)",
-        borderRadius: "var(--r-sm)",
-        padding: "10px 36px 10px 13px",
-        fontFamily: "'Outfit', sans-serif",
-        fontSize: 14,
-        color: props.value ? "var(--ink)" : "#C8CBD4",
-        background: "var(--white)",
-        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238B909A' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
-        backgroundRepeat: "no-repeat",
-        backgroundPosition: "right 12px center",
-        outline: "none",
-        WebkitAppearance: "none",
-        appearance: "none",
-        cursor: "pointer",
-        minHeight: 44,
-      }}
-      {...props}
-    />
-  );
-}
-
 // ─── SearchSelect — modal picker with search ──────────────────────────────────
 
 function normalizarBusca(texto) {
@@ -375,7 +345,7 @@ const TOM_RISCO = {
 
 const ROTULO_RISCO = { baixo: "Risco baixo", intermediario: "Risco intermediário", alto: "Risco alto" };
 
-export function SearchSelect({ value, onChange, options, placeholder = "Selecione...", label }) {
+export function SearchSelect({ value, onChange, options, placeholder = "Selecione..." }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
@@ -395,11 +365,6 @@ export function SearchSelect({ value, onChange, options, placeholder = "Selecion
 
   return (
     <>
-      {label && (
-        <div style={{ fontSize: 11, fontWeight: 600, color: "var(--ink-muted)", textTransform: "uppercase", letterSpacing: "0.03em", marginBottom: 6 }}>
-          {label}
-        </div>
-      )}
       <button
         type="button"
         onClick={() => { setQuery(""); setOpen(true); }}
@@ -436,7 +401,7 @@ export function SearchSelect({ value, onChange, options, placeholder = "Selecion
             )}
           </>
         ) : (
-          <span style={{ fontSize: 14, color: "#C8CBD4" }}>{placeholder}</span>
+          <span style={{ fontSize: 14, color: "var(--ink-muted)" }}>{placeholder}</span>
         )}
       </button>
 
@@ -513,7 +478,6 @@ export function SearchSelect({ value, onChange, options, placeholder = "Selecion
                     fontSize: 14,
                     color: "var(--ink)",
                     background: "var(--bg)",
-                    outline: "none",
                   }}
                 />
               </div>
@@ -642,6 +606,20 @@ export function InfoBox({ icon, children }) {
       <div style={{ fontSize: 12, color: "var(--blue)", lineHeight: 1.55 }}>{children}</div>
     </div>
   );
+}
+
+// ─── Eyebrow — small uppercase section/group label ────────────────────────────
+
+export const EYEBROW_STYLE = {
+  fontSize: 10,
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: "0.1em",
+  color: "var(--ink-muted)",
+};
+
+export function Eyebrow({ children, style }) {
+  return <div style={{ ...EYEBROW_STYLE, padding: "0 2px", ...style }}>{children}</div>;
 }
 
 // ─── Accordion ────────────────────────────────────────────────────────────────

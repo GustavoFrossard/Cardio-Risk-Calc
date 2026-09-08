@@ -128,6 +128,16 @@ style.textContent = `
     font-family: 'Outfit', sans-serif;
   }
 
+  ::placeholder {
+    color: var(--ink-muted);
+    opacity: 1;
+  }
+
+  input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+  }
+
   * {
     -webkit-tap-highlight-color: transparent;
   }
