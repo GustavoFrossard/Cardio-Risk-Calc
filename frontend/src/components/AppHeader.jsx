@@ -1,6 +1,6 @@
 import { ETAPAS_WIZARD } from "../types";
 
-function ThemeToggle({ theme, onToggle }) {
+function AlternadorTema({ theme, onToggle }) {
   const isDark = theme === "dark";
   return (
     <button
@@ -91,7 +91,7 @@ export function CabecalhoApp({ etapaAtual, maiorEtapa, onIrParaEtapa, theme, onT
         >
           {etapaAtual} / {ETAPAS_WIZARD.length}
         </div>
-        <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+        <AlternadorTema theme={theme} onToggle={onToggleTheme} />
       </div>
 
       {/* Barras de progresso — clicáveis para etapas já visitadas */}

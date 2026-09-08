@@ -46,7 +46,7 @@ const HERO = {
   },
 };
 
-function CollapsibleSection({ label, defaultOpen = true, children }) {
+function SecaoRecolhivel({ label, defaultOpen = true, children }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -272,7 +272,7 @@ export function EtapaResultado({ resultado, dados }) {
 
       {/* ── Orientações de medicação ────────────────────────────────────────── */}
       {resultado.orientacoes_medicacao.length > 0 && (
-        <CollapsibleSection label="Manejo de Medicamentos">
+        <SecaoRecolhivel label="Manejo de Medicamentos">
           <LinhaTempoMedicacoes orientacoes={resultado.orientacoes_medicacao} />
           {resultado.orientacoes_medicacao.map((med, i) => {
             const cores = CORES_REC[med.tipo] || CORES_REC.amarelo;
@@ -321,12 +321,12 @@ export function EtapaResultado({ resultado, dados }) {
               </div>
             );
           })}
-        </CollapsibleSection>
+        </SecaoRecolhivel>
       )}
 
       {/* ── Exames recomendados ────────────────────────────────────────── */}
       {resultado.exames_recomendados.length > 0 && (
-        <CollapsibleSection label="Exames Recomendados">
+        <SecaoRecolhivel label="Exames Recomendados">
           <div
             style={{
               background: "var(--white)",
@@ -359,12 +359,12 @@ export function EtapaResultado({ resultado, dados }) {
               ))}
             </ul>
           </div>
-        </CollapsibleSection>
+        </SecaoRecolhivel>
       )}
 
       {/* ── Recomendações ──────────────────────────────────────────── */}
       {resultado.recomendacoes.length > 0 && (
-        <CollapsibleSection label="Recomendações" defaultOpen={true}>
+        <SecaoRecolhivel label="Recomendações" defaultOpen={true}>
           {resultado.recomendacoes.map((rec, i) => {
             const cores = CORES_REC[rec.tipo] || CORES_REC.verde;
             return (
@@ -396,12 +396,12 @@ export function EtapaResultado({ resultado, dados }) {
               </div>
             );
           })}
-        </CollapsibleSection>
+        </SecaoRecolhivel>
       )}
 
       {/* ── Fatores de risco ─────────────────────────────────────────────── */}
       {resultado.fatores_risco.length > 0 && (
-        <CollapsibleSection label="Fatores Identificados" defaultOpen={false}>
+        <SecaoRecolhivel label="Fatores Identificados" defaultOpen={false}>
           <div
             style={{
               background: "var(--white)",
@@ -430,7 +430,7 @@ export function EtapaResultado({ resultado, dados }) {
               ))}
             </div>
           </div>
-        </CollapsibleSection>
+        </SecaoRecolhivel>
       )}
 
       {/* ── Ações ──────────────────────────────────────────────────── */}

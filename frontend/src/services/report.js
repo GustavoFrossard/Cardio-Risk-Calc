@@ -10,19 +10,19 @@ const ROTULOS_RISCO_CIRURGIA = {
   alto: "Alto",
 };
 
-function getRotuloCirurgia(tipoCirurgia) {
+function obterRotuloCirurgia(tipoCirurgia) {
   return OPCOES_CIRURGIA.find((opcao) => opcao.valor === tipoCirurgia)?.rotulo || "Não informada";
 }
 
-function addPage(doc, y, needed) {
+function adicionarPagina(doc, y, needed) {
   if (y + needed > 280) {
-    doc.addPage();
+    doc.adicionarPagina();
     return MARGIN;
   }
   return y;
 }
 
-function isRunningInsideReactNativeWebView() {
+function estaRodandoNoWebViewReactNative() {
   return Boolean(
     typeof window !== "undefined" &&
       window.ReactNativeWebView &&
@@ -33,7 +33,7 @@ function isRunningInsideReactNativeWebView() {
 export function gerarRelatorio(resultado, dados) {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const nomeIndice = resultado.indice_risco === "vsg" ? "VSG-CRI" : "RCRI";
-  const rotuloCirurgia = getRotuloCirurgia(dados.tipo_cirurgia);
+  const rotuloCirurgia = obterRotuloCirurgia(dados.tipo_cirurgia);
   const rotuloRiscoCirurgia = ROTULOS_RISCO_CIRURGIA[resultado.risco_cirurgia] || resultado.risco_cirurgia || "Não informado";
   let y = MARGIN;
 
@@ -86,7 +86,7 @@ export function gerarRelatorio(resultado, dados) {
   y += 8;
 
   if (resultado.tem_condicoes_ativas) {
-    y = addPage(doc, y, 20 + resultado.condicoes_ativas.length * 5);
+    y = adicionarPagina(doc, y, 20 + resultado.condicoes_ativas.length * 5);
     doc.setFillColor(254, 226, 226);
     const boxH = 12 + resultado.condicoes_ativas.length * 5;
     doc.roundedRect(MARGIN, y - 3, CONTENT_W, boxH, 2, 2, "F");
@@ -107,7 +107,7 @@ export function gerarRelatorio(resultado, dados) {
     doc.setTextColor(30, 30, 30);
   }
 
-  y = addPage(doc, y, 30);
+  y = adicionarPagina(doc, y, 30);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
   doc.text(`Resultado — Índice ${nomeIndice}`, MARGIN, y);
@@ -133,7 +133,7 @@ export function gerarRelatorio(resultado, dados) {
   doc.setTextColor(30, 30, 30);
 
   if (resultado.fatores_risco.length > 0) {
-    y = addPage(doc, y, 10 + resultado.fatores_risco.length * 5);
+    y = adicionarPagina(doc, y, 10 + resultado.fatores_risco.length * 5);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     doc.text("Fatores de Risco Identificados", MARGIN, y);
@@ -142,7 +142,7 @@ export function gerarRelatorio(resultado, dados) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     for (const fator of resultado.fatores_risco) {
-      y = addPage(doc, y, 6);
+      y = adicionarPagina(doc, y, 6);
       doc.text(`• ${fator}`, MARGIN + 4, y);
       y += 5;
     }
@@ -150,7 +150,7 @@ export function gerarRelatorio(resultado, dados) {
   }
 
   if (resultado.orientacoes_medicacao.length > 0) {
-    y = addPage(doc, y, 14);
+    y = adicionarPagina(doc, y, 14);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     doc.text("Manejo de Medicamentos", MARGIN, y);
@@ -158,7 +158,7 @@ export function gerarRelatorio(resultado, dados) {
 
     doc.setFontSize(9);
     for (const med of resultado.orientacoes_medicacao) {
-      y = addPage(doc, y, 14);
+      y = adicionarPagina(doc, y, 14);
       doc.setFont("helvetica", "bold");
       doc.text(`${med.medicamento} — ${med.acao}`, MARGIN + 4, y);
       y += 4;
@@ -171,7 +171,7 @@ export function gerarRelatorio(resultado, dados) {
   }
 
   if (resultado.exames_recomendados.length > 0) {
-    y = addPage(doc, y, 10 + resultado.exames_recomendados.length * 5);
+    y = adicionarPagina(doc, y, 10 + resultado.exames_recomendados.length * 5);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     doc.text("Exames Recomendados", MARGIN, y);
@@ -180,7 +180,7 @@ export function gerarRelatorio(resultado, dados) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     for (const exame of resultado.exames_recomendados) {
-      y = addPage(doc, y, 6);
+      y = adicionarPagina(doc, y, 6);
       doc.text(`• ${exame}`, MARGIN + 4, y);
       y += 5;
     }
@@ -188,7 +188,7 @@ export function gerarRelatorio(resultado, dados) {
   }
 
   if (resultado.recomendacoes.length > 0) {
-    y = addPage(doc, y, 14);
+    y = adicionarPagina(doc, y, 14);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     doc.text("Recomendações", MARGIN, y);
@@ -196,7 +196,7 @@ export function gerarRelatorio(resultado, dados) {
 
     doc.setFontSize(9);
     for (const rec of resultado.recomendacoes) {
-      y = addPage(doc, y, 14);
+      y = adicionarPagina(doc, y, 14);
       doc.setFont("helvetica", "bold");
       doc.text(`${rec.titulo}`, MARGIN + 4, y);
       y += 4;
@@ -220,7 +220,7 @@ export function gerarRelatorio(resultado, dados) {
   const dateForFile = `${dateObj.getDate().toString().padStart(2, '0')}-${(dateObj.getMonth() + 1).toString().padStart(2, '0')}-${dateObj.getFullYear()}`;
   const filename = `CardioRisk - ${nomeSafe} - ${dateForFile}.pdf`;
 
-  if (isRunningInsideReactNativeWebView()) {
+  if (estaRodandoNoWebViewReactNative()) {
     const dataUri = doc.output("datauristring");
     const base64 = dataUri.includes(",") ? dataUri.split(",")[1] : "";
     window.ReactNativeWebView.postMessage(

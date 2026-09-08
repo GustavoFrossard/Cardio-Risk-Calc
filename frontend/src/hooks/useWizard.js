@@ -4,7 +4,7 @@ import { api } from "../services/api";
 
 const STORAGE_KEY = "cardiorisk_wizard_v1";
 
-function loadSaved() {
+function carregarSalvo() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
@@ -20,7 +20,7 @@ function loadSaved() {
   }
 }
 
-function saveToDisk(etapa, dados) {
+function salvarNoDisco(etapa, dados) {
   try {
     // Não persistir estado vazio da primeira etapa
     if (etapa === 1 && !dados.nome && dados.idade === undefined) return;
@@ -29,7 +29,7 @@ function saveToDisk(etapa, dados) {
 }
 
 export function useAssistente() {
-  const savedRef = useRef(loadSaved());
+  const savedRef = useRef(carregarSalvo());
   const [temDadosSalvos] = useState(() => savedRef.current !== null);
 
   const [etapaAtual, setEtapaAtual] = useState(1);
@@ -49,7 +49,7 @@ export function useAssistente() {
 
   // Persistir no localStorage sempre que a etapa ou os dados mudarem
   useEffect(() => {
-    if (etapaAtual < 4) saveToDisk(etapaAtual, dadosFormulario);
+    if (etapaAtual < 4) salvarNoDisco(etapaAtual, dadosFormulario);
   }, [etapaAtual, dadosFormulario]);
 
   const retomar = useCallback(() => {

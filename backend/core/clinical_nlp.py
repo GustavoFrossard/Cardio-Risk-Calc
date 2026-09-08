@@ -18,19 +18,19 @@ MODEL_NAME = os.getenv("CARDIORISK_NER_MODEL", "pucpr/clinicalnerpt-medical")
 HF_TOKEN = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACEHUB_API_TOKEN")
 
 
-def _as_bool(value: str | None, default: bool = False) -> bool:
+def _para_booleano(value: str | None, default: bool = False) -> bool:
     if value is None:
         return default
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
-if _as_bool(os.getenv("CARDIORISK_SUPPRESS_MODEL_WARNINGS"), default=False):
+if _para_booleano(os.getenv("CARDIORISK_SUPPRESS_MODEL_WARNINGS"), default=False):
     warnings.filterwarnings(
         "ignore",
         message=r".*unauthenticated requests to the HF Hub.*",
     )
 
-ENABLE_NER = _as_bool(os.getenv("CARDIORISK_ENABLE_NER"), default=True)
+ENABLE_NER = _para_booleano(os.getenv("CARDIORISK_ENABLE_NER"), default=True)
 
 try:
     from transformers import (  # type: ignore
@@ -256,13 +256,13 @@ SURGERY_TYPE_MAP: dict[str, dict[str, Any]] = {
 }
 
 
-def _normalize(text: str) -> str:
+def _normalizar(text: str) -> str:
     text = unicodedata.normalize("NFD", text)
     text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
     return text.lower()
 
 
-def _build_ner_pipeline():
+def _construir_pipeline_ner():
     if pipeline is None or AutoTokenizer is None or AutoModelForTokenClassification is None:
         raise RuntimeError("transformers não está instalado no ambiente")
 
@@ -275,7 +275,7 @@ def _build_ner_pipeline():
     return pipeline("ner", model=model, tokenizer=tokenizer, aggregation_strategy="simple")
 
 
-def _get_ner_pipeline():
+def _obter_pipeline_ner():
     global _NER_PIPELINE, _NER_ERROR
 
     if not ENABLE_NER:
@@ -288,15 +288,15 @@ def _get_ner_pipeline():
             return None, _NER_ERROR
 
         try:
-            _NER_PIPELINE = _build_ner_pipeline()
+            _NER_PIPELINE = _construir_pipeline_ner()
             return _NER_PIPELINE, None
         except Exception as exc:  # pragma: no cover - depends on runtime/dependencies
             _NER_ERROR = str(exc)
             return None, _NER_ERROR
 
 
-def _run_ner(text: str) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    ner, error = _get_ner_pipeline()
+def _executar_ner(text: str) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    ner, error = _obter_pipeline_ner()
     if ner is None:
         return [], {
             "name": MODEL_NAME,
@@ -323,15 +323,15 @@ def _run_ner(text: str) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         }
 
 
-def _match_any(normalized_text: str, terms: list[str]) -> bool:
+def _corresponde_algum(normalized_text: str, terms: list[str]) -> bool:
     for term in terms:
-        if re.search(rf"\b{re.escape(_normalize(term))}\b", normalized_text):
+        if re.search(rf"\b{re.escape(_normalizar(term))}\b", normalized_text):
             return True
     return False
 
 
-def _is_negated(normalized_text: str, term: str) -> bool:
-    norm_term = _normalize(term)
+def _esta_negado(normalized_text: str, term: str) -> bool:
+    norm_term = _normalizar(term)
     patterns = [
         rf"\bsem\s+[^\.,;]{{0,30}}{re.escape(norm_term)}\b",
         rf"\bnega\s+[^\.,;]{{0,30}}{re.escape(norm_term)}\b",
@@ -340,7 +340,7 @@ def _is_negated(normalized_text: str, term: str) -> bool:
     return any(re.search(p, normalized_text) for p in patterns)
 
 
-def _extract_age(text: str) -> int | None:
+def _extrair_idade(text: str) -> int | None:
     m = re.search(r"\b(\d{1,3})\s*anos?\b", text, flags=re.IGNORECASE)
     if not m:
         return None
@@ -350,7 +350,7 @@ def _extract_age(text: str) -> int | None:
     return None
 
 
-def _clean_name(candidate: str) -> str | None:
+def _limpar_nome(candidate: str) -> str | None:
     cleaned = re.sub(r"\s+", " ", candidate).strip(" ,.;:-")
     cleaned = re.sub(r"^(sr\.?|sra\.?|srta\.?)\s+", "", cleaned, flags=re.IGNORECASE)
     if len(cleaned) < 3:
@@ -359,12 +359,12 @@ def _clean_name(candidate: str) -> str | None:
         return None
     if len(cleaned.split()) < 1:
         return None
-    if _normalize(cleaned) in {"paciente", "doente", "usuario", "cliente"}:
+    if _normalizar(cleaned) in {"paciente", "doente", "usuario", "cliente"}:
         return None
     return cleaned
 
 
-def _extract_name(text: str) -> str | None:
+def _extrair_nome(text: str) -> str | None:
     patterns = [
         r"\bnome\s*(?:do\s+paciente)?\s*[:=-]\s*([A-ZÁÀÂÃÉÈÊÍÏÓÔÕÖÚÇ][A-Za-zÁÀÂÃÉÈÊÍÏÓÔÕÖÚÇáàâãéèêíïóôõöúç'\- ]{2,80})",
         r"\bpaciente\s*[:=-]\s*([A-ZÁÀÂÃÉÈÊÍÏÓÔÕÖÚÇ][A-Za-zÁÀÂÃÉÈÊÍÏÓÔÕÖÚÇáàâãéèêíïóôõöúç'\.\- ]{1,80}?)(?=\s*,\s*\d{1,3}\s*anos\b|\s*,\s*(?:com|portador[ao])\b|[\.;]|$)",
@@ -381,13 +381,13 @@ def _extract_name(text: str) -> str | None:
     for pattern in patterns:
         match = re.search(pattern, text, flags=re.IGNORECASE)
         if match:
-            cleaned = _clean_name(match.group(1))
+            cleaned = _limpar_nome(match.group(1))
             if cleaned:
                 return cleaned
     return None
 
 
-def _extract_mets(text: str) -> float | None:
+def _extrair_mets(text: str) -> float | None:
     m = re.search(r"\b(\d+(?:[\.,]\d+)?)\s*(?:mets?|met)\b", text, flags=re.IGNORECASE)
     if not m:
         return None
@@ -395,7 +395,7 @@ def _extract_mets(text: str) -> float | None:
     return max(1.0, min(12.0, value))
 
 
-def _infer_mets_from_activity(normalized_text: str) -> float | None:
+def _inferir_mets_da_atividade(normalized_text: str) -> float | None:
     # Heuristic fallback for common free-text functional capacity descriptions.
     activity_map: list[tuple[float, list[str]]] = [
         (8.0, ["corre distancia curta", "corrida curta", "esporte intenso"]),
@@ -408,12 +408,12 @@ def _infer_mets_from_activity(normalized_text: str) -> float | None:
         (1.0, ["acamado", "restrito ao leito", "nao deambula"]),
     ]
     for mets, phrases in activity_map:
-        if _match_any(normalized_text, phrases):
+        if _corresponde_algum(normalized_text, phrases):
             return mets
     return None
 
 
-def _extract_creatinine(text: str) -> float | None:
+def _extrair_creatinina(text: str) -> float | None:
     m = re.search(
         r"(?:creatinina|creat)[^\d]{0,30}(\d+(?:[\.,]\d+)?)\s*(?:mg/?d?l)?",
         text,
@@ -424,7 +424,7 @@ def _extract_creatinine(text: str) -> float | None:
     return float(m.group(1).replace(",", "."))
 
 
-def _extract_egfr(text: str) -> float | None:
+def _extrair_egfr(text: str) -> float | None:
     m = re.search(
         r"(?:tfg|egfr|filtracao\s+glomerular)[^\d]{0,25}(\d+(?:[\.,]\d+)?)\s*(?:ml/?min(?:/1\.73m2)?)?",
         text,
@@ -435,9 +435,9 @@ def _extract_egfr(text: str) -> float | None:
     return float(m.group(1).replace(",", "."))
 
 
-def _extract_surgery(normalized_text: str) -> dict[str, Any] | None:
+def _extrair_cirurgia(normalized_text: str) -> dict[str, Any] | None:
     for surgery_id, payload in SURGERY_TYPE_MAP.items():
-        if _match_any(normalized_text, payload["aliases"]):
+        if _corresponde_algum(normalized_text, payload["aliases"]):
             return {
                 "tipo_cirurgia": surgery_id,
                 "risco_cirurgia": payload["risco"],
@@ -448,7 +448,7 @@ def _extract_surgery(normalized_text: str) -> dict[str, Any] | None:
 
 def analisar_texto_clinico(text: str, current_data: dict[str, Any] | None = None) -> dict[str, Any]:
     current_data = current_data or {}
-    normalized = _normalize(text)
+    normalized = _normalizar(text)
 
     autofill: dict[str, Any] = {}
     findings: dict[str, list[str]] = {
@@ -457,98 +457,98 @@ def analisar_texto_clinico(text: str, current_data: dict[str, Any] | None = None
         "procedures": [],
     }
 
-    age = _extract_age(text)
+    age = _extrair_idade(text)
     if age is not None:
         autofill["idade"] = age
 
-    name = _extract_name(text)
+    name = _extrair_nome(text)
     if name:
         autofill["nome"] = name
 
-    surgery = _extract_surgery(normalized)
+    surgery = _extrair_cirurgia(normalized)
     if surgery:
         autofill.update(surgery)
         findings["procedures"].append(surgery["tipo_cirurgia"])
 
-    if _match_any(normalized, ["insulina", "insulinoterapia", "nph", "glargina"]):
+    if _corresponde_algum(normalized, ["insulina", "insulinoterapia", "nph", "glargina"]):
         autofill["rcri_diabetes_insulina"] = True
         autofill["vsg_diabetes_insulina"] = True
         findings["medications"].append("insulina")
 
-    if _match_any(normalized, ["aas", "acido acetilsalicilico", "aspirina"]):
+    if _corresponde_algum(normalized, ["aas", "acido acetilsalicilico", "aspirina"]):
         autofill["usa_aas"] = True
         findings["medications"].append("aas")
 
-    if _match_any(normalized, ["clopidogrel"]):
+    if _corresponde_algum(normalized, ["clopidogrel"]):
         autofill["usa_clopidogrel"] = True
         findings["medications"].append("clopidogrel")
 
-    if _match_any(normalized, ["ticagrelor"]):
+    if _corresponde_algum(normalized, ["ticagrelor"]):
         autofill["usa_ticagrelor"] = True
         findings["medications"].append("ticagrelor")
 
-    if _match_any(normalized, ["prasugrel"]):
+    if _corresponde_algum(normalized, ["prasugrel"]):
         autofill["usa_prasugrel"] = True
         findings["medications"].append("prasugrel")
 
-    if _match_any(normalized, ["varfarina", "marevan"]):
+    if _corresponde_algum(normalized, ["varfarina", "marevan"]):
         autofill["usa_varfarina"] = True
         findings["medications"].append("varfarina")
 
-    if _match_any(normalized, ["fibrilacao atrial"]) or re.search(r"\bfa\b", normalized):
+    if _corresponde_algum(normalized, ["fibrilacao atrial"]) or re.search(r"\bfa\b", normalized):
         autofill["indicacao_varfarina"] = "af"
 
-    if _match_any(normalized, ["tev", "tromboembolismo venoso", "trombose venosa", "tep"]):
+    if _corresponde_algum(normalized, ["tev", "tromboembolismo venoso", "trombose venosa", "tep"]):
         autofill["indicacao_varfarina"] = "vte"
 
-    if _match_any(normalized, ["avc", "ait", "acidente vascular cerebral", "avci"]):
+    if _corresponde_algum(normalized, ["avc", "ait", "acidente vascular cerebral", "avci"]):
         autofill["rcri_cerebrovascular"] = True
         findings["diagnoses"].append("doenca_cerebrovascular")
 
-    if _match_any(normalized, ["dac", "doenca coronariana", "angina", "infarto", "iam"]):
+    if _corresponde_algum(normalized, ["dac", "doenca coronariana", "angina", "infarto", "iam"]):
         autofill["dac_conhecida"] = True
         autofill["rcri_doenca_coronaria"] = True
         autofill["vsg_dac"] = True
         findings["diagnoses"].append("doenca_coronariana")
 
-    if _match_any(normalized, ["insuficiencia cardiaca", "ic", "icc"]):
+    if _corresponde_algum(normalized, ["insuficiencia cardiaca", "ic", "icc"]):
         autofill["ic_conhecida"] = True
         autofill["rcri_ic"] = True
         autofill["vsg_ic"] = True
         findings["diagnoses"].append("insuficiencia_cardiaca")
 
-    if _match_any(normalized, ["dpoc"]):
+    if _corresponde_algum(normalized, ["dpoc"]):
         autofill["vsg_dpoc"] = True
         findings["diagnoses"].append("dpoc")
 
-    if _match_any(normalized, ["tabagista", "tabagismo", "fumante"]):
+    if _corresponde_algum(normalized, ["tabagista", "tabagismo", "fumante"]):
         autofill["vsg_tabagismo"] = True
 
-    if _match_any(normalized, ["obesidade", "obeso", "obesa"]):
+    if _corresponde_algum(normalized, ["obesidade", "obeso", "obesa"]):
         autofill["obesidade"] = True
 
-    if _match_any(normalized, ["beta bloqueador", "beta-bloqueador", "betabloqueador", "atenolol", "metoprolol", "carvedilol"]):
+    if _corresponde_algum(normalized, ["beta bloqueador", "beta-bloqueador", "betabloqueador", "atenolol", "metoprolol", "carvedilol"]):
         autofill["vsg_betabloqueador_cronico"] = True
         findings["medications"].append("betabloqueador")
 
-    has_revasc = _match_any(normalized, ["revascularizacao", "angioplastia coronaria", "ponte de safena"])
-    if has_revasc and not _is_negated(normalized, "revascularizacao"):
+    has_revasc = _corresponde_algum(normalized, ["revascularizacao", "angioplastia coronaria", "ponte de safena"])
+    if has_revasc and not _esta_negado(normalized, "revascularizacao"):
         autofill["vsg_revasc_previa"] = True
 
-    mets = _extract_mets(text)
+    mets = _extrair_mets(text)
     if mets is None:
-        mets = _infer_mets_from_activity(normalized)
+        mets = _inferir_mets_da_atividade(normalized)
     if mets is not None:
         autofill["mets"] = mets
 
-    creatinine = _extract_creatinine(text)
+    creatinine = _extrair_creatinina(text)
     if creatinine is not None:
         if creatinine > 2.0:
             autofill["rcri_creatinina_acima_2"] = True
         if creatinine > 1.8:
             autofill["vsg_creatinina_acima_1_8"] = True
 
-    egfr = _extract_egfr(text)
+    egfr = _extrair_egfr(text)
 
     merged = {**current_data, **autofill}
     missing_critical: list[dict[str, str]] = []
@@ -598,7 +598,7 @@ def analisar_texto_clinico(text: str, current_data: dict[str, Any] | None = None
             }
         )
 
-    entities, model_info = _run_ner(text)
+    entities, model_info = _executar_ner(text)
 
     summary = {
         "autofill_fields": sorted(autofill.keys()),
@@ -621,6 +621,3 @@ def analisar_texto_clinico(text: str, current_data: dict[str, Any] | None = None
         "context": context,
     }
 
-
-# Alias para compatibilidade com importações existentes
-analyze_clinical_text = analisar_texto_clinico

@@ -27,17 +27,18 @@ skinparam ArrowColor  #555555
 skinparam ArrowFontSize 10
 
 ' ═══════════════════════════════════════════════════════════════════
-' MOBILE (React Native / Expo)
+' MOBILE (React Native / Expo) — cópia paralela do frontend, não coberta
+' pelas mudanças mais recentes do Frontend Web (ver README do mobile)
 ' ═══════════════════════════════════════════════════════════════════
 package "Mobile App · React Native / Expo" #EDF0F5 {
-  [App.jsx]           <<Expo Root>>
-  [WebView]           <<react-native-webview>>
-  [expo-sharing]      <<Sharing>>
-  [expo-file-system]  <<File I/O>>
+  [mobile/App.jsx]     <<Expo Root>>
+  [WebView]            <<react-native-webview>>
+  [expo-sharing]       <<Sharing>>
+  [expo-file-system]   <<File I/O>>
 
-  [App.jsx]      --> [WebView]        : carrega frontend web
-  [App.jsx]      --> [expo-sharing]   : compartilha PDF
-  [App.jsx]      --> [expo-file-system] : salva PDF
+  [mobile/App.jsx] --> [WebView]          : carrega frontend web
+  [mobile/App.jsx] --> [expo-sharing]     : compartilha PDF
+  [mobile/App.jsx] --> [expo-file-system] : salva PDF
 }
 
 ' ═══════════════════════════════════════════════════════════════════
@@ -46,24 +47,31 @@ package "Mobile App · React Native / Expo" #EDF0F5 {
 package "Frontend Web · React + Vite" #EBF1FE {
 
   package "Componentes de Layout" {
-    [App.jsx]           <<Root Component>>
-    [AppHeader.jsx]     <<CabecalhoApp / Wizard Nav>>
-    [BottomBar.jsx]     <<BarraInferior>>
+    [App.jsx]              <<Root Component>>
+    [WelcomeScreen.jsx]     <<TelaBoasVindas>>
+    [AppHeader.jsx]         <<CabecalhoApp / Wizard Nav>>
+    [BottomBar.jsx]         <<BarraInferior>>
+    [SummaryPanel.jsx]      <<PainelResumo — desktop ≥1320px>>
   }
 
   package "Etapas do Wizard" {
     [StepPatientData.jsx]  <<EtapaDadosPaciente — Etapa 1>>
     [StepSurgery.jsx]      <<EtapaCirurgia — Etapa 2>>
-    [StepRCRI.jsx]         <<EtapaRCRI — Etapa 3>>
+    [StepRCRI.jsx]         <<EtapaRCRI — Etapa 3\n+ CardRevisao (mobile/tablet)>>
     [StepResult.jsx]       <<EtapaResultado — Etapa 4>>
   }
 
+  package "Componentes de Resultado" {
+    [MedicationTimeline.jsx] <<LinhaTempoMedicacoes>>
+  }
+
   package "UI Primitivos" {
-    [ui/index.jsx] <<Toggle, Card, Field,\nInput, AgeInput,\nSelect, SearchSelect,\nChipGroup, InfoBox,\nAccordion>>
+    [ui/index.jsx] <<Toggle, Card, Field,\nInput, AgeInput,\nSearchSelect, ChipGroup,\nInfoBox, Accordion, Eyebrow>>
   }
 
   package "Hooks" {
     [useWizard.js] <<useAssistente\nState Management\nLocalStorage\nWizard Navigation>>
+    [useTheme.js]  <<useTheme\nClaro/Escuro\nLocalStorage>>
   }
 
   package "Serviços" {
@@ -71,14 +79,21 @@ package "Frontend Web · React + Vite" #EBF1FE {
     [report.js] <<gerarRelatorio — PDF Generator>>
   }
 
+  package "Utilitários" {
+    [utils/resumo.js] <<resumirPaciente, resumirCirurgia,\nresumirComorbidades,\nresumirMedicamentos>>
+  }
+
   package "Tipos e Constantes" {
-    [types/index.js] <<OPCOES_CIRURGIA\nPERGUNTAS_FUNCIONAIS\nETAPAS_WIZARD\ndadosPacienteInicial>>
+    [types/index.js] <<OPCOES_CIRURGIA\nPERGUNTAS_FUNCIONAIS\nCOMORBIDADES · MEDICAMENTOS\nETAPAS_WIZARD\ndadosPacienteInicial>>
   }
 
   ' Conexões internas do frontend
+  [App.jsx]              --> [WelcomeScreen.jsx]
   [App.jsx]              --> [AppHeader.jsx]
   [App.jsx]              --> [BottomBar.jsx]
+  [App.jsx]              --> [SummaryPanel.jsx]
   [App.jsx]              --> [useWizard.js]
+  [App.jsx]              --> [useTheme.js]
   [App.jsx]              --> [StepPatientData.jsx]
   [App.jsx]              --> [StepSurgery.jsx]
   [App.jsx]              --> [StepRCRI.jsx]
@@ -89,8 +104,14 @@ package "Frontend Web · React + Vite" #EBF1FE {
   [StepSurgery.jsx]      --> [ui/index.jsx]
   [StepSurgery.jsx]      --> [types/index.js]
   [StepRCRI.jsx]         --> [ui/index.jsx]
+  [StepRCRI.jsx]         --> [utils/resumo.js]
   [StepResult.jsx]       --> [ui/index.jsx]
+  [StepResult.jsx]       --> [MedicationTimeline.jsx]
   [StepResult.jsx]       --> [report.js]
+
+  [SummaryPanel.jsx]     --> [ui/index.jsx]
+  [SummaryPanel.jsx]     --> [utils/resumo.js]
+  [utils/resumo.js]      --> [types/index.js]
 
   [AppHeader.jsx]        --> [types/index.js]
   [useWizard.js]         --> [api.js]
@@ -106,7 +127,7 @@ package "Backend · Python + FastAPI" #EDFAF4 {
 
   package "Core" {
     [core/calculator.py] <<Motor de Cálculo\nRCRI · VSG\nRecomendações>>
-    [core/clinical_nlp.py] <<NLP / LLM\nAuto-preenchimento>>
+    [core/clinical_nlp.py] <<NLP\nRegras + NER local opcional\nAuto-preenchimento>>
   }
 
   [main.py] --> [core/calculator.py]
@@ -117,7 +138,7 @@ package "Backend · Python + FastAPI" #EDFAF4 {
 ' ARMAZENAMENTO / EXTERNO
 ' ═══════════════════════════════════════════════════════════════════
 database "LocalStorage\n(navegador)" as ls #FFF8E6
-[LLM externo\n(OpenAI / Anthropic)] as llm #FFF8E6
+[Modelo NER local\n(Hugging Face,\npucpr/clinicalnerpt-medical,\nopcional)] as ner #FFF8E6
 
 ' ═══════════════════════════════════════════════════════════════════
 ' COMUNICAÇÃO ENTRE CAMADAS
@@ -126,7 +147,7 @@ database "LocalStorage\n(navegador)" as ls #FFF8E6
 
 [api.js]         --> [main.py]               : HTTP REST\nPOST /calculate
 [api.js]         --> [main.py]               : HTTP REST\nPOST /nlp/analyze
-[core/clinical_nlp.py] --> [llm]             : API externa
+[core/clinical_nlp.py] --> [ner]             : inferência local\n(sem chamada externa)
 [useWizard.js]   --> [ls]                    : persiste sessão
 
 @enduml

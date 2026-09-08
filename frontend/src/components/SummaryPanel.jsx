@@ -1,7 +1,7 @@
 import { resumirPaciente, resumirCirurgia, resumirComorbidades, resumirMedicamentos } from "../utils/resumo";
 import { Eyebrow } from "./ui";
 
-function Chip({ children, tone = "blue" }) {
+function Etiqueta({ children, tone = "blue" }) {
   const tones = {
     blue: { color: "var(--blue)", background: "var(--blue-soft)" },
     amber: { color: "var(--amber)", background: "var(--amber-soft)" },
@@ -48,13 +48,13 @@ export function PainelResumo({ dados }) {
         <Eyebrow style={{ padding: 0, marginBottom: 14 }}>Resumo da avaliação</Eyebrow>
 
         <Secao titulo="Paciente">
-          {paciente.idade != null ? <Chip>{paciente.idade} anos</Chip> : <Chip tone="amber">Idade não informada</Chip>}
-          {paciente.mets != null && <Chip>{paciente.mets} METs</Chip>}
+          {paciente.idade != null ? <Etiqueta>{paciente.idade} anos</Etiqueta> : <Etiqueta tone="amber">Idade não informada</Etiqueta>}
+          {paciente.mets != null && <Etiqueta>{paciente.mets} METs</Etiqueta>}
         </Secao>
 
         <Secao titulo="Comorbidades">
           {comorbidades.length > 0 ? (
-            comorbidades.map((c) => <Chip key={c}>{c}</Chip>)
+            comorbidades.map((c) => <Etiqueta key={c}>{c}</Etiqueta>)
           ) : (
             <span style={{ fontSize: 12, color: "var(--ink-muted)" }}>Nenhuma marcada</span>
           )}
@@ -63,13 +63,13 @@ export function PainelResumo({ dados }) {
         {medicamentos.length > 0 && (
           <Secao titulo="Medicamentos">
             {medicamentos.map((m) => (
-              <Chip key={m}>{m}</Chip>
+              <Etiqueta key={m}>{m}</Etiqueta>
             ))}
           </Secao>
         )}
 
         <Secao titulo="Cirurgia">
-          {cirurgia.definida ? <Chip>{cirurgia.rotulo}</Chip> : <Chip tone="amber">Ainda não definida</Chip>}
+          {cirurgia.definida ? <Etiqueta>{cirurgia.rotulo}</Etiqueta> : <Etiqueta tone="amber">Ainda não definida</Etiqueta>}
         </Secao>
 
         <div style={{ height: 1, background: "var(--border)", margin: "14px 0" }} />

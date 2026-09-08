@@ -32,6 +32,10 @@ node_modules/
 frontend/dist/
 frontend/.vite/
 
+# Expo / mobile build tooling
+.expo/
+mobile/builds/
+
 # OS
 .DS_Store
 Thumbs.db

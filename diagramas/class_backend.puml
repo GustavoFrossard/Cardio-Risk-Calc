@@ -64,11 +64,16 @@ package "Backend · Python" #EBF1FE {
     + eh_vascular     : bool
     ' Condições CV ativas (cv_* × 11)
     + cv_coronaria_aguda           : bool
+    + cv_aorta_instavel            : bool
+    + cv_edema_pulmonar_agudo      : bool
     + cv_choque_cardiogenico       : bool
     + cv_ic_nyha_3_4               : bool
+    + cv_angina_ccs_3_4            : bool
     + cv_arritmia_grave            : bool
     + cv_has_nao_controlada        : bool
-    ' ... demais cv_* omitidos por brevidade
+    + cv_fa_alta_resposta          : bool
+    + cv_hap_sintomatica           : bool
+    + cv_valvopatia_grave          : bool
     ' Critérios RCRI (rcri_* × 6)
     + rcri_cirurgia_alto_risco  : bool
     + rcri_doenca_coronaria     : bool
@@ -81,10 +86,11 @@ package "Backend · Python" #EBF1FE {
     + vsg_dac                   : bool
     + vsg_ic                    : bool
     + vsg_dpoc                  : bool
+    + vsg_creatinina_acima_1_8  : bool
     + vsg_tabagismo             : bool
     + vsg_diabetes_insulina     : bool
+    + vsg_betabloqueador_cronico : bool
     + vsg_revasc_previa         : bool
-    ' ... demais vsg_* omitidos por brevidade
   }
 
   class RequisicaoTextoClinico <<Pydantic BaseModel>> {
@@ -113,14 +119,13 @@ package "Backend · Python" #EBF1FE {
 
   ' ── API FastAPI ───────────────────────────────────────────────────
   class API <<FastAPI · main.py>> {
-    - cors_origins : list[str]
     --
-    + GET  /              : dict
-    + GET  /health        : dict
-    + POST /calculate     : dict
-    + POST /nlp/analyze   : dict
+    + GET  /              raiz()                : dict
+    + GET  /health        saude()                : dict
+    + POST /calculate     calcular()             : dict
+    + POST /nlp/analyze   analisar_caso_clinico() : dict
     --
-    - _cors_origins_from_env() : list[str]
+    - _origens_cors_do_ambiente() : list[str]
   }
 
   ' ── Calculadora ──────────────────────────────────────────────────
@@ -131,8 +136,9 @@ package "Backend · Python" #EBF1FE {
     + verificar_condicoes_ativas(data: dict) : list[str]
     + montar_recomendacoes(...) : list[dict]
     + montar_orientacoes_medicacao(data: dict) : list[dict]
-    + montar_recomendacoes_exames(...) : list[str]
-    + montar_fatores_risco(...) : list[str]
+    ' cada item: {medicamento, acao, detalhe, tipo, dias_antes}
+    + montar_recomendacoes_exames(data, classe_risco, pontuacao) : list[str]
+    + montar_fatores_risco(data, criterios_atingidos, mets) : list[str]
     - _obter_classe_risco_rcri(pontuacao: int) : tuple[str, str]
     - _obter_classe_risco_vsg(pontuacao: int)  : tuple[str, str]
     - _determinar_ponte_varfarina(data: dict) : dict
@@ -144,7 +150,17 @@ package "Backend · Python" #EBF1FE {
         text: str,
         current_data: dict
       ) : dict
-    ' Retorna: autofill, missing_critical, summary, model
+    ' Retorna: autofill, missing_critical, findings,
+    ' entities, model, summary, context
+    - _extrair_idade(text) : int | None
+    - _extrair_nome(text) : str | None
+    - _extrair_cirurgia(texto_normalizado) : dict | None
+    - _extrair_mets(text) : float | None
+    - _extrair_creatinina(text) : float | None
+    - _extrair_egfr(text) : float | None
+    - _obter_pipeline_ner() : pipeline | None
+    ' NER local opcional (pucpr/clinicalnerpt-medical);
+    ' sem dependência de LLM externo
   }
 
 }
@@ -172,7 +188,7 @@ package "Frontend · React" #EDFAF4 {
     + message : string
   }
 
-  class useWizard <<src/hooks/useWizard.js>> {
+  class useAssistente <<src/hooks/useWizard.js>> {
     - etapaAtual    : number
     - maiorEtapa    : number
     - dadosFormulario : DadosPaciente
@@ -189,6 +205,16 @@ package "Frontend · React" #EDFAF4 {
     + retomar()                      : void
     + reiniciar()                    : void
     + analisarTextoClinico(text)     : Promise<void>
+    - carregarSalvo()                : dict | null
+    - salvarNoDisco(etapa, dados)    : void
+  }
+
+  class useTheme <<src/hooks/useTheme.js>> {
+    - theme : "light" | "dark"
+    --
+    + toggle() : void
+    - obterTemaDoSistema() : string
+    - obterTemaInicial()   : string
   }
 
   class ReportService <<src/services/report.js>> {
@@ -196,6 +222,16 @@ package "Frontend · React" #EDFAF4 {
         resultado : dict,
         dados     : object
       ) : void
+    - obterRotuloCirurgia(tipoCirurgia) : string
+    - adicionarPagina(doc, y, needed)   : number
+    - estaRodandoNoWebViewReactNative() : boolean
+  }
+
+  class ResumoUtils <<src/utils/resumo.js>> {
+    + resumirPaciente(dados)      : {idade, mets}
+    + resumirCirurgia(dados)      : {definida, rotulo, risco}
+    + resumirComorbidades(dados)  : string[]
+    + resumirMedicamentos(dados)  : string[]
   }
 
 }
@@ -215,9 +251,10 @@ Calculator   ..>  ClasseRisco            : <<use>>
 Calculator   ..>  TipoRecomendacao       : <<use>>
 
 ' Frontend interno
-useWizard    -->  ServicoApi             : chama
-useWizard    ..>  ReportService          : <<use>>
-ServicoApi   ..>  ErroApi               : <<throws>>
+useAssistente -->  ServicoApi             : chama
+useAssistente ..>  ReportService          : <<use>>
+ServicoApi    ..>  ErroApi               : <<throws>>
+ResumoUtils   ..>  DadosPaciente         : <<lê campos de>>
 
 ' Frontend → Backend (HTTP REST)
 ServicoApi   ..>  API                    : HTTP REST\nPOST /calculate\nPOST /nlp/analyze

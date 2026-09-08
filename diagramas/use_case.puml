@@ -29,10 +29,15 @@ skinparam ArrowFontSize 10
 ' ─── Atores ───────────────────────────────────────────────────────────────────
 actor "Médico"      as medico
 actor "Backend API" as api   #0E7B52
-actor "LLM / NLP"   as llm   #C47A00
+actor "Modelo NER local\n(opcional)" as ner   #C47A00
 
 ' ─── Sistema ──────────────────────────────────────────────────────────────────
 rectangle "Sistema CardioRisk Periop" {
+
+  package "Boas-vindas" {
+    usecase "Iniciar avaliação"                          as UC0
+    usecase "Retomar avaliação salva"                    as UCN2
+  }
 
   package "Etapa 1 · Dados do Paciente" {
     usecase "Preencher dados do paciente"               as UC1
@@ -50,42 +55,49 @@ rectangle "Sistema CardioRisk Periop" {
   package "Etapa 3 · Índice de Risco" {
     usecase "Preencher critérios RCRI\n(cirurgia não vascular)"  as UC5a
     usecase "Preencher critérios VSG\n(cirurgia vascular)"       as UC5b
+    usecase "Revisar dados antes de calcular"                     as UC5c
     usecase "Calcular risco cardiovascular perioperatório"        as UC6
   }
 
   package "Etapa 4 · Resultado" {
     usecase "Visualizar estratificação de risco"             as UC7
     usecase "Ver recomendações clínicas e exames"            as UC8
-    usecase "Ver manejo de medicamentos"                     as UC9
+    usecase "Ver linha do tempo de medicações"                as UC9
     usecase "Baixar relatório em PDF"                        as UC10
     usecase "Compartilhar resultado (texto / clipboard)"     as UC11
   }
 
-  package "Navegação e Sessão" {
+  package "Navegação, Sessão e Preferências" {
     usecase "Navegar entre etapas do wizard"  as UCN1
-    usecase "Retomar avaliação salva"         as UCN2
     usecase "Iniciar nova avaliação"          as UCN3
+    usecase "Alternar tema claro/escuro"      as UCN4
+    usecase "Ver resumo em tempo real\n(desktop ≥1320px)" as UCN5
   }
 
-  usecase "Analisar texto clínico\ncom NLP / LLM" as UCNLP
+  usecase "Analisar texto clínico\n(regras + NER opcional)" as UCNLP
 
 }
 
 ' ─── Associações: Médico ──────────────────────────────────────────────────────
+medico --> UC0
 medico --> UC1
 medico --> UC2
 medico --> UC3
 medico --> UC4
 medico --> UC5a
 medico --> UC5b
+medico --> UC5c
 medico --> UC7
 medico --> UC10
 medico --> UC11
 medico --> UCN1
 medico --> UCN2
 medico --> UCN3
+medico --> UCN4
 
 ' ─── Include / Extend ─────────────────────────────────────────────────────────
+UC0  ..> UCN2   : <<extend>>\n(se há avaliação salva)
+
 UC1  ..> UC1a   : <<include>>
 UC1  ..> UC1b   : <<include>>
 UC1  ..> UC1c   : <<include>>
@@ -96,14 +108,21 @@ UC3  ..> UC5b   : <<extend>>\n(vascular)
 
 UC5a ..> UC6    : <<include>>
 UC5b ..> UC6    : <<include>>
+UC5a ..> UC5c   : <<extend>>\n(sem painel resumo)
+UC5b ..> UC5c   : <<extend>>\n(sem painel resumo)
 
 UC6  ..> UC7    : <<include>>
 UC7  ..> UC8    : <<include>>
 UC7  ..> UC9    : <<include>>
 
-' ─── Associações: Backend API e LLM ──────────────────────────────────────────
+UC1  ..> UCN5   : <<extend>>\n(desktop largo)
+UC3  ..> UCN5   : <<extend>>\n(desktop largo)
+UC5a ..> UCN5   : <<extend>>\n(desktop largo)
+UC5b ..> UCN5   : <<extend>>\n(desktop largo)
+
+' ─── Associações: Backend API e NER ──────────────────────────────────────────
 api --> UC6    : executa cálculo
 api --> UCNLP  : executa análise NLP
-llm --> UCNLP  : processa texto
+ner --> UCNLP  : infere entidades\n(quando disponível no ambiente)
 
 @enduml

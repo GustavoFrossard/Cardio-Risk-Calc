@@ -78,7 +78,7 @@ const CV_CONDICOES = [
 export function EtapaCirurgia({ data, onChange }) {
   const iconProps = { size: 16, strokeWidth: 2.2 };
 
-  const handleSurgeryChange = (valor) => {
+  const lidarComMudancaCirurgia = (valor) => {
     const opcao = OPCOES_CIRURGIA.find((o) => o.valor === valor);
     onChange("tipo_cirurgia", valor);
     onChange("risco_cirurgia", opcao?.risco ?? "");
@@ -93,7 +93,7 @@ export function EtapaCirurgia({ data, onChange }) {
         <Field label="Procedimento">
           <SearchSelect
             value={data.tipo_cirurgia}
-            onChange={handleSurgeryChange}
+            onChange={lidarComMudancaCirurgia}
             options={OPCOES_CIRURGIA_PLANA}
             placeholder="Selecione o procedimento..."
           />

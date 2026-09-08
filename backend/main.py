@@ -20,7 +20,7 @@ app = FastAPI(
     version="2.0.0",
 )
 
-def _cors_origins_from_env() -> list[str]:
+def _origens_cors_do_ambiente() -> list[str]:
     raw = os.getenv("CORS_ALLOW_ORIGINS")
     if raw:
         return [item.strip() for item in raw.split(",") if item.strip()]
@@ -33,7 +33,7 @@ def _cors_origins_from_env() -> list[str]:
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_cors_origins_from_env(),
+    allow_origins=_origens_cors_do_ambiente(),
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -114,7 +114,7 @@ class RequisicaoTextoClinico(BaseModel):
 
 
 @app.api_route("/", methods=["GET", "HEAD"])
-def root():
+def raiz():
     return {
         "app": "CardioRisk Periop API",
         "version": "2.0.0",
@@ -123,7 +123,7 @@ def root():
 
 
 @app.post("/calculate")
-def calculate(paciente: DadosPaciente):
+def calcular(paciente: DadosPaciente):
     """
     Calcula o risco cardiovascular perioperatório.
     Retorna pontuação RCRI, percentual de risco MACE, classe de risco e recomendações clínicas.
@@ -133,7 +133,7 @@ def calculate(paciente: DadosPaciente):
 
 
 @app.post("/nlp/analyze")
-def analyze_clinical_case(payload: RequisicaoTextoClinico):
+def analisar_caso_clinico(payload: RequisicaoTextoClinico):
     """
     Analisa texto clínico livre e infere campos da calculadora.
     Retorna campos inferidos, informações críticas ausentes e entidades NER opcionais.
@@ -142,5 +142,5 @@ def analyze_clinical_case(payload: RequisicaoTextoClinico):
 
 
 @app.api_route("/health", methods=["GET", "HEAD"])
-def health():
+def saude():
     return {"status": "ok"}
