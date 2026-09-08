@@ -50,37 +50,68 @@ _NER_LOCK = threading.Lock()
 
 
 SURGERY_TYPE_MAP: dict[str, dict[str, Any]] = {
-    "intraperitoneal": {
-        "risco": "intermediario",
+    # ── Baixo risco (<1%) ──────────────────────────────────────────────
+    "breast": {
+        "risco": "baixo",
         "vascular": False,
-        "aliases": [
-            "colecistectomia",
-            "hernia hiatal",
-            "herniorrafia hiatal",
-            "esplenectomia",
-            "intraperitoneal",
-            "laparotomia",
-        ],
+        "aliases": ["mastectomia", "quadrantectomia", "tumorectomia de mama", "nodulectomia mamaria", "biopsia de mama", "setorectomia"],
     },
-    "intrathoracic": {
-        "risco": "intermediario",
+    "dental": {
+        "risco": "baixo",
         "vascular": False,
-        "aliases": ["intratoracica", "toracotomia", "cirurgia toracica"],
+        "aliases": ["procedimento dentario", "cirurgia odontologica", "extracao dentaria", "cirurgia oral"],
     },
-    "neurologic": {
-        "risco": "intermediario",
+    "thyroid": {
+        "risco": "baixo",
         "vascular": False,
-        "aliases": ["neurocirurgia", "cirurgia neurologica", "craniana"],
+        "aliases": ["tireoidectomia", "cirurgia de tireoide", "nodulectomia de tireoide"],
     },
-    "aortic_vascular_major": {
-        "risco": "alto",
+    "eye": {
+        "risco": "baixo",
+        "vascular": False,
+        "aliases": ["ocular", "catarata", "retina", "facectomia", "cirurgia oftalmologica", "vitrectomia", "glaucoma"],
+    },
+    "gynecologic_minor": {
+        "risco": "baixo",
+        "vascular": False,
+        "aliases": ["curetagem", "histeroscopia", "laqueadura tubaria", "conizacao", "ginecologica minor"],
+    },
+    "orthopedic_minor": {
+        "risco": "baixo",
+        "vascular": False,
+        "aliases": ["artroscopia", "meniscectomia", "retirada de material de sintese", "liberacao do tunel do carpo", "ortopedica minor"],
+    },
+    "reconstructive": {
+        "risco": "baixo",
+        "vascular": False,
+        "aliases": ["cirurgia plastica reconstrutiva", "reconstrucao mamaria", "enxerto de pele", "retalho cutaneo"],
+    },
+    "superficial": {
+        "risco": "baixo",
+        "vascular": False,
+        "aliases": ["lipoma", "cisto sebaceo", "biopsia de pele", "excisao de lesao de pele", "drenagem de abscesso", "cirurgia de superficie"],
+    },
+    "urologic_minor": {
+        "risco": "baixo",
+        "vascular": False,
+        "aliases": ["ressecao transuretral", "rtu de prostata", "rtu de bexiga", "circuncisao", "postectomia", "vasectomia", "cistoscopia", "urologica minor"],
+    },
+    "vats_minor": {
+        "risco": "baixo",
+        "vascular": False,
+        "aliases": ["vats minor", "cirurgia toracica videoassistida diagnostica", "biopsia pulmonar por vats"],
+    },
+
+    # ── Risco intermediário (1–5%) ─────────────────────────────────────
+    "carotid_asymptomatic": {
+        "risco": "intermediario",
         "vascular": True,
-        "aliases": ["aorta", "vascular major", "aneurisma de aorta aberta"],
+        "aliases": ["endarterectomia de carotida assintomatica", "carotida assintomatica"],
     },
-    "endovascular_aortic": {
+    "carotid_endarterectomy": {
         "risco": "intermediario",
         "vascular": True,
-        "aliases": ["endovascular", "aneurisma de aorta endovascular", "evaar"],
+        "aliases": ["endarterectomia de carotida", "endarterectomia carotidea"],
     },
     "peripheral_angioplasty": {
         "risco": "intermediario",
@@ -91,20 +122,136 @@ SURGERY_TYPE_MAP: dict[str, dict[str, Any]] = {
             "angioplastia de arteria periferica",
         ],
     },
+    "endovascular_aortic": {
+        "risco": "intermediario",
+        "vascular": True,
+        "aliases": ["endovascular", "aneurisma de aorta endovascular", "evar", "correcao endovascular de aneurisma"],
+    },
+    "head_neck": {
+        "risco": "intermediario",
+        "vascular": False,
+        "aliases": ["cirurgia de cabeca e pescoco", "laringectomia", "esvaziamento cervical", "parotidectomia"],
+    },
+    "intraperitoneal": {
+        "risco": "intermediario",
+        "vascular": False,
+        "aliases": [
+            "colecistectomia",
+            "hernia hiatal",
+            "herniorrafia hiatal",
+            "esplenectomia",
+            "intraperitoneal",
+            "laparotomia",
+            "apendicectomia",
+            "gastrectomia parcial",
+            "colectomia",
+        ],
+    },
+    "intrathoracic": {
+        "risco": "intermediario",
+        "vascular": False,
+        "aliases": ["intratoracica", "toracotomia", "cirurgia toracica nao major", "mediastinoscopia", "biopsia pulmonar aberta"],
+    },
+    "neurologic": {
+        "risco": "intermediario",
+        "vascular": False,
+        "aliases": ["neurocirurgia", "cirurgia neurologica", "craniana", "craniotomia", "laminectomia", "descompressao medular", "cirurgia de coluna", "artrodese de coluna"],
+    },
     "orthopedic_major": {
         "risco": "intermediario",
         "vascular": False,
-        "aliases": ["artroplastia", "ortopedica major", "protese de quadril", "protese de joelho"],
+        "aliases": [
+            "artroplastia",
+            "ortopedica major",
+            "protese de quadril",
+            "protese de joelho",
+            "osteossintese",
+            "fratura de femur",
+            "fratura de quadril",
+            "fratura de bacia",
+            "artroplastia de quadril",
+            "artroplastia de joelho",
+            "fixacao de fratura",
+            "haste femoral",
+            "haste intramedular",
+        ],
+    },
+    "renal_transplant": {
+        "risco": "intermediario",
+        "vascular": False,
+        "aliases": ["transplante renal", "transplante de rim"],
     },
     "urologic_major": {
         "risco": "intermediario",
         "vascular": False,
-        "aliases": ["urologica major", "nefrectomia", "prostatectomia radical"],
+        "aliases": ["urologica major", "nefrectomia", "prostatectomia radical", "nefrectomia parcial", "nefrectomia radical"],
     },
-    "eye": {
-        "risco": "baixo",
+    "gynecologic_major": {
+        "risco": "intermediario",
         "vascular": False,
-        "aliases": ["ocular", "catarata", "retina"],
+        "aliases": ["histerectomia", "histerectomia total", "cirurgia ginecologica oncologica", "ooforectomia", "ginecologica major"],
+    },
+    "total_cystectomy": {
+        "risco": "intermediario",
+        "vascular": False,
+        "aliases": ["cistectomia total", "cistectomia radical"],
+    },
+
+    # ── Alto risco (>5%) ────────────────────────────────────────────────
+    "aortic_vascular_major": {
+        "risco": "alto",
+        "vascular": True,
+        "aliases": ["aorta", "vascular major", "aneurisma de aorta aberta", "cirurgia de aorta aberta", "bypass aortobifemoral"],
+    },
+    "peripheral_open": {
+        "risco": "alto",
+        "vascular": True,
+        "aliases": ["revascularizacao periferica aberta", "isquemia arterial aguda", "amputacao de membro", "bypass femoropopliteo"],
+    },
+    "carotid_angioplasty": {
+        "risco": "alto",
+        "vascular": True,
+        "aliases": ["angioplastia de carotida", "angioplastia carotidea", "stent de carotida", "stent carotideo"],
+    },
+    "adrenal_resection": {
+        "risco": "alto",
+        "vascular": False,
+        "aliases": ["adrenalectomia", "ressecao adrenal", "ressecao de adrenal"],
+    },
+    "pancreatic": {
+        "risco": "alto",
+        "vascular": False,
+        "aliases": ["pancreatectomia", "duodenopancreatectomia", "cirurgia de whipple", "whipple"],
+    },
+    "liver_biliary": {
+        "risco": "alto",
+        "vascular": False,
+        "aliases": ["hepatectomia", "ressecao hepatica", "cirurgia de vias biliares", "coledocotomia"],
+    },
+    "esophagectomy": {
+        "risco": "alto",
+        "vascular": False,
+        "aliases": ["esofagectomia"],
+    },
+    "pneumectomy": {
+        "risco": "alto",
+        "vascular": False,
+        "aliases": ["pneumectomia", "pneumonectomia", "lobectomia pulmonar"],
+    },
+    "lung_transplant": {
+        "risco": "alto",
+        "vascular": False,
+        "aliases": ["transplante pulmonar", "transplante de pulmao"],
+    },
+    "liver_transplant": {
+        "risco": "alto",
+        "vascular": False,
+        "aliases": ["transplante hepatico", "transplante de figado"],
+    },
+    "bowel_perforation": {
+        "risco": "alto",
+        "vascular": False,
+        "aliases": ["perfuracao intestinal", "reparo de perfuracao intestinal", "perfuracao de viscera oca"],
     },
 }
 
