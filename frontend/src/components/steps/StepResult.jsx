@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { AlertTriangle, FileDown, FileText, FlaskConical, Pill, Share2, ShieldAlert, Stethoscope, TriangleAlert } from "lucide-react";
 import { gerarRelatorio } from "../../services/report";
+import { LinhaTempoMedicacoes } from "../MedicationTimeline";
 
 const CORES_REC = {
   verde: { border: "var(--green)", bg: "var(--green-soft)" },
@@ -297,6 +298,7 @@ export function EtapaResultado({ resultado, dados }) {
       {/* ── Orientações de medicação ────────────────────────────────────────── */}
       {resultado.orientacoes_medicacao.length > 0 && (
         <CollapsibleSection label="Manejo de Medicamentos">
+          <LinhaTempoMedicacoes orientacoes={resultado.orientacoes_medicacao} />
           {resultado.orientacoes_medicacao.map((med, i) => {
             const cores = CORES_REC[med.tipo] || CORES_REC.amarelo;
             return (

@@ -4,6 +4,7 @@ import { useTheme } from "./hooks/useTheme";
 import { CabecalhoApp } from "./components/AppHeader";
 import { BarraInferior } from "./components/BottomBar";
 import { TelaBoasVindas } from "./components/WelcomeScreen";
+import { PainelResumo } from "./components/SummaryPanel";
 import { EtapaDadosPaciente } from "./components/steps/StepPatientData";
 import { EtapaCirurgia } from "./components/steps/StepSurgery";
 import { EtapaRCRI } from "./components/steps/StepRCRI";
@@ -34,10 +35,14 @@ export default function App() {
   const [started, setStarted] = useState(() => temDadosSalvos);
   const [showResumeModal, setShowResumeModal] = useState(temDadosSalvos);
   const [maxWidth, setMaxWidth] = useState(() => window.innerWidth >= 768 ? 640 : 420);
+  const [showSidebar, setShowSidebar] = useState(() => window.innerWidth >= 1320);
   const isDesktop = maxWidth > 420;
 
   useEffect(() => {
-    const onResize = () => setMaxWidth(window.innerWidth >= 768 ? 640 : 420);
+    const onResize = () => {
+      setMaxWidth(window.innerWidth >= 768 ? 640 : 420);
+      setShowSidebar(window.innerWidth >= 1320);
+    };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
@@ -189,6 +194,12 @@ export default function App() {
         onToggleTheme={toggleTheme}
       />
 
+      {showSidebar && etapaAtual < 4 && (
+        <div style={{ position: "fixed", top: 24, left: `calc(50% + ${maxWidth / 2 + 24}px)`, zIndex: 40 }}>
+          <PainelResumo dados={dadosFormulario} />
+        </div>
+      )}
+
       <div
         style={{
           padding: "16px 16px 110px",
@@ -210,7 +221,12 @@ export default function App() {
           <EtapaCirurgia data={dadosFormulario} onChange={atualizarCampo} />
         )}
         {etapaAtual === 3 && (
-          <EtapaRCRI data={dadosFormulario} onChange={atualizarCampo} />
+          <EtapaRCRI
+            data={dadosFormulario}
+            onChange={atualizarCampo}
+            mostrarRevisao={!showSidebar}
+            onIrParaEtapa={irParaEtapa}
+          />
         )}
         {etapaAtual === 4 && resultado && (
           <EtapaResultado resultado={resultado} dados={dadosFormulario} />

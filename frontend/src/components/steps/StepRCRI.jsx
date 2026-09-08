@@ -1,5 +1,6 @@
-import { CalendarDays, HeartPulse } from "lucide-react";
+import { CalendarDays, HeartPulse, ClipboardList, Pencil } from "lucide-react";
 import { Card, ToggleRow, InfoBox } from "../ui";
+import { resumirPaciente, resumirCirurgia } from "../../utils/resumo";
 
 const CRITERIOS_RCRI = [
   {
@@ -52,7 +53,7 @@ const CRITERIOS_VSG = [
   { key: "vsg_revasc_previa", rotulo: "Revascularização miocárdica prévia", descricao: "Cirurgia ou angioplastia coronária", pontos: -1 },
 ];
 
-export function EtapaRCRI({ data, onChange }) {
+export function EtapaRCRI({ data, onChange, mostrarRevisao = false, onIrParaEtapa }) {
   const iconProps = { size: 16, strokeWidth: 2.2 };
   const ehVascular = data.eh_vascular;
   const nomeIndice = ehVascular ? "VSG" : "RCRI";
@@ -159,7 +160,7 @@ export function EtapaRCRI({ data, onChange }) {
         const isBaixo = ehVascular ? pontuacao <= 4 : pontuacao <= 1;
         const isInt = ehVascular ? pontuacao >= 5 && pontuacao <= 6 : pontuacao === 2;
         const bg = isBaixo ? "var(--green-soft)" : isInt ? "var(--amber-soft)" : "var(--red-soft)";
-        const borderC = isBaixo ? "#A7D4BB" : isInt ? "#FCD34D" : "#F5B0AA";
+        const borderC = isBaixo ? "var(--green-border)" : isInt ? "var(--amber-border)" : "var(--red-border)";
         const color = isBaixo ? "var(--green)" : isInt ? "var(--amber)" : "var(--red)";
         return (
           <div style={{ background: bg, border: `1px solid ${borderC}`, borderRadius: "var(--r-sm)", padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -170,6 +171,63 @@ export function EtapaRCRI({ data, onChange }) {
           </div>
         );
       })()}
+
+      {mostrarRevisao && <CardRevisao data={data} onIrParaEtapa={onIrParaEtapa} />}
     </>
+  );
+}
+
+function LinkEditar({ onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 4,
+        fontSize: 12,
+        fontWeight: 600,
+        color: "var(--blue)",
+        background: "none",
+        border: "none",
+        padding: 0,
+        cursor: "pointer",
+      }}
+    >
+      <Pencil size={12} strokeWidth={2.2} />
+      Editar
+    </button>
+  );
+}
+
+function LinhaRevisao({ rotulo, valor }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", padding: "7px 0", fontSize: 13, borderTop: "1px solid var(--bg-soft)" }}>
+      <span style={{ color: "var(--ink-muted)" }}>{rotulo}</span>
+      <span style={{ color: "var(--ink)", fontWeight: 500, textAlign: "right" }}>{valor}</span>
+    </div>
+  );
+}
+
+function CardRevisao({ data, onIrParaEtapa }) {
+  const paciente = resumirPaciente(data);
+  const cirurgia = resumirCirurgia(data);
+
+  return (
+    <Card icon={<ClipboardList size={16} strokeWidth={2.2} />} title="Revisão rápida">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+        <span style={{ fontSize: 11, fontWeight: 600, color: "var(--ink-muted)", textTransform: "uppercase", letterSpacing: "0.03em" }}>Paciente</span>
+        <LinkEditar onClick={() => onIrParaEtapa?.(1)} />
+      </div>
+      <LinhaRevisao rotulo="Idade" valor={paciente.idade != null ? `${paciente.idade} anos` : "—"} />
+      <LinhaRevisao rotulo="Cap. funcional" valor={paciente.mets != null ? `${paciente.mets} METs` : "—"} />
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "14px 0 4px" }}>
+        <span style={{ fontSize: 11, fontWeight: 600, color: "var(--ink-muted)", textTransform: "uppercase", letterSpacing: "0.03em" }}>Cirurgia</span>
+        <LinkEditar onClick={() => onIrParaEtapa?.(2)} />
+      </div>
+      <LinhaRevisao rotulo="Procedimento" valor={cirurgia.rotulo ?? "Não definida"} />
+    </Card>
   );
 }

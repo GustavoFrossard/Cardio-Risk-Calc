@@ -277,6 +277,7 @@ def montar_orientacoes_medicacao(data: dict) -> list[dict]:
                 "acao": "Suspender 7 dias antes",
                 "detalhe": "Prevenção primária: suspender AAS 7 dias antes do procedimento.",
                 "tipo": TipoRecomendacao.AMARELO,
+                "dias_antes": 7,
             })
         elif prevencao == "secondary":
             alto_sangramento = tipo_cirurgia in ("neurologic", "urologic_minor", "eye")
@@ -286,6 +287,7 @@ def montar_orientacoes_medicacao(data: dict) -> list[dict]:
                     "acao": "Suspender 7 dias antes",
                     "detalhe": "Prevenção secundária: suspender por neurocirurgia, RTU de próstata ou cirurgia de retina.",
                     "tipo": TipoRecomendacao.VERMELHO,
+                    "dias_antes": 7,
                 })
             else:
                 orientacoes.append({
@@ -293,6 +295,7 @@ def montar_orientacoes_medicacao(data: dict) -> list[dict]:
                     "acao": "Manter",
                     "detalhe": "Prevenção secundária: manter AAS (exceto neurocirurgia, RTU de próstata ou cirurgia de retina).",
                     "tipo": TipoRecomendacao.VERDE,
+                    "dias_antes": None,
                 })
 
     # Clopidogrel
@@ -303,6 +306,7 @@ def montar_orientacoes_medicacao(data: dict) -> list[dict]:
             "detalhe": "Suspender 5 dias antes. Manter apenas se monoterapia em procedimentos de baixo risco de sangramento. "
                        "Em caso de SCA recente (<6 meses), considerar postergar o procedimento.",
             "tipo": TipoRecomendacao.AMARELO,
+            "dias_antes": 5,
         })
 
     # Ticagrelor
@@ -313,6 +317,7 @@ def montar_orientacoes_medicacao(data: dict) -> list[dict]:
             "detalhe": "Suspender ticagrelor 5 dias antes do procedimento. "
                        "Em caso de SCA recente (<6 meses), considerar postergar o procedimento.",
             "tipo": TipoRecomendacao.AMARELO,
+            "dias_antes": 5,
         })
 
     # Prasugrel
@@ -323,6 +328,7 @@ def montar_orientacoes_medicacao(data: dict) -> list[dict]:
             "detalhe": "Suspender prasugrel 7 dias antes do procedimento. "
                        "Em caso de SCA recente (<6 meses), considerar postergar o procedimento.",
             "tipo": TipoRecomendacao.AMARELO,
+            "dias_antes": 7,
         })
 
     # DOACs: Rivaroxabana / Apixabana
@@ -336,6 +342,7 @@ def montar_orientacoes_medicacao(data: dict) -> list[dict]:
                 "Retornar no 1º ou 2º dia pós-operatório conforme risco de sangramento e hemostasia garantida."
             ),
             "tipo": TipoRecomendacao.AMARELO,
+            "dias_antes": 2,
         })
 
     # Dabigatrana
@@ -351,6 +358,7 @@ def montar_orientacoes_medicacao(data: dict) -> list[dict]:
                     "Retornar no 2º dia pós-operatório se hemostasia garantida."
                 ),
                 "tipo": TipoRecomendacao.AMARELO,
+                "dias_antes": 4,
             })
         else:
             orientacoes.append({
@@ -361,6 +369,7 @@ def montar_orientacoes_medicacao(data: dict) -> list[dict]:
                     "Retornar no 1º ou 2º dia pós-operatório conforme risco de sangramento e hemostasia garantida."
                 ),
                 "tipo": TipoRecomendacao.AMARELO,
+                "dias_antes": 2,
             })
 
     # Varfarina
@@ -371,6 +380,7 @@ def montar_orientacoes_medicacao(data: dict) -> list[dict]:
             "acao": ponte["acao"],
             "detalhe": ponte["detalhe"],
             "tipo": ponte["tipo"],
+            "dias_antes": 5,
         })
 
     return orientacoes

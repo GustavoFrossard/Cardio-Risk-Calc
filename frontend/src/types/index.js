@@ -56,6 +56,23 @@ export const PERGUNTAS_FUNCIONAIS = [
   { id: "run_short", rotulo: "Correr uma distância curta?", mets: 8 },
 ];
 
+// ─── Comorbidities & Medications (shared between the form and summary views) ──
+
+export const COMORBIDADES = [
+  { key: "obesidade", rotulo: "Obesidade", descricao: "IMC ≥ 30" },
+  { key: "ic_conhecida", rotulo: "IC conhecida ou suspeita", descricao: "Insuficiência cardíaca" },
+  { key: "doenca_valvar_conhecida", rotulo: "Doença valvar conhecida ou suspeita", descricao: "Valvopatia diagnosticada ou suspeita clinicamente" },
+  { key: "dac_conhecida", rotulo: "Doença coronariana conhecida ou suspeita", descricao: "Angina, IAM prévio, stent ou cirurgia de revascularização" },
+];
+
+export const MEDICAMENTOS = [
+  { key: "usa_aas", rotulo: "AAS (Ácido Acetilsalicílico)" },
+  { key: "usa_clopidogrel", rotulo: "Clopidogrel" },
+  { key: "usa_ticagrelor", rotulo: "Ticagrelor" },
+  { key: "usa_prasugrel", rotulo: "Prasugrel" },
+  { key: "usa_varfarina", rotulo: "Varfarina" },
+];
+
 // ─── Wizard Steps ─────────────────────────────────────────────────────────────
 
 export const ETAPAS_WIZARD = [

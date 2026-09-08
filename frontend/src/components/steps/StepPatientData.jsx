@@ -1,26 +1,11 @@
 import { useEffect, useState } from "react";
 import { Activity, BrainCircuit, CircleAlert, CircleCheck, Pill, Stethoscope, UserRound } from "lucide-react";
 import { Card, Field, Input, AgeInput, ToggleRow, ChipGroup } from "../ui";
-import { PERGUNTAS_FUNCIONAIS } from "../../types";
+import { PERGUNTAS_FUNCIONAIS, COMORBIDADES, MEDICAMENTOS } from "../../types";
 
 const SORTED_ACTIVITIES = [
   { rotulo: "Nenhuma atividade / acamado", mets: 1 },
   ...PERGUNTAS_FUNCIONAIS.slice().sort((a, b) => a.mets - b.mets),
-];
-
-const COMORBIDADES = [
-  { key: "obesidade", rotulo: "Obesidade", descricao: "IMC ≥ 30" },
-  { key: "ic_conhecida", rotulo: "IC conhecida ou suspeita", descricao: "Insuficiência cardíaca" },
-  { key: "doenca_valvar_conhecida", rotulo: "Doença valvar conhecida ou suspeita", descricao: "Valvopatia diagnosticada ou suspeita clinicamente" },
-  { key: "dac_conhecida", rotulo: "Doença coronariana conhecida ou suspeita", descricao: "Angina, IAM prévio, stent ou cirurgia de revascularização" },
-];
-
-const MEDICAMENTOS = [
-  { key: "usa_aas", rotulo: "AAS (Ácido Acetilsalicílico)" },
-  { key: "usa_clopidogrel", rotulo: "Clopidogrel" },
-  { key: "usa_ticagrelor", rotulo: "Ticagrelor" },
-  { key: "usa_prasugrel", rotulo: "Prasugrel" },
-  { key: "usa_varfarina", rotulo: "Varfarina" },
 ];
 
 const opcoesPrevencaoAas = [
