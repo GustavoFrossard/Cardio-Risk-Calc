@@ -300,7 +300,8 @@ def montar_orientacoes_medicacao(data: dict) -> list[dict]:
         orientacoes.append({
             "medicamento": "Clopidogrel",
             "acao": "Suspender 5 dias antes",
-            "detalhe": "Suspender 5 dias antes. Manter apenas se monoterapia em procedimentos de baixo risco de sangramento.",
+            "detalhe": "Suspender 5 dias antes. Manter apenas se monoterapia em procedimentos de baixo risco de sangramento. "
+                       "Em caso de SCA recente (<6 meses), considerar postergar o procedimento.",
             "tipo": TipoRecomendacao.AMARELO,
         })
 
@@ -309,7 +310,8 @@ def montar_orientacoes_medicacao(data: dict) -> list[dict]:
         orientacoes.append({
             "medicamento": "Ticagrelor",
             "acao": "Suspender 5 dias antes",
-            "detalhe": "Suspender ticagrelor 5 dias antes do procedimento.",
+            "detalhe": "Suspender ticagrelor 5 dias antes do procedimento. "
+                       "Em caso de SCA recente (<6 meses), considerar postergar o procedimento.",
             "tipo": TipoRecomendacao.AMARELO,
         })
 
@@ -318,7 +320,8 @@ def montar_orientacoes_medicacao(data: dict) -> list[dict]:
         orientacoes.append({
             "medicamento": "Prasugrel",
             "acao": "Suspender 7 dias antes",
-            "detalhe": "Suspender prasugrel 7 dias antes do procedimento.",
+            "detalhe": "Suspender prasugrel 7 dias antes do procedimento. "
+                       "Em caso de SCA recente (<6 meses), considerar postergar o procedimento.",
             "tipo": TipoRecomendacao.AMARELO,
         })
 
