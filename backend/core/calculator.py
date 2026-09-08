@@ -381,7 +381,6 @@ def montar_recomendacoes_exames(
     data: dict,
     classe_risco: str,
     pontuacao: int,
-    tem_condicoes_ativas: bool,
 ) -> list[str]:
     exames: list[str] = []
     risco_cirurgia = data.get("risco_cirurgia", "")
@@ -393,7 +392,7 @@ def montar_recomendacoes_exames(
     necessita_eco_historico = (data.get("ic_conhecida") or data.get("doenca_valvar_conhecida")) and \
                               (not data.get("eco_recente") or data.get("piora_sintomas"))
 
-    if necessita_eco_historico or tem_condicoes_ativas:
+    if necessita_eco_historico:
         if "Ecocardiograma transtorácico" not in exames:
             exames.append("Ecocardiograma transtorácico")
 
@@ -638,7 +637,6 @@ def calcular_risco(data: dict) -> dict:
         data=data,
         classe_risco=classe_risco,
         pontuacao=pontuacao,
-        tem_condicoes_ativas=tem_condicoes_ativas,
     )
 
     # 8. Tags de fatores de risco
