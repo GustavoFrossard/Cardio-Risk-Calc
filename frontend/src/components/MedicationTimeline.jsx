@@ -1,3 +1,5 @@
+import { Fragment } from "react";
+
 const TOM = {
   verde: { texto: "var(--green)", fundo: "var(--green-soft)", borda: "var(--green-border)" },
   amarelo: { texto: "var(--amber)", fundo: "var(--amber-soft)", borda: "var(--amber-border)" },
@@ -8,33 +10,28 @@ function tomDe(tipo) {
   return TOM[tipo] ?? TOM.amarelo;
 }
 
-const LINHA_BOTTOM = 24;
-const HASTE_BASE = 10;
-const HASTE_PASSO = 34;
-const BOLHA_ALTURA = 30;
+const LABEL_W = 96;
+const LABEL_GAP = 10;
+const ROW_H = 22;
 
 export function LinhaTempoMedicacoes({ orientacoes }) {
-  const suspensoes = orientacoes
-    .filter((m) => m.dias_antes != null)
-    .slice()
-    .sort((a, b) => b.dias_antes - a.dias_antes);
+  const suspensoes = orientacoes.filter((m) => m.dias_antes != null);
   const mantidos = orientacoes.filter((m) => m.dias_antes == null);
 
   if (suspensoes.length === 0) {
     return null;
   }
 
-  const maxDia = suspensoes[0].dias_antes;
-  const diasUnicos = [...new Set(suspensoes.map((m) => m.dias_antes))].sort((a, b) => b - a);
+  const maxPre = Math.max(...suspensoes.map((m) => m.dias_antes));
+  const maxPost = Math.max(1, ...suspensoes.map((m) => m.retorno_dias_depois ?? 1));
+  const totalDias = maxPre + maxPost;
 
-  const porDia = {};
-  suspensoes.forEach((m) => {
-    (porDia[m.dias_antes] ??= []).push(m);
-  });
-  const maxEmpilhado = Math.max(...Object.values(porDia).map((g) => g.length));
+  const pctPre = (dia) => ((maxPre - dia) / totalDias) * 100;
+  const pctPos = (dia) => ((maxPre + dia) / totalDias) * 100;
+  const pctCirurgia = (maxPre / totalDias) * 100;
 
-  const pctDoDia = (dia) => ((maxDia - dia) / maxDia) * 100;
-  const alturaTimeline = LINHA_BOTTOM + HASTE_BASE + (maxEmpilhado - 1) * HASTE_PASSO + BOLHA_ALTURA + 8;
+  const ticksPre = [...new Set(suspensoes.map((m) => m.dias_antes))].sort((a, b) => b - a);
+  const ticksPos = [...new Set(suspensoes.map((m) => m.retorno_dias_depois).filter((d) => d != null))].sort((a, b) => a - b);
 
   return (
     <div
@@ -46,89 +43,78 @@ export function LinhaTempoMedicacoes({ orientacoes }) {
         boxShadow: "0 1px 4px rgba(13,17,23,0.06)",
       }}
     >
-      <div style={{ fontSize: 11, color: "var(--ink-muted)", marginBottom: 4, fontWeight: 500 }}>
-        Dias em relação à cirurgia
+      <div style={{ fontSize: 11, color: "var(--ink-muted)", marginBottom: 14, fontWeight: 500 }}>
+        Dias em relação à cirurgia — faixa colorida indica o período suspenso
       </div>
 
-      <div style={{ position: "relative", width: "100%", height: alturaTimeline, margin: "8px 0 8px" }}>
-        {/* linha base */}
-        <div style={{ position: "absolute", left: 0, right: 0, bottom: LINHA_BOTTOM, height: 1.5, background: "var(--border)" }} />
-
-        {/* marcador da cirurgia (D-0) */}
-        <div
-          style={{
-            position: "absolute", left: "100%", bottom: LINHA_BOTTOM - 4, width: 9, height: 9, borderRadius: "50%",
-            background: "var(--ink)", border: "2px solid var(--white)", transform: "translateX(-50%)",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute", left: "100%", bottom: 0, transform: "translateX(-50%)",
-            fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, fontWeight: 600, color: "var(--ink)", whiteSpace: "nowrap",
-          }}
-        >
-          Cirurgia
-        </div>
-
-        {diasUnicos.map((dia) => {
-          const pct = pctDoDia(dia);
-          const grupo = porDia[dia];
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: `${LABEL_W}px 1fr`,
+          columnGap: LABEL_GAP,
+          rowGap: 10,
+          alignItems: "center",
+        }}
+      >
+        {suspensoes.map((m) => {
+          const tom = tomDe(m.tipo);
+          const startPct = pctPre(m.dias_antes);
+          const endPct = m.retorno_dias_depois != null ? pctPos(m.retorno_dias_depois) : pctCirurgia;
           return (
-            <div key={dia}>
+            <Fragment key={m.medicamento}>
               <div
+                title={m.medicamento}
                 style={{
-                  position: "absolute", left: `${pct}%`, bottom: 0, transform: "translateX(-50%)",
-                  fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, color: "var(--ink-muted)", whiteSpace: "nowrap",
+                  fontSize: 11, fontWeight: 600, color: "var(--ink)",
+                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                 }}
               >
-                D-{dia}
+                {m.medicamento}
               </div>
-              <div
-                style={{
-                  position: "absolute", left: `${pct}%`, bottom: LINHA_BOTTOM - 4, width: 8, height: 8, borderRadius: "50%",
-                  transform: "translateX(-50%)", background: tomDe(grupo[0].tipo).texto, border: "2px solid var(--white)",
-                  boxShadow: `0 0 0 1px ${tomDe(grupo[0].tipo).borda}`,
-                }}
-              />
-              {grupo.map((m, i) => {
-                const tom = tomDe(m.tipo);
-                const hasteAltura = HASTE_BASE + i * HASTE_PASSO;
-                return (
-                  <div key={m.medicamento}>
-                    <div
-                      style={{
-                        position: "absolute", left: `${pct}%`, bottom: LINHA_BOTTOM, width: 1.5, height: hasteAltura,
-                        background: tom.borda, transform: "translateX(-50%)",
-                      }}
-                    />
-                    <div
-                      style={{
-                        position: "absolute",
-                        left: `${pct}%`,
-                        bottom: LINHA_BOTTOM + hasteAltura,
-                        transform: "translateX(-50%)",
-                        background: tom.fundo,
-                        border: `1px solid ${tom.borda}`,
-                        borderRadius: 8,
-                        padding: "4px 9px",
-                        fontSize: 10.5,
-                        fontWeight: 600,
-                        color: tom.texto,
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {m.medicamento}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+              <div style={{ position: "relative", height: ROW_H }}>
+                <div style={{ position: "absolute", left: 0, right: 0, top: "50%", height: 1, background: "var(--border)", transform: "translateY(-50%)" }} />
+                <div
+                  title={`${m.acao}${m.retorno_dias_depois != null ? ` · retorno D+${m.retorno_dias_depois}` : ""}`}
+                  style={{
+                    position: "absolute", top: 0, bottom: 0,
+                    left: `${startPct}%`, width: `${Math.max(endPct - startPct, 3)}%`,
+                    background: tom.fundo, border: `1px solid ${tom.borda}`, borderRadius: 5,
+                  }}
+                />
+              </div>
+            </Fragment>
           );
         })}
+
+        {/* eixo */}
+        <div />
+        <div style={{ position: "relative", height: 16, marginTop: 6 }}>
+          {ticksPre.map((dia) => (
+            <span
+              key={`pre-${dia}`}
+              style={{ position: "absolute", left: `${pctPre(dia)}%`, transform: "translateX(-50%)", fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "var(--ink-muted)", whiteSpace: "nowrap" }}
+            >
+              D-{dia}
+            </span>
+          ))}
+          <span
+            style={{ position: "absolute", left: `${pctCirurgia}%`, transform: "translateX(-50%)", fontFamily: "'JetBrains Mono', monospace", fontSize: 10, fontWeight: 700, color: "var(--ink)", whiteSpace: "nowrap" }}
+          >
+            Cirurgia
+          </span>
+          {ticksPos.map((dia) => (
+            <span
+              key={`pos-${dia}`}
+              style={{ position: "absolute", left: `${pctPos(dia)}%`, transform: "translateX(-50%)", fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "var(--ink-muted)", whiteSpace: "nowrap" }}
+            >
+              D+{dia}
+            </span>
+          ))}
+        </div>
       </div>
 
       {mantidos.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4, paddingTop: 12, borderTop: "1px solid var(--bg-soft)" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 16, paddingTop: 12, borderTop: "1px solid var(--bg-soft)" }}>
           {mantidos.map((m) => {
             const tom = tomDe(m.tipo);
             return (

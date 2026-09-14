@@ -264,6 +264,11 @@ def _determinar_ponte_varfarina(data: dict) -> dict:
     }
 
 
+def _texto_retorno(dias_pos_op: int) -> str:
+    ordinal = "1º" if dias_pos_op == 1 else "2º"
+    return f" Retornar no {ordinal} dia pós-operatório, havendo hemostasia adequada."
+
+
 def montar_orientacoes_medicacao(data: dict) -> list[dict]:
     orientacoes: list[dict] = []
     tipo_cirurgia = data.get("tipo_cirurgia", "")
@@ -275,9 +280,10 @@ def montar_orientacoes_medicacao(data: dict) -> list[dict]:
             orientacoes.append({
                 "medicamento": "AAS",
                 "acao": "Suspender 7 dias antes",
-                "detalhe": "Prevenção primária: suspender AAS 7 dias antes do procedimento.",
+                "detalhe": "Prevenção primária: suspender AAS 7 dias antes do procedimento." + _texto_retorno(1),
                 "tipo": TipoRecomendacao.AMARELO,
                 "dias_antes": 7,
+                "retorno_dias_depois": 1,
             })
         elif prevencao == "secondary":
             alto_sangramento = tipo_cirurgia in ("neurologic", "urologic_minor", "eye")
@@ -285,9 +291,10 @@ def montar_orientacoes_medicacao(data: dict) -> list[dict]:
                 orientacoes.append({
                     "medicamento": "AAS",
                     "acao": "Suspender 7 dias antes",
-                    "detalhe": "Prevenção secundária: suspender por neurocirurgia, RTU de próstata ou cirurgia de retina.",
+                    "detalhe": "Prevenção secundária: suspender por neurocirurgia, RTU de próstata ou cirurgia de retina." + _texto_retorno(1),
                     "tipo": TipoRecomendacao.VERMELHO,
                     "dias_antes": 7,
+                    "retorno_dias_depois": 1,
                 })
             else:
                 orientacoes.append({
@@ -296,6 +303,7 @@ def montar_orientacoes_medicacao(data: dict) -> list[dict]:
                     "detalhe": "Prevenção secundária: manter AAS (exceto neurocirurgia, RTU de próstata ou cirurgia de retina).",
                     "tipo": TipoRecomendacao.VERDE,
                     "dias_antes": None,
+                    "retorno_dias_depois": None,
                 })
 
     # Clopidogrel
@@ -304,9 +312,10 @@ def montar_orientacoes_medicacao(data: dict) -> list[dict]:
             "medicamento": "Clopidogrel",
             "acao": "Suspender 5 dias antes",
             "detalhe": "Suspender 5 dias antes. Manter apenas se monoterapia em procedimentos de baixo risco de sangramento. "
-                       "Em caso de SCA recente (<6 meses), considerar postergar o procedimento.",
+                       "Em caso de SCA recente (<6 meses), considerar postergar o procedimento." + _texto_retorno(1),
             "tipo": TipoRecomendacao.AMARELO,
             "dias_antes": 5,
+            "retorno_dias_depois": 1,
         })
 
     # Ticagrelor
@@ -315,9 +324,10 @@ def montar_orientacoes_medicacao(data: dict) -> list[dict]:
             "medicamento": "Ticagrelor",
             "acao": "Suspender 5 dias antes",
             "detalhe": "Suspender ticagrelor 5 dias antes do procedimento. "
-                       "Em caso de SCA recente (<6 meses), considerar postergar o procedimento.",
+                       "Em caso de SCA recente (<6 meses), considerar postergar o procedimento." + _texto_retorno(1),
             "tipo": TipoRecomendacao.AMARELO,
             "dias_antes": 5,
+            "retorno_dias_depois": 1,
         })
 
     # Prasugrel
@@ -326,50 +336,50 @@ def montar_orientacoes_medicacao(data: dict) -> list[dict]:
             "medicamento": "Prasugrel",
             "acao": "Suspender 7 dias antes",
             "detalhe": "Suspender prasugrel 7 dias antes do procedimento. "
-                       "Em caso de SCA recente (<6 meses), considerar postergar o procedimento.",
+                       "Em caso de SCA recente (<6 meses), considerar postergar o procedimento." + _texto_retorno(1),
             "tipo": TipoRecomendacao.AMARELO,
             "dias_antes": 7,
+            "retorno_dias_depois": 1,
         })
 
-    # DOACs: Rivaroxabana / Apixabana
-    if data.get("uses_rivaroxaban") or data.get("uses_apixaban"):
-        nome_med = "Rivaroxabana" if data.get("uses_rivaroxaban") else "Apixabana"
-        orientacoes.append({
-            "medicamento": nome_med,
-            "acao": "Suspender 24-48h antes",
-            "detalhe": (
-                f"{nome_med}: suspender 24–48 horas antes do procedimento. "
-                "Retornar no 1º ou 2º dia pós-operatório conforme risco de sangramento e hemostasia garantida."
-            ),
-            "tipo": TipoRecomendacao.AMARELO,
-            "dias_antes": 2,
-        })
+    # DOAC — Rivaroxabana / Apixabana / Edoxabana ou Dabigatrana
+    if data.get("usa_doac"):
+        tipo_doac = data.get("tipo_doac", "")
+        alto_sangramento = data.get("risco_sangramento_doac", "baixo") == "alto"
 
-    # Dabigatrana
-    if data.get("uses_dabigatran"):
-        clcr = data.get("clcr")
-        alto_sangramento = data.get("high_bleeding_risk", False)
-        if isinstance(clcr, (int, float)) and clcr < 50 and alto_sangramento:
+        if tipo_doac == "dabigatrana":
+            clcr = data.get("clcr_doac")
+            clcr_baixo = isinstance(clcr, (int, float)) and clcr < 50
+
+            if clcr_baixo and alto_sangramento:
+                dias_antes, retorno = 4, 2
+            elif clcr_baixo:
+                dias_antes, retorno = 2, 1
+            elif alto_sangramento:
+                dias_antes, retorno = 2, 2
+            else:
+                dias_antes, retorno = 1, 1
+
+            horas = dias_antes * 24
+            contexto = f"ClCr {'< 50' if clcr_baixo else '≥ 50'} mL/min, risco de sangramento {'alto' if alto_sangramento else 'baixo'}"
             orientacoes.append({
                 "medicamento": "Dabigatrana",
-                "acao": "Suspender 4 dias antes",
-                "detalhe": (
-                    "Dabigatrana com ClCr < 50 e alto risco de sangramento: suspender 4 dias antes. "
-                    "Retornar no 2º dia pós-operatório se hemostasia garantida."
-                ),
+                "acao": f"Suspender {horas}h antes",
+                "detalhe": f"Dabigatrana ({contexto}): suspender {horas} horas antes do procedimento." + _texto_retorno(retorno),
                 "tipo": TipoRecomendacao.AMARELO,
-                "dias_antes": 4,
+                "dias_antes": dias_antes,
+                "retorno_dias_depois": retorno,
             })
         else:
+            dias_antes, retorno = (2, 2) if alto_sangramento else (1, 1)
+            horas = dias_antes * 24
             orientacoes.append({
-                "medicamento": "Dabigatrana",
-                "acao": "Suspender 24-48h antes",
-                "detalhe": (
-                    "Dabigatrana (ClCr >= 50 ou sem risco aumentado): suspender 24–48 horas antes. "
-                    "Retornar no 1º ou 2º dia pós-operatório conforme risco de sangramento e hemostasia garantida."
-                ),
+                "medicamento": "Rivaroxabana / Apixabana / Edoxabana",
+                "acao": f"Suspender {horas}h antes",
+                "detalhe": f"Risco de sangramento {'alto' if alto_sangramento else 'baixo'}: suspender {horas} horas antes do procedimento." + _texto_retorno(retorno),
                 "tipo": TipoRecomendacao.AMARELO,
-                "dias_antes": 2,
+                "dias_antes": dias_antes,
+                "retorno_dias_depois": retorno,
             })
 
     # Varfarina
@@ -378,9 +388,10 @@ def montar_orientacoes_medicacao(data: dict) -> list[dict]:
         orientacoes.append({
             "medicamento": "Varfarina",
             "acao": ponte["acao"],
-            "detalhe": ponte["detalhe"],
+            "detalhe": ponte["detalhe"] + _texto_retorno(1),
             "tipo": ponte["tipo"],
             "dias_antes": 5,
+            "retorno_dias_depois": 1,
         })
 
     return orientacoes

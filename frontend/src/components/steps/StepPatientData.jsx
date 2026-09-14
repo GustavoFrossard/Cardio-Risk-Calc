@@ -32,6 +32,16 @@ const opcoesTrombofiliaVarfarina = [
   { valor: "none", rotulo: "Não" },
 ];
 
+const opcoesTipoDoac = [
+  { valor: "rivaroxabana_apixabana_edoxabana", rotulo: "Rivaroxabana / Apixabana / Edoxabana" },
+  { valor: "dabigatrana", rotulo: "Dabigatrana" },
+];
+
+const opcoesRiscoSangramentoDoac = [
+  { valor: "baixo", rotulo: "Baixo" },
+  { valor: "alto", rotulo: "Alto" },
+];
+
 export function EtapaDadosPaciente({ data, onChange, onAnalisarTextoClinico, analisando, resultadoNlp }) {
   const [sliderIdx, setSliderIdx] = useState(() => {
     let best = 0;
@@ -230,7 +240,7 @@ export function EtapaDadosPaciente({ data, onChange, onAnalisarTextoClinico, ana
               label={item.rotulo}
               checked={Boolean(data[item.key])}
               onChange={(val) => onChange(item.key, val)}
-              isLast={i === MEDICAMENTOS.length - 1 && !data.usa_aas && !data.usa_varfarina}
+              isLast={i === MEDICAMENTOS.length - 1 && !data.usa_aas && !data.usa_varfarina && !data.usa_doac}
             />
 
             {item.key === "usa_aas" && data.usa_aas && (
@@ -303,6 +313,36 @@ export function EtapaDadosPaciente({ data, onChange, onAnalisarTextoClinico, ana
                       isLast
                     />
                   </>
+                )}
+              </div>
+            )}
+
+            {item.key === "usa_doac" && data.usa_doac && (
+              <div style={{ padding: "8px 0 12px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
+                <Field label="Qual DOAC?">
+                  <ChipGroup
+                    options={opcoesTipoDoac}
+                    value={data.tipo_doac}
+                    onChange={(val) => onChange("tipo_doac", val)}
+                  />
+                </Field>
+                <Field label="Risco de sangramento do procedimento">
+                  <ChipGroup
+                    options={opcoesRiscoSangramentoDoac}
+                    value={data.risco_sangramento_doac}
+                    onChange={(val) => onChange("risco_sangramento_doac", val)}
+                  />
+                </Field>
+                {data.tipo_doac === "dabigatrana" && (
+                  <Field label="ClCr (mL/min)" style={{ marginBottom: 4 }}>
+                    <Input
+                      type="number"
+                      placeholder="ex: 65"
+                      min={0}
+                      value={data.clcr_doac ?? ""}
+                      onChange={(e) => onChange("clcr_doac", e.target.value ? Number(e.target.value) : undefined)}
+                    />
+                  </Field>
                 )}
               </div>
             )}

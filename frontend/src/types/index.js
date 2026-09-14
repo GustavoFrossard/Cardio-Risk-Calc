@@ -71,6 +71,7 @@ export const MEDICAMENTOS = [
   { key: "usa_ticagrelor", rotulo: "Ticagrelor" },
   { key: "usa_prasugrel", rotulo: "Prasugrel" },
   { key: "usa_varfarina", rotulo: "Varfarina" },
+  { key: "usa_doac", rotulo: "DOAC (Rivaroxabana, Apixabana, Edoxabana, Dabigatrana)" },
 ];
 
 // ─── Wizard Steps ─────────────────────────────────────────────────────────────

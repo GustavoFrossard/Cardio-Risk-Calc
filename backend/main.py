@@ -66,6 +66,10 @@ class DadosPaciente(BaseModel):
     tempo_tev_varfarina: str = Field("", description="'recent', '3_12m', 'over_12m'")
     trombofilia_varfarina: str = Field("", description="'severe', 'mild', 'none'")
     neoplasia_ativa_varfarina: bool = Field(False)
+    usa_doac: bool = Field(False, description="Rivaroxabana, apixabana, edoxabana ou dabigatrana")
+    tipo_doac: str = Field("", description="'rivaroxabana_apixabana_edoxabana' ou 'dabigatrana'")
+    risco_sangramento_doac: str = Field("", description="'alto' ou 'baixo'")
+    clcr_doac: Optional[float] = Field(None, description="Clearance de creatinina (mL/min) — apenas para dabigatrana")
 
     # Capacidade funcional
     atividades_funcionais: list[str] = Field(default_factory=list, description="Lista de IDs de atividades marcadas")
