@@ -3,8 +3,9 @@ import { AlertTriangle, FileDown, FileText, FlaskConical, Pill, Share2, ShieldAl
 import { gerarRelatorio } from "../../services/report";
 import { LinhaTempoMedicacoes } from "../MedicationTimeline";
 import { EYEBROW_STYLE } from "../ui";
+import { resumirCirurgia } from "../../utils/resumo";
 
-const CORES_REC = {
+export const CORES_REC = {
   verde: { border: "var(--green)", bg: "var(--green-soft)" },
   amarelo: { border: "var(--amber)", bg: "var(--amber-soft)" },
   vermelho: { border: "var(--red)", bg: "var(--red-soft)" },
@@ -85,7 +86,7 @@ function SecaoRecolhivel({ label, defaultOpen = true, children }) {
   );
 }
 
-async function handleShare(resultado, dados, nomeIndice) {
+export async function handleShare(resultado, dados, nomeIndice) {
   const nome = dados.nome ? `Paciente: ${dados.nome}\n` : "";
   const text = [
     `CardioRisk Periop — Avaliação Cardiovascular Perioperatória`,
@@ -93,7 +94,7 @@ async function handleShare(resultado, dados, nomeIndice) {
     `${nome}Risco: ${resultado.rotulo_risco}`,
     `Score ${nomeIndice}: ${resultado.pontuacao} pt${resultado.pontuacao !== 1 ? "s" : ""}`,
     `Capacidade Funcional: ${resultado.mets} METs`,
-    `Cirurgia: ${resultado.rotulo_cirurgia}`,
+    `Cirurgia: ${resumirCirurgia(dados).rotulo || "Não informada"}`,
     `Risco do Procedimento: ${resultado.risco_cirurgia === "baixo" ? "Baixo" : resultado.risco_cirurgia === "alto" ? "Alto" : "Intermediário"}`,
     ``,
     resultado.recomendacoes.length > 0 ? `Recomendações:\n${resultado.recomendacoes.map((r) => `• ${r.titulo}: ${r.corpo}`).join("\n")}` : "",
@@ -223,7 +224,7 @@ export function EtapaResultado({ resultado, dados }) {
           {[
             { label: `Pontuação (${nomeIndice})`, value: `${resultado.pontuacao} pt${resultado.pontuacao !== 1 ? "s" : ""}` },
             { label: "Cap. Funcional", value: `${resultado.mets} METs` },
-            { label: "Cirurgia", value: resultado.rotulo_cirurgia },
+            { label: "Cirurgia", value: resumirCirurgia(dados).rotulo || "Não informada" },
             {
               label: "Risco do Procedimento",
               value:

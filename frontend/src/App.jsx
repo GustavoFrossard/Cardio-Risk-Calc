@@ -4,11 +4,12 @@ import { useTheme } from "./hooks/useTheme";
 import { CabecalhoApp } from "./components/AppHeader";
 import { BarraInferior } from "./components/BottomBar";
 import { TelaBoasVindas } from "./components/WelcomeScreen";
-import { PainelResumo } from "./components/SummaryPanel";
+import { PainelLateral } from "./components/DesktopRail";
 import { EtapaDadosPaciente } from "./components/steps/StepPatientData";
 import { EtapaCirurgia } from "./components/steps/StepSurgery";
 import { EtapaRCRI } from "./components/steps/StepRCRI";
 import { EtapaResultado } from "./components/steps/StepResult";
+import { EtapaResultadoEditorial } from "./components/steps/StepResultEditorial";
 
 export default function App() {
   const {
@@ -35,13 +36,13 @@ export default function App() {
   const [started, setStarted] = useState(() => temDadosSalvos);
   const [showResumeModal, setShowResumeModal] = useState(temDadosSalvos);
   const [maxWidth, setMaxWidth] = useState(() => window.innerWidth >= 768 ? 640 : 420);
-  const [showSidebar, setShowSidebar] = useState(() => window.innerWidth >= 1320);
+  const [showRail, setShowRail] = useState(() => window.innerWidth >= 1100);
   const isDesktop = maxWidth > 420;
 
   useEffect(() => {
     const onResize = () => {
       setMaxWidth(window.innerWidth >= 768 ? 640 : 420);
-      setShowSidebar(window.innerWidth >= 1320);
+      setShowRail(window.innerWidth >= 1100);
     };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
@@ -88,20 +89,8 @@ export default function App() {
     );
   }
 
-  return (
-    <div
-      style={{
-        width: "100%",
-        maxWidth: maxWidth,
-        minHeight: "100vh",
-        background: "var(--bg)",
-        position: "relative",
-        margin: "0 auto",
-        transition: "max-width 0.3s ease",
-        border: isDesktop ? "1px solid var(--border)" : "none",
-        boxShadow: isDesktop ? "0 1px 3px rgba(0,0,0,0.04)" : "none",
-      }}
-    >
+  const modalRetomada = (
+    <>
       {/* Modal de retomada */}
       {showResumeModal && (
         <div
@@ -185,79 +174,147 @@ export default function App() {
           </div>
         </div>
       )}
+    </>
+  );
 
-      <CabecalhoApp
-        etapaAtual={etapaAtual}
-        maiorEtapa={maiorEtapa}
-        onIrParaEtapa={irParaEtapa}
-        theme={theme}
-        onToggleTheme={toggleTheme}
-      />
+  const erroBox = error && (
+    <div
+      style={{
+        background: "var(--red-soft)",
+        border: "1px solid var(--red-border)",
+        borderRadius: "var(--r-sm)",
+        padding: "12px 16px",
+        fontSize: 13,
+        color: "var(--red)",
+        lineHeight: 1.5,
+      }}
+    >
+      <strong>Erro:</strong> {error}
+    </div>
+  );
 
-      {showSidebar && etapaAtual < 4 && (
-        <div style={{ position: "fixed", top: 24, left: `calc(50% + ${maxWidth / 2 + 24}px)`, zIndex: 40 }}>
-          <PainelResumo dados={dadosFormulario} />
+  if (showRail) {
+    return (
+      <>
+        {modalRetomada}
+        <div style={{ display: "flex", minHeight: "100vh", background: "var(--bg)" }}>
+          <PainelLateral
+            etapaAtual={etapaAtual}
+            maiorEtapa={maiorEtapa}
+            totalEtapas={totalEtapas}
+            onIrParaEtapa={irParaEtapa}
+            dados={dadosFormulario}
+            resultado={resultado}
+            theme={theme}
+            onToggleTheme={toggleTheme}
+            carregando={carregando}
+            onVoltar={voltar}
+            onAvancar={avancar}
+            onReiniciar={reiniciar}
+          />
+          <main style={{ flex: 1, minWidth: 0 }}>
+            {etapaAtual === 4 && resultado ? (
+              <EtapaResultadoEditorial resultado={resultado} dados={dadosFormulario} />
+            ) : (
+              <div style={{ maxWidth: 760, margin: "0 auto", padding: "40px 32px 60px", display: "flex", flexDirection: "column", gap: 10 }}>
+                {etapaAtual === 1 && (
+                  <EtapaDadosPaciente
+                    data={dadosFormulario}
+                    onChange={atualizarCampo}
+                    onAnalisarTextoClinico={analisarTextoClinico}
+                    analisando={analisando}
+                    resultadoNlp={resultadoNlp}
+                  />
+                )}
+                {etapaAtual === 2 && (
+                  <EtapaCirurgia data={dadosFormulario} onChange={atualizarCampo} />
+                )}
+                {etapaAtual === 3 && (
+                  <EtapaRCRI
+                    data={dadosFormulario}
+                    onChange={atualizarCampo}
+                    mostrarRevisao={false}
+                    onIrParaEtapa={irParaEtapa}
+                  />
+                )}
+                {erroBox}
+              </div>
+            )}
+          </main>
         </div>
-      )}
+      </>
+    );
+  }
 
+  return (
+    <>
+      {modalRetomada}
       <div
         style={{
-          padding: "16px 16px 110px",
-          display: "flex",
-          flexDirection: "column",
-          gap: 10,
+          width: "100%",
+          maxWidth: maxWidth,
+          minHeight: "100vh",
+          background: "var(--bg)",
+          position: "relative",
+          margin: "0 auto",
+          transition: "max-width 0.3s ease",
+          border: isDesktop ? "1px solid var(--border)" : "none",
+          boxShadow: isDesktop ? "0 1px 3px rgba(0,0,0,0.04)" : "none",
         }}
       >
-        {etapaAtual === 1 && (
-          <EtapaDadosPaciente
-            data={dadosFormulario}
-            onChange={atualizarCampo}
-            onAnalisarTextoClinico={analisarTextoClinico}
-            analisando={analisando}
-            resultadoNlp={resultadoNlp}
-          />
-        )}
-        {etapaAtual === 2 && (
-          <EtapaCirurgia data={dadosFormulario} onChange={atualizarCampo} />
-        )}
-        {etapaAtual === 3 && (
-          <EtapaRCRI
-            data={dadosFormulario}
-            onChange={atualizarCampo}
-            mostrarRevisao={!showSidebar}
-            onIrParaEtapa={irParaEtapa}
-          />
-        )}
-        {etapaAtual === 4 && resultado && (
-          <EtapaResultado resultado={resultado} dados={dadosFormulario} />
-        )}
+        <CabecalhoApp
+          etapaAtual={etapaAtual}
+          maiorEtapa={maiorEtapa}
+          onIrParaEtapa={irParaEtapa}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+        />
 
-        {error && (
-          <div
-            style={{
-              background: "var(--red-soft)",
-              border: "1px solid var(--red-border)",
-              borderRadius: "var(--r-sm)",
-              padding: "12px 16px",
-              fontSize: 13,
-              color: "var(--red)",
-              lineHeight: 1.5,
-            }}
-          >
-            <strong>Erro:</strong> {error}
-          </div>
-        )}
+        <div
+          style={{
+            padding: "16px 16px 110px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+          }}
+        >
+          {etapaAtual === 1 && (
+            <EtapaDadosPaciente
+              data={dadosFormulario}
+              onChange={atualizarCampo}
+              onAnalisarTextoClinico={analisarTextoClinico}
+              analisando={analisando}
+              resultadoNlp={resultadoNlp}
+            />
+          )}
+          {etapaAtual === 2 && (
+            <EtapaCirurgia data={dadosFormulario} onChange={atualizarCampo} />
+          )}
+          {etapaAtual === 3 && (
+            <EtapaRCRI
+              data={dadosFormulario}
+              onChange={atualizarCampo}
+              mostrarRevisao={true}
+              onIrParaEtapa={irParaEtapa}
+            />
+          )}
+          {etapaAtual === 4 && resultado && (
+            <EtapaResultado resultado={resultado} dados={dadosFormulario} />
+          )}
+
+          {erroBox}
+        </div>
+
+        <BarraInferior
+          etapaAtual={etapaAtual}
+          totalEtapas={totalEtapas}
+          carregando={carregando}
+          onVoltar={voltar}
+          onAvancar={avancar}
+          onReiniciar={reiniciar}
+          maxWidth={maxWidth}
+        />
       </div>
-
-      <BarraInferior
-        etapaAtual={etapaAtual}
-        totalEtapas={totalEtapas}
-        carregando={carregando}
-        onVoltar={voltar}
-        onAvancar={avancar}
-        onReiniciar={reiniciar}
-        maxWidth={maxWidth}
-      />
-    </div>
+    </>
   );
 }
