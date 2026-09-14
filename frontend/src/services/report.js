@@ -95,70 +95,118 @@ function desenharAlerta(doc, x, y, tamanho, cor) {
   doc.circle(x + tamanho / 2, y + tamanho * 0.82, 0.35, "F");
 }
 
-// ─── Linha do tempo de medicações (espelha o Gantt da tela) ───────────────
+// ─── Linha do tempo de medicações (espelha o gráfico de bolhas da tela) ────
+
+const TIMELINE_HASTE_BASE = 4.5;
+const TIMELINE_HASTE_PASSO = 8.5;
+const TIMELINE_BOLHA_H = 5.2;
+const TIMELINE_GAP_MINIMO = 0.22; // fração da largura da trilha
+
+function agruparPorDia(lista, chave) {
+  const porDia = {};
+  lista.forEach((m) => {
+    (porDia[chave(m)] ??= []).push(m);
+  });
+  return porDia;
+}
+
+// Ordena por posição no eixo e, quando dois grupos vizinhos ficam próximos
+// demais (bolhas colidiriam), escalona o grupo seguinte para uma haste mais alta.
+function disporGrupos(diasUnicos, porDia, xFn, trackW) {
+  let xAnterior = null;
+  let lanesAnterior = 0;
+  const gapMinimo = trackW * TIMELINE_GAP_MINIMO;
+  return diasUnicos.map((dia) => {
+    const x = xFn(dia);
+    const laneBase = xAnterior != null && x - xAnterior < gapMinimo ? lanesAnterior : 0;
+    const itens = porDia[dia];
+    xAnterior = x;
+    lanesAnterior = laneBase + itens.length;
+    return { dia, x, itens, laneBase };
+  });
+}
+
+function desenharBolha(doc, x, yBase, lane, texto, tom, tracejado) {
+  const yBolha = yBase - TIMELINE_HASTE_BASE - lane * TIMELINE_HASTE_PASSO;
+  doc.setFont("helvetica", tracejado ? "normal" : "bold");
+  doc.setFontSize(7.2);
+  const largura = doc.getTextWidth(texto) + 3.6;
+
+  if (doc.setLineDashPattern) doc.setLineDashPattern(tracejado ? [0.8, 0.6] : [], 0);
+  doc.setDrawColor(...tom.cor.map((c) => Math.round(c)));
+  doc.setLineWidth(0.3);
+  doc.line(x, yBase, x, yBolha + TIMELINE_BOLHA_H / 2);
+  if (doc.setLineDashPattern) doc.setLineDashPattern([], 0);
+
+  doc.setFillColor(...(tracejado ? COR.white : tom.fundo));
+  doc.roundedRect(x - largura / 2, yBolha - TIMELINE_BOLHA_H / 2, largura, TIMELINE_BOLHA_H, 1.1, 1.1, tracejado ? "FD" : "FD");
+  doc.setTextColor(...tom.cor.map((c) => Math.round(c)));
+  doc.text(texto, x, yBolha + 1.2, { align: "center" });
+}
 
 function desenharLinhaTempoMedicacoes(doc, yInicial, suspensas) {
-  let y = yInicial;
-  const LABEL_W = 42;
-  const trackX = MARGIN + LABEL_W;
-  const trackW = CONTENT_W - LABEL_W;
-  const ROW_H = 7;
+  const trackX = MARGIN;
+  const trackW = CONTENT_W;
 
   const maxPre = Math.max(...suspensas.map((m) => m.dias_antes));
-  const maxPost = Math.max(1, ...suspensas.map((m) => m.retorno_dias_depois ?? 1));
-  const totalDias = maxPre + maxPost;
+  const maxPos = Math.max(1, ...suspensas.map((m) => m.retorno_dias_depois ?? 1));
+  const totalDias = maxPre + maxPos;
+  const xPre = (dia) => trackX + ((maxPre - dia) / totalDias) * trackW;
+  const xPos = (dia) => trackX + ((maxPre + dia) / totalDias) * trackW;
+  const xCirurgia = trackX + (maxPre / totalDias) * trackW;
 
-  const pxPre = (dia) => trackX + ((maxPre - dia) / totalDias) * trackW;
-  const pxPos = (dia) => trackX + ((maxPre + dia) / totalDias) * trackW;
-  const pxCirurgia = trackX + (maxPre / totalDias) * trackW;
+  const porDiaPre = agruparPorDia(suspensas, (m) => m.dias_antes);
+  const diasUnicosPre = [...new Set(suspensas.map((m) => m.dias_antes))].sort((a, b) => b - a);
+  const porDiaPos = agruparPorDia(suspensas, (m) => m.retorno_dias_depois ?? 1);
+  const diasUnicosPos = [...new Set(suspensas.map((m) => m.retorno_dias_depois ?? 1))].sort((a, b) => a - b);
 
-  const alturaGrafico = suspensas.length * ROW_H + 8;
-  y = adicionarPagina(doc, y, alturaGrafico + 10);
+  const gruposPre = disporGrupos(diasUnicosPre, porDiaPre, xPre, trackW);
+  const gruposPos = disporGrupos(diasUnicosPos, porDiaPos, xPos, trackW);
 
-  for (const m of suspensas) {
-    const tom = tomDe(m.tipo);
-    const corTom = tom.cor.map((c) => Math.round(c));
+  const maxLanes = Math.max(
+    1,
+    ...gruposPre.map((g) => g.laneBase + g.itens.length),
+    ...gruposPos.map((g) => g.laneBase + g.itens.length),
+  );
+  const alturaTopo = TIMELINE_HASTE_BASE + (maxLanes - 1) * TIMELINE_HASTE_PASSO + TIMELINE_BOLHA_H / 2 + 1;
+  const alturaGrafico = alturaTopo + 6;
 
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.setTextColor(...COR.ink);
-    const nomeCurto = doc.splitTextToSize(m.medicamento, LABEL_W - 2)[0];
-    doc.text(nomeCurto, MARGIN, y + 3.2);
+  const y = adicionarPagina(doc, yInicial, alturaGrafico + 6);
+  const yBase = y + alturaTopo;
 
-    doc.setDrawColor(...COR.border);
-    doc.setLineWidth(0.2);
-    doc.line(trackX, y + 2.5, trackX + trackW, y + 2.5);
-
-    const xStart = pxPre(m.dias_antes);
-    const xEnd = m.retorno_dias_depois != null ? pxPos(m.retorno_dias_depois) : pxCirurgia;
-    doc.setFillColor(...tom.fundo);
-    doc.setDrawColor(...corTom);
-    doc.setLineWidth(0.3);
-    doc.roundedRect(xStart, y, Math.max(xEnd - xStart, 3), 4.4, 0.8, 0.8, "FD");
-
-    y += ROW_H;
-  }
-
-  // eixo
   doc.setDrawColor(...COR.border);
-  doc.setFontSize(6.5);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(...COR.inkMuted);
-  const ticksPre = [...new Set(suspensas.map((m) => m.dias_antes))].sort((a, b) => b - a);
-  const ticksPos = [...new Set(suspensas.map((m) => m.retorno_dias_depois).filter((d) => d != null))].sort((a, b) => a - b);
-  for (const dia of ticksPre) {
-    doc.text(`D-${dia}`, pxPre(dia), y + 3, { align: "center" });
-  }
+  doc.setLineWidth(0.25);
+  doc.line(trackX, yBase, trackX + trackW, yBase);
+
+  doc.setFillColor(...COR.ink);
+  doc.circle(xCirurgia, yBase, 0.9, "F");
   doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.2);
   doc.setTextColor(...COR.ink);
-  doc.text("Cirurgia", pxCirurgia, y + 3, { align: "center" });
+  doc.text("Cirurgia", xCirurgia, yBase + 4, { align: "center" });
+
   doc.setFont("helvetica", "normal");
   doc.setTextColor(...COR.inkMuted);
-  for (const dia of ticksPos) {
-    doc.text(`D+${dia}`, pxPos(dia), y + 3, { align: "center" });
+  for (const grupo of gruposPre) {
+    doc.circle(grupo.x, yBase, 0.7, "F");
+    doc.text(`D-${grupo.dia}`, grupo.x, yBase + 4, { align: "center" });
+    grupo.itens.forEach((m, i) => {
+      desenharBolha(doc, grupo.x, yBase, grupo.laneBase + i, m.medicamento, tomDe(m.tipo), false);
+    });
+  }
+  for (const grupo of gruposPos) {
+    doc.setDrawColor(...COR.inkMuted);
+    doc.setLineWidth(0.25);
+    doc.circle(grupo.x, yBase, 0.7, "S");
+    doc.setTextColor(...COR.inkMuted);
+    doc.text(`D+${grupo.dia}`, grupo.x, yBase + 4, { align: "center" });
+    grupo.itens.forEach((m, i) => {
+      desenharBolha(doc, grupo.x, yBase, grupo.laneBase + i, m.medicamento, tomDe(m.tipo), true);
+    });
   }
 
-  return y + 8;
+  doc.setTextColor(...COR.ink);
+  return yBase + 8;
 }
 
 // ─── Relatório principal ───────────────────────────────────────────────────
@@ -312,7 +360,7 @@ export function gerarRelatorio(resultado, dados) {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(7.5);
       doc.setTextColor(...COR.inkMuted);
-      doc.text("Dias em relação à cirurgia — faixa colorida indica o período suspenso", MARGIN, y);
+      doc.text("Dias em relação à cirurgia — tracejado indica retorno da medicação", MARGIN, y);
       y += 5;
       y = desenharLinhaTempoMedicacoes(doc, y, suspensas);
       doc.setTextColor(...COR.ink);
