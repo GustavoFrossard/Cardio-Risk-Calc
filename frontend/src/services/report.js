@@ -16,7 +16,7 @@ function obterRotuloCirurgia(tipoCirurgia) {
 
 function adicionarPagina(doc, y, needed) {
   if (y + needed > 280) {
-    doc.adicionarPagina();
+    doc.addPage();
     return MARGIN;
   }
   return y;
