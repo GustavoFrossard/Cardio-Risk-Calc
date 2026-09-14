@@ -69,6 +69,18 @@ const PDF_BRIDGE_INJECTION = `
     }
     return originalOpen.apply(this, arguments);
   };
+
+  function reportarErro(mensagem) {
+    if (typeof window.ReactNativeWebView?.postMessage !== "function") return;
+    window.ReactNativeWebView.postMessage(JSON.stringify({ type: "js-error", message: String(mensagem) }));
+  }
+
+  window.addEventListener("error", function (event) {
+    reportarErro(event?.message || "Erro desconhecido na página.");
+  });
+  window.addEventListener("unhandledrejection", function (event) {
+    reportarErro(event?.reason?.message || event?.reason || "Promise rejeitada sem motivo informado.");
+  });
 })();
 true;
 `;
@@ -109,6 +121,11 @@ async function onWebViewMessage(event) {
     const payload = JSON.parse(event.nativeEvent.data || "{}");
     if (payload?.type === "pdf-base64") {
       await handlePdfMessage(payload);
+    } else if (payload?.type === "js-error") {
+      // Torna erros da página visíveis no app nativo — sem isso, uma falha
+      // no gerador de PDF (ou em qualquer outro script) acontece em
+      // silêncio e parece que o botão "não faz nada".
+      Alert.alert("Erro na página", String(payload.message || "Erro desconhecido."));
     }
   } catch {
     // Ignore non-JSON or unrelated messages from the page.
