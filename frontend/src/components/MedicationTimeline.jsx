@@ -1,3 +1,5 @@
+import { Undo2 } from "lucide-react";
+
 const TOM = {
   verde: { texto: "var(--green)", fundo: "var(--green-soft)", borda: "var(--green-border)" },
   amarelo: { texto: "var(--amber)", fundo: "var(--amber-soft)", borda: "var(--amber-border)" },
@@ -85,8 +87,10 @@ export function LinhaTempoMedicacoes({ orientacoes }) {
         boxShadow: "0 1px 4px rgba(13,17,23,0.06)",
       }}
     >
-      <div style={{ fontSize: 11, color: "var(--ink-muted)", marginBottom: 4, fontWeight: 500 }}>
-        Dias em relação à cirurgia — {"↩"} indica retorno da medicação
+      <div style={{ fontSize: 11, color: "var(--ink-muted)", marginBottom: 4, fontWeight: 500, display: "flex", alignItems: "center", gap: 4 }}>
+        Dias em relação à cirurgia —
+        <Undo2 size={11} strokeWidth={2.2} style={{ flexShrink: 0 }} />
+        indica retorno da medicação
       </div>
 
       <div style={{ position: "relative", width: "100%", height: alturaTimeline, margin: "8px 0 8px" }}>
@@ -205,9 +209,13 @@ export function LinhaTempoMedicacoes({ orientacoes }) {
                         fontWeight: 500,
                         color: tom.texto,
                         whiteSpace: "nowrap",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 3,
                       }}
                     >
-                      {"↩"} {m.medicamento}
+                      <Undo2 size={10} strokeWidth={2.4} style={{ flexShrink: 0 }} />
+                      {m.medicamento}
                     </div>
                   </div>
                 );
