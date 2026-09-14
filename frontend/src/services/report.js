@@ -133,22 +133,41 @@ function disporGrupos(diasUnicos, porDia, xFn, trackW) {
   });
 }
 
+const TIMELINE_BOLHA_LARGURA_MAX = 42; // mm — nomes maiores são truncados com reticências
+
+function truncarParaLargura(doc, texto, larguraMax) {
+  if (doc.getTextWidth(texto) <= larguraMax) return texto;
+  let truncado = texto;
+  while (truncado.length > 1 && doc.getTextWidth(`${truncado}…`) > larguraMax) {
+    truncado = truncado.slice(0, -1);
+  }
+  return `${truncado}…`;
+}
+
+// Desenha só a haste (linha vertical) — chamada antes das bolhas do grupo
+// para que a bolha sempre fique por cima e o texto nunca fique cortado.
+function desenharHaste(doc, x, yBase, lane, tom, tracejado) {
+  const yTopo = yBase - TIMELINE_HASTE_BASE - lane * TIMELINE_HASTE_PASSO + TIMELINE_BOLHA_H / 2;
+  if (doc.setLineDashPattern) doc.setLineDashPattern(tracejado ? [0.8, 0.6] : [], 0);
+  doc.setDrawColor(...tom.cor.map((c) => Math.round(c)));
+  doc.setLineWidth(0.3);
+  doc.line(x, yBase, x, yTopo);
+  if (doc.setLineDashPattern) doc.setLineDashPattern([], 0);
+}
+
 function desenharBolha(doc, x, yBase, lane, texto, tom, tracejado) {
   const yBolha = yBase - TIMELINE_HASTE_BASE - lane * TIMELINE_HASTE_PASSO;
   doc.setFont("helvetica", tracejado ? "normal" : "bold");
   doc.setFontSize(7.2);
-  const largura = doc.getTextWidth(texto) + 3.6;
-
-  if (doc.setLineDashPattern) doc.setLineDashPattern(tracejado ? [0.8, 0.6] : [], 0);
-  doc.setDrawColor(...tom.cor.map((c) => Math.round(c)));
-  doc.setLineWidth(0.3);
-  doc.line(x, yBase, x, yBolha + TIMELINE_BOLHA_H / 2);
-  if (doc.setLineDashPattern) doc.setLineDashPattern([], 0);
+  const textoExibido = truncarParaLargura(doc, texto, TIMELINE_BOLHA_LARGURA_MAX);
+  const largura = doc.getTextWidth(textoExibido) + 3.6;
 
   doc.setFillColor(...(tracejado ? COR.white : tom.fundo));
-  doc.roundedRect(x - largura / 2, yBolha - TIMELINE_BOLHA_H / 2, largura, TIMELINE_BOLHA_H, 1.1, 1.1, tracejado ? "FD" : "FD");
+  doc.setDrawColor(...tom.cor.map((c) => Math.round(c)));
+  doc.setLineWidth(0.3);
+  doc.roundedRect(x - largura / 2, yBolha - TIMELINE_BOLHA_H / 2, largura, TIMELINE_BOLHA_H, 1.1, 1.1, "FD");
   doc.setTextColor(...tom.cor.map((c) => Math.round(c)));
-  doc.text(texto, x, yBolha + 1.2, { align: "center" });
+  doc.text(textoExibido, x, yBolha + 1.2, { align: "center" });
 }
 
 function desenharLinhaTempoMedicacoes(doc, yInicial, suspensas) {
@@ -158,9 +177,14 @@ function desenharLinhaTempoMedicacoes(doc, yInicial, suspensas) {
   const maxPre = Math.max(...suspensas.map((m) => m.dias_antes));
   const maxPos = Math.max(1, ...suspensas.map((m) => m.retorno_dias_depois ?? 1));
   const totalDias = maxPre + maxPos;
-  const xPre = (dia) => trackX + ((maxPre - dia) / totalDias) * trackW;
-  const xPos = (dia) => trackX + ((maxPre + dia) / totalDias) * trackW;
-  const xCirurgia = trackX + (maxPre / totalDias) * trackW;
+
+  // Reserva uma margem nas duas pontas da trilha para que bolhas nos dias
+  // extremos não sangrem para fora da área de conteúdo.
+  const inset = trackW * 0.07;
+  const trackInterno = trackW - inset * 2;
+  const xPre = (dia) => trackX + inset + ((maxPre - dia) / totalDias) * trackInterno;
+  const xPos = (dia) => trackX + inset + ((maxPre + dia) / totalDias) * trackInterno;
+  const xCirurgia = trackX + inset + (maxPre / totalDias) * trackInterno;
 
   const porDiaPre = agruparPorDia(suspensas, (m) => m.dias_antes);
   const diasUnicosPre = [...new Set(suspensas.map((m) => m.dias_antes))].sort((a, b) => b - a);
@@ -176,7 +200,7 @@ function desenharLinhaTempoMedicacoes(doc, yInicial, suspensas) {
     ...gruposPos.map((g) => g.laneBase + g.itens.length),
   );
   const alturaTopo = TIMELINE_HASTE_BASE + (maxLanes - 1) * TIMELINE_HASTE_PASSO + TIMELINE_BOLHA_H / 2 + 1;
-  const alturaGrafico = alturaTopo + 6;
+  const alturaGrafico = alturaTopo + 9.5;
 
   const y = adicionarPagina(doc, yInicial, alturaGrafico + 6);
   const yBase = y + alturaTopo;
@@ -187,16 +211,38 @@ function desenharLinhaTempoMedicacoes(doc, yInicial, suspensas) {
 
   doc.setFillColor(...COR.ink);
   doc.circle(xCirurgia, yBase, 0.9, "F");
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7.2);
-  doc.setTextColor(...COR.ink);
-  doc.text("Cirurgia", xCirurgia, yBase + 4, { align: "center" });
+
+  // Rótulos do eixo (D-x, Cirurgia, D+x): quando dois ficam próximos demais,
+  // alterna uma segunda linha para não sobrepor o texto.
+  const TICK_GAP_MINIMO = trackW * 0.15;
+  const rotulosEixo = [
+    ...gruposPre.map((g) => ({ x: g.x, texto: `D-${g.dia}`, negrito: false })),
+    { x: xCirurgia, texto: "Cirurgia", negrito: true },
+    ...gruposPos.map((g) => ({ x: g.x, texto: `D+${g.dia}`, negrito: false })),
+  ]
+    .sort((a, b) => a.x - b.x)
+    .reduce((acc, tick) => {
+      const anterior = acc[acc.length - 1];
+      const linha = anterior && tick.x - anterior.x < TICK_GAP_MINIMO ? (anterior.linha === 0 ? 1 : 0) : 0;
+      acc.push({ ...tick, linha });
+      return acc;
+    }, []);
+  for (const r of rotulosEixo) {
+    doc.setFont("helvetica", r.negrito ? "bold" : "normal");
+    doc.setFontSize(7.2);
+    doc.setTextColor(...(r.negrito ? COR.ink : COR.inkMuted));
+    doc.text(r.texto, r.x, yBase + (r.linha === 0 ? 4 : 7.5), { align: "center" });
+  }
 
   doc.setFont("helvetica", "normal");
   doc.setTextColor(...COR.inkMuted);
   for (const grupo of gruposPre) {
+    doc.setFillColor(...COR.inkMuted);
     doc.circle(grupo.x, yBase, 0.7, "F");
-    doc.text(`D-${grupo.dia}`, grupo.x, yBase + 4, { align: "center" });
+    // hastes primeiro — ficam atrás das bolhas para não cortar o texto
+    grupo.itens.forEach((m, i) => {
+      desenharHaste(doc, grupo.x, yBase, grupo.laneBase + i, tomDe(m.tipo), false);
+    });
     grupo.itens.forEach((m, i) => {
       desenharBolha(doc, grupo.x, yBase, grupo.laneBase + i, m.medicamento, tomDe(m.tipo), false);
     });
@@ -205,15 +251,16 @@ function desenharLinhaTempoMedicacoes(doc, yInicial, suspensas) {
     doc.setDrawColor(...COR.inkMuted);
     doc.setLineWidth(0.25);
     doc.circle(grupo.x, yBase, 0.7, "S");
-    doc.setTextColor(...COR.inkMuted);
-    doc.text(`D+${grupo.dia}`, grupo.x, yBase + 4, { align: "center" });
+    grupo.itens.forEach((m, i) => {
+      desenharHaste(doc, grupo.x, yBase, grupo.laneBase + i, tomDe(m.tipo), true);
+    });
     grupo.itens.forEach((m, i) => {
       desenharBolha(doc, grupo.x, yBase, grupo.laneBase + i, m.medicamento, tomDe(m.tipo), true);
     });
   }
 
   doc.setTextColor(...COR.ink);
-  return yBase + 8;
+  return yBase + 11;
 }
 
 // ─── Relatório principal ───────────────────────────────────────────────────
