@@ -101,6 +101,9 @@ const TIMELINE_HASTE_BASE = 4.5;
 const TIMELINE_HASTE_PASSO = 8.5;
 const TIMELINE_BOLHA_H = 5.2;
 const TIMELINE_GAP_MINIMO = 0.22; // fração da largura da trilha
+// Duas bolhas da mesma cor exigem mais distância entre si — do contrário
+// ficam parecendo o mesmo item mesmo quando os dias são diferentes.
+const TIMELINE_GAP_MINIMO_MESMA_COR = 0.36;
 
 function agruparPorDia(lista, chave) {
   const porDia = {};
@@ -111,17 +114,21 @@ function agruparPorDia(lista, chave) {
 }
 
 // Ordena por posição no eixo e, quando dois grupos vizinhos ficam próximos
-// demais (bolhas colidiriam), escalona o grupo seguinte para uma haste mais alta.
+// demais (bolhas colidiriam ou se confundiriam por terem a mesma cor),
+// escalona o grupo seguinte para uma haste mais alta.
 function disporGrupos(diasUnicos, porDia, xFn, trackW) {
   let xAnterior = null;
   let lanesAnterior = 0;
-  const gapMinimo = trackW * TIMELINE_GAP_MINIMO;
+  let tipoAnterior = null;
   return diasUnicos.map((dia) => {
     const x = xFn(dia);
-    const laneBase = xAnterior != null && x - xAnterior < gapMinimo ? lanesAnterior : 0;
     const itens = porDia[dia];
+    const tipoAtual = itens[0].tipo;
+    const gapMinimo = trackW * (tipoAtual === tipoAnterior ? TIMELINE_GAP_MINIMO_MESMA_COR : TIMELINE_GAP_MINIMO);
+    const laneBase = xAnterior != null && x - xAnterior < gapMinimo ? lanesAnterior : 0;
     xAnterior = x;
     lanesAnterior = laneBase + itens.length;
+    tipoAnterior = tipoAtual;
     return { dia, x, itens, laneBase };
   });
 }

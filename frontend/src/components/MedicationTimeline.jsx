@@ -13,18 +13,26 @@ const HASTE_BASE = 10;
 const HASTE_PASSO = 34;
 const BOLHA_ALTURA = 30;
 const GAP_MINIMO_PCT = 20;
+// Duas bolhas da mesma cor exigem mais distância entre si — do contrário
+// ficam parecendo o mesmo item mesmo quando os dias são diferentes.
+const GAP_MINIMO_MESMA_COR_PCT = 32;
 
 // Agrupa por dia e, quando dois grupos vizinhos ficam próximos demais no eixo
-// (bolhas colidiriam), escalona o grupo mais à direita para uma haste mais alta.
+// (bolhas colidiriam ou se confundiriam por terem a mesma cor), escalona o
+// grupo mais à direita para uma haste mais alta.
 function dispor(diasUnicos, porDia, pctFn) {
   let pctAnterior = null;
   let lanesAnterior = 0;
+  let tipoAnterior = null;
   return diasUnicos.map((dia) => {
     const pct = pctFn(dia);
-    const laneBase = pctAnterior != null && pct - pctAnterior < GAP_MINIMO_PCT ? lanesAnterior : 0;
     const itens = porDia[dia];
+    const tipoAtual = itens[0].tipo;
+    const gapNecessario = tipoAtual === tipoAnterior ? GAP_MINIMO_MESMA_COR_PCT : GAP_MINIMO_PCT;
+    const laneBase = pctAnterior != null && pct - pctAnterior < gapNecessario ? lanesAnterior : 0;
     pctAnterior = pct;
     lanesAnterior = laneBase + itens.length;
+    tipoAnterior = tipoAtual;
     return { dia, pct, itens, laneBase };
   });
 }
