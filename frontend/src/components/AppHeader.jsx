@@ -76,7 +76,6 @@ export function CabecalhoApp({ etapaAtual, maiorEtapa, onIrParaEtapa, theme, onT
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>CardioRisk Periop</div>
-          <div style={{ fontSize: 11, color: "var(--ink-muted)" }}>AHA/ACC 2014 · Índice de Lee</div>
         </div>
         <div
           style={{

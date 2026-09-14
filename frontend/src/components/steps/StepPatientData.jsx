@@ -158,8 +158,7 @@ export function EtapaDadosPaciente({ data, onChange, onAnalisarTextoClinico, ana
                 lineHeight: 1.45,
               }}
             >
-              <strong>{resultadoNlp?.summary?.autofill_count ?? 0}</strong> campos auto-preenchidos. Modelo:{" "}
-              <strong>{resultadoNlp?.model?.name}</strong> ({resultadoNlp?.model?.status}).
+              <strong>{resultadoNlp?.summary?.autofill_count ?? 0}</strong> campos auto-preenchidos.
             </div>
 
             {Array.isArray(resultadoNlp?.missing_critical) && resultadoNlp.missing_critical.length > 0 && (
