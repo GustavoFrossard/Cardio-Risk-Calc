@@ -1,5 +1,7 @@
-@startuml CardioRisk_CasosDeUso
+@startuml use_case
 title Casos de Uso — CardioRisk Periop
+
+left to right direction
 
 skinparam backgroundColor #F7F8FA
 skinparam defaultFontName Segoe UI
@@ -28,7 +30,7 @@ rectangle "Sistema CardioRisk Periop" {
   usecase "Preencher critérios de risco\n(RCRI ou VSG)"   as UC4
   usecase "Calcular risco cardiovascular"                 as UC5
   usecase "Ver resultado e recomendações"                 as UC6
-  usecase "Baixar PDF / Compartilhar resultado"           as UC7
+  usecase "Baixar PDF do resultado"                       as UC7
   usecase "Alternar tema claro/escuro"                    as UC8
 }
 
