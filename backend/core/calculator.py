@@ -545,13 +545,15 @@ def montar_recomendacoes(
         })
 
     # Otimização para pontuação alta
-    if pontuacao >= 3:
+    # Limiar de risco alto depende do índice: RCRI >= 3; VSG-CRI >= 7 (Tabelas 5 e 7)
+    limiar_risco_alto = 7 if eh_vascular else 3
+    if pontuacao >= limiar_risco_alto:
         recomendacoes.append({
             "tipo": TipoRecomendacao.VERMELHO,
             "icone": "💊",
             "titulo": "Otimização farmacológica",
             "corpo": (
-                "Score >= 3: considere betabloqueadores e estatinas conforme indicação. "
+                f"Score >= {limiar_risco_alto} (risco alto): considere betabloqueadores e estatinas conforme indicação. "
                 "Avalie profilaxia antitrombótica."
             ),
         })

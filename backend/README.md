@@ -1,8 +1,9 @@
 # CardioRisk Periop — Backend API
 
-FastAPI backend for perioperative cardiovascular risk calculation.
+API em FastAPI para estratificação do risco cardiovascular perioperatório conforme a
+Diretriz SBC 2024. Ferramenta acadêmica, não destinada a uso assistencial.
 
-## Setup
+## Executar
 
 ```bash
 cd backend
@@ -10,123 +11,75 @@ pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 ```
 
-## Chat Startup And Logs
+Documentação interativa: http://localhost:8000/docs
 
-Para reduzir o atraso na primeira mensagem do chat e diminuir logs verbosos,
-configure no `.env`:
+Variáveis de ambiente (opcionais):
 
-```bash
-CARDIORISK_CHAT_PRELOAD=true
-CARDIORISK_VERBOSE_MODEL_LOAD=false
-CARDIORISK_SUPPRESS_MODEL_WARNINGS=true
-```
+| Variável | Efeito |
+|----------|--------|
+| `CORS_ALLOW_ORIGINS` | Origens permitidas, separadas por vírgula (padrão: localhost:3000, localhost:5173 e o site de produção) |
+| `CARDIORISK_ENABLE_NER` | `false` desativa o NER do Hugging Face no `/nlp/analyze` (recomendado com pouca RAM) |
+| `CARDIORISK_NER_MODEL` | Modelo NER (padrão: `pucpr/clinicalnerpt-medical`) |
+| `HF_TOKEN` | Token opcional do Hugging Face |
+| `CARDIORISK_SUPPRESS_MODEL_WARNINGS` | `true` oculta avisos de requisição não autenticada ao Hub |
 
-Se aparecer aviso de requisição não autenticada ao Hugging Face, você pode
-definir também:
+O NER exige `transformers` e `torch` (`pip install -r requirements-train.txt`). Sem essas
+bibliotecas, o `/nlp/analyze` funciona apenas com as regras de extração.
 
-```bash
-HF_TOKEN=hf_xxx
-```
+## Endpoints
 
-## Fine-Tuning LoRA (Sem Hard Code)
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| GET/HEAD | `/` | Informações da API |
+| GET/HEAD | `/health` | Verificação de saúde |
+| POST | `/calculate` | Calcula pontuação, classe de risco, recomendações, exames e orientações de medicação |
+| POST | `/nlp/analyze` | Extrai campos da calculadora de um texto clínico livre (experimental) |
 
-Este backend inclui um pipeline para adaptar o modelo ao domínio CardioRisk
-com treino supervisionado (SFT + LoRA):
+O `/calculate` **não retorna probabilidade de MACE**: a diretriz usa classificação
+semiquantitativa (baixo, intermediário e alto).
 
-1. Gere o dataset com split train/val/test a partir dos casos sintéticos da calculadora:
+Exemplo de retorno (campos principais): `indice_risco` (`rcri` ou `vsg`), `pontuacao`,
+`classe_risco`, `rotulo_risco`, `condicoes_ativas`, `criterios_atingidos`,
+`recomendacoes`, `exames_recomendados`, `orientacoes_medicacao`.
 
-```bash
-cd backend
-python build_sft_dataset.py \
-	--out data/sft_cardiorisk.jsonl \
-	--out-train data/sft_cardiorisk_train.jsonl \
-	--out-val data/sft_cardiorisk_val.jsonl \
-	--out-test data/sft_cardiorisk_test.jsonl
-```
+## Regras de cálculo
 
-2. Instale dependências de treino:
+- **Índice:** VSG-CRI se a cirurgia é vascular (`eh_vascular`, `surgery_is_vascular` ou
+  tipo de cirurgia contendo "vascular"); caso contrário, RCRI.
+- **RCRI** (Tabela 5): 0–1 baixo, 2 intermediário, 3–6 alto.
+- **VSG-CRI** (Tabelas 6 e 7): idade 60–69 (+2), 70–79 (+3), ≥ 80 (+4); DAC, IC, DPOC e
+  creatinina > 1,8 mg/dL (+2 cada); tabagismo, diabetes com insulina e betabloqueador
+  crônico (+1 cada); revascularização miocárdica prévia (−1). Classes: 0–4 baixo,
+  5–6 intermediário, ≥ 7 alto.
+- **Ajustes:** cirurgia de baixo risco sem condição cardíaca ativa e com classe não alta
+  resulta em risco baixo; qualquer condição cardíaca ativa resulta em risco alto.
+- **Otimização farmacológica:** recomendada com pontuação ≥ 3 (RCRI) ou ≥ 7 (VSG-CRI).
 
-```bash
-pip install -r requirements-train.txt
-```
-
-3. Treine o adaptador LoRA:
-
-```bash
-python train_lora_sft.py \
-	--model Qwen/Qwen2.5-0.5B-Instruct \
-	--train-dataset data/sft_cardiorisk_train.jsonl \
-	--eval-dataset data/sft_cardiorisk_val.jsonl \
-	--output-dir outputs/cardiorisk-lora \
-	--num-epochs 2 \
-	--max-steps 120
-```
-
-4. Avalie no holdout clínico:
-
-```bash
-python evaluate_lora_clinical.py \
-	--base-model Qwen/Qwen2.5-0.5B-Instruct \
-	--adapter outputs/cardiorisk-lora \
-	--test-dataset data/sft_cardiorisk_test.jsonl \
-	--out outputs/clinical_eval.json
-```
-
-5. (Opcional) Mescle adaptador + modelo base para inferência final.
-
-Observação: em Windows, ajuste batch/grad-accum conforme VRAM disponível.
-
-## API
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/` | App info |
-| GET | `/health` | Health check |
-| POST | `/calculate` | Calculate perioperative risk |
-| POST | `/nlp/analyze` | Extrai variáveis do texto clínico, sinaliza faltas críticas e retorna auto-preenchimento |
-| GET | `/docs` | Interactive Swagger UI |
-
-## NLP Clinical Parser
-
-Este backend inclui um parser clínico em `core/clinical_nlp.py` com duas camadas:
-
-- NER com Hugging Face (`pucpr/clinicalnerpt-medical`) quando disponível no ambiente.
-- Regras clínicas para mapear texto livre para os campos da calculadora.
-
-Configuração opcional via ambiente:
-
-```bash
-CARDIORISK_NER_MODEL=pucpr/clinicalnerpt-medical
-```
-
-Exemplo de request:
-
-```bash
-curl -X POST http://localhost:8000/nlp/analyze \
-	-H "Content-Type: application/json" \
-	-d '{
-		"text": "Paciente de 67 anos, HAS, DM2 em insulinoterapia e antecedente de AVC. Em programação de colecistectomia laparoscópica.",
-		"current_data": {}
-	}'
-```
-
-## Architecture
+## Estrutura
 
 ```
 backend/
-├── main.py          # FastAPI app, routes, request/response models
-├── calculator.py    # Clinical logic: RCRI scoring, risk adjustment, recommendations
-└── requirements.txt
+├── main.py                  # Rotas FastAPI e modelo de entrada (DadosPaciente)
+├── core/
+│   ├── calculator.py        # pontuar_rcri, pontuar_vsg, classes de risco,
+│   │                        # recomendações, exames e orientações de medicação
+│   └── clinical_nlp.py      # Extração de campos a partir de texto livre (NER + regras)
+├── requirements.txt         # fastapi, uvicorn, pydantic
+├── requirements-train.txt   # transformers, torch, sentencepiece (NER)
+└── Procfile                 # uvicorn main:app
 ```
 
-### calculator.py modules
-- `score_rcri()` — Computes Lee Index score (0–6) and RCRI class (I–IV)
-- `adjust_risk()` — Applies AHA/ACC-based adjustments (surgery type, METs, urgency)
-- `classify_risk()` — Maps risk % to Low / Intermediate / High
-- `analyze_labs()` — Flags abnormal lab values
-- `build_recommendations()` — Generates evidence-based clinical recommendations
-- `calculate_risk()` — Orchestrates the full pipeline
+## Limitações
 
-## References
-- Lee TH et al. *Circulation* 1999;100:1043–1049
-- Fleisher LA et al. ACC/AHA 2014 Perioperative Guideline. *JACC* 2014
+- Testes automatizados cobrem o motor de cálculo (`python -m pytest tests -v`); exames e texto livre não têm cobertura sistemática.
+- Sem validação clínica. Não substitui o julgamento médico.
+- Dados do paciente não são armazenados pela API, mas o texto enviado ao
+  `/nlp/analyze` pode conter dados sensíveis (LGPD): não o use com dados reais sem
+  avaliação de segurança.
+
+## Referências
+
+- Gualandro DM et al. Diretriz de Avaliação Cardiovascular Perioperatória da SBC – 2024.
+  Arq Bras Cardiol. 2024;121(9):e20240590.
+- Lee TH et al. Circulation. 1999;100(10):1043-1049.
+- Bertges DJ et al. J Vasc Surg. 2010;52(3):674-683.
