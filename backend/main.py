@@ -130,7 +130,7 @@ def raiz():
 def calcular(paciente: DadosPaciente):
     """
     Calcula o risco cardiovascular perioperatório.
-    Retorna pontuação RCRI, percentual de risco MACE, classe de risco e recomendações clínicas.
+    Retorna o índice aplicado (RCRI ou VSG-CRI), a pontuação, a classe de risco, recomendações clínicas, exames e orientações de medicação. Não estima probabilidade de MACE.
     """
     resultado = calcular_risco(paciente.model_dump())
     return resultado
