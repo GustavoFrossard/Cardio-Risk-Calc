@@ -31,5 +31,6 @@ frontend  --> ls       : salva sessão
 api       --> calc     : calcula risco
 api       --> nlp      : extrai dados do texto
 nlp       --> ner      : inferência local\n(sem chamada externa)
+nlp       ..> frontend : campos extraídos\n(revisados pelo médico)
 
 @enduml
