@@ -62,14 +62,6 @@ function adicionarPagina(doc, y, needed) {
   return y;
 }
 
-function estaRodandoNoWebViewReactNative() {
-  return Boolean(
-    typeof window !== "undefined" &&
-      window.ReactNativeWebView &&
-      typeof window.ReactNativeWebView.postMessage === "function",
-  );
-}
-
 // ─── Ícones vetoriais simples ──────────────────────────────────────────────
 
 function desenharCheck(doc, x, y, tamanho, cor) {
@@ -506,28 +498,6 @@ export function gerarRelatorio(resultado, dados) {
   const dateObj = new Date();
   const dateForFile = `${dateObj.getDate().toString().padStart(2, '0')}-${(dateObj.getMonth() + 1).toString().padStart(2, '0')}-${dateObj.getFullYear()}`;
   const filename = `CardioRisk - ${nomeSafe} - ${dateForFile}.pdf`;
-
-  if (estaRodandoNoWebViewReactNative()) {
-    try {
-      const dataUri = doc.output("datauristring");
-      const base64 = dataUri.includes(",") ? dataUri.split(",")[1] : "";
-      if (!base64) throw new Error("PDF sem conteúdo base64.");
-      window.ReactNativeWebView.postMessage(
-        JSON.stringify({ type: "pdf-base64", filename, base64 }),
-      );
-      return;
-    } catch (erro) {
-      // Se o envio pela ponte nativa falhar por qualquer motivo, ainda
-      // tentamos o caminho normal de download em vez de não fazer nada.
-      try {
-        window.ReactNativeWebView.postMessage(
-          JSON.stringify({ type: "js-error", message: `Falha ao enviar PDF pela ponte nativa: ${erro?.message || erro}` }),
-        );
-      } catch {
-        // Ignora — nada mais a fazer se nem a ponte de erro funciona.
-      }
-    }
-  }
 
   doc.save(filename);
 }

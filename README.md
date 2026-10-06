@@ -20,7 +20,7 @@ Sociedade Brasileira de Cardiologia – 2024** (Gualandro et al., Arq Bras Cardi
 - Aplica regras adicionais: cirurgia de baixo risco sem condição ativa resulta em risco
   baixo; qualquer condição cardíaca ativa resulta em risco alto.
 - Gera recomendações, exames complementares e orientações sobre antiagregantes e
-  anticoagulantes, além de relatório em PDF (gerado no navegador na versão web).
+  anticoagulantes, além de relatório em PDF (gerado no navegador).
 - Módulo experimental que extrai campos do formulário a partir de texto clínico livre
   (`/nlp/analyze`).
 
@@ -30,7 +30,6 @@ Sociedade Brasileira de Cardiologia – 2024** (Gualandro et al., Arq Bras Cardi
 cardiorisk/
 ├── backend/     # API FastAPI (cálculo dos escores, recomendações, NLP)
 ├── frontend/    # Aplicação web em React + Vite
-├── mobile/      # Aplicativo React Native (Expo)
 └── diagramas/   # Arquitetura, classes e casos de uso (PlantUML)
 ```
 
@@ -44,21 +43,13 @@ pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 ```
 
-Web:
+Frontend (Node 18+):
 
 ```bash
 cd frontend
 cp .env.example .env.local   # defina VITE_API_URL (ex.: http://localhost:8000)
 npm install
 npm run dev
-```
-
-Mobile:
-
-```bash
-cd mobile
-npm install
-npm start
 ```
 
 ## Limitações conhecidas
