@@ -19,7 +19,6 @@ skinparam database {
 skinparam ArrowColor  #555555
 skinparam ArrowFontSize 11
 
-[Mobile App\n(React Native / Expo)]        as mobile    #EDF0F5
 [Frontend Web\n(React + Vite)]             as frontend  #EBF1FE
 [Backend API\n(FastAPI)]                   as api       #EDFAF4
 [Motor de Cálculo\n(RCRI / VSG)]           as calc      #EDFAF4
@@ -27,7 +26,6 @@ skinparam ArrowFontSize 11
 [Modelo NER local\n(opcional)]             as ner       #FFF8E6
 database "LocalStorage\n(navegador)"       as ls        #FFF8E6
 
-mobile    --> frontend : carrega via WebView
 frontend  --> api      : HTTP REST\n(/calculate, /nlp/analyze)
 frontend  --> ls       : salva sessão
 api       --> calc     : calcula risco
