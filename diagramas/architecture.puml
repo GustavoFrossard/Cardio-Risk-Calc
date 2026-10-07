@@ -19,18 +19,21 @@ skinparam database {
 skinparam ArrowColor  #555555
 skinparam ArrowFontSize 11
 
-[Frontend Web\n(React + Vite)]             as frontend  #EBF1FE
-[Backend API\n(FastAPI)]                   as api       #EDFAF4
-[Motor de Cálculo\n(RCRI / VSG)]           as calc      #EDFAF4
-[Analisador de Texto Clínico\n(regras + NER opcional)] as nlp #EDFAF4
-[Modelo NER local\n(opcional)]             as ner       #FFF8E6
-database "LocalStorage\n(navegador)"       as ls        #FFF8E6
+package "Vercel" as vercel {
+  [Frontend Web\n(React + Vite)]           as frontend  #EBF1FE
+  database "LocalStorage\n(navegador)"     as ls        #FFF8E6
+}
+
+package "Render (nuvem)" as render {
+  [Backend API\n(FastAPI)]                 as api       #EDFAF4
+  [Analisador de Texto Clínico\n(regras + NER)] as nlp  #EDFAF4
+  [Motor de Cálculo\n(RCRI / VSG)]         as calc      #EDFAF4
+}
 
 frontend  --> api      : HTTP REST\n(/calculate, /nlp/analyze)
 frontend  --> ls       : salva sessão
-api       --> calc     : calcula risco
-api       --> nlp      : extrai dados do texto
-nlp       --> ner      : inferência local\n(sem chamada externa)
-nlp       ..> frontend : campos extraídos\n(revisados pelo médico)
+api       ..> nlp      : texto clínico livre\n(opcional)
+nlp       --> calc     : variáveis extraídas\n(revisadas pelo médico)
+api       --> calc     : dados do formulário
 
 @enduml
