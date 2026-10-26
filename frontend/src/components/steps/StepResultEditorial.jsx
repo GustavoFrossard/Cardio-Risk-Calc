@@ -1,8 +1,7 @@
-import { useState } from "react";
-import { AlertTriangle, FileDown, Share2 } from "lucide-react";
+import { AlertTriangle, FileDown } from "lucide-react";
 import { gerarRelatorio } from "../../services/report";
 import { LinhaTempoMedicacoes } from "../MedicationTimeline";
-import { CORES_REC, handleShare } from "./StepResult";
+import { CORES_REC } from "./StepResult";
 import { resumirCirurgia } from "../../utils/resumo";
 
 const TOM_SCORE = {
@@ -20,19 +19,10 @@ function SecaoTitulo({ children }) {
 }
 
 export function EtapaResultadoEditorial({ resultado, dados }) {
-  const [copied, setCopied] = useState(false);
   const nomeIndice = resultado.indice_risco === "vsg" ? "VSG-CRI" : "RCRI";
   const corScore = TOM_SCORE[resultado.classe_risco] ?? TOM_SCORE.baixo;
   const dataGerado = new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
   const rotuloCirurgia = resumirCirurgia(dados).rotulo || "Não informada";
-
-  const onShare = async () => {
-    await handleShare(resultado, dados, nomeIndice);
-    if (!navigator.share) {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
 
   const rotuloRiscoCirurgia =
     resultado.risco_cirurgia === "baixo" ? "Baixo" : resultado.risco_cirurgia === "alto" ? "Alto" : "Intermediário";
@@ -51,18 +41,6 @@ export function EtapaResultadoEditorial({ resultado, dados }) {
           </div>
         </div>
         <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-          <button
-            type="button"
-            onClick={onShare}
-            style={{
-              padding: "9px 16px", borderRadius: 999, border: "1px solid var(--border)", background: "var(--white)",
-              fontFamily: "'Outfit', sans-serif", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "var(--ink-mid)",
-              display: "flex", alignItems: "center", gap: 6,
-            }}
-          >
-            <Share2 size={14} strokeWidth={2.2} color={copied ? "var(--green)" : "var(--ink-mid)"} />
-            {copied ? "Copiado!" : "Compartilhar"}
-          </button>
           <button
             type="button"
             onClick={() => gerarRelatorio(resultado, dados)}
