@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AlertTriangle, FileDown, FileText, FlaskConical, Pill, Share2, ShieldAlert, Stethoscope, TriangleAlert } from "lucide-react";
+import { AlertTriangle, FileDown, FileText, FlaskConical, Pill, ShieldAlert, Stethoscope, TriangleAlert } from "lucide-react";
 import { gerarRelatorio } from "../../services/report";
 import { LinhaTempoMedicacoes } from "../MedicationTimeline";
 import { EYEBROW_STYLE } from "../ui";
@@ -86,36 +86,7 @@ function SecaoRecolhivel({ label, defaultOpen = true, children }) {
   );
 }
 
-export async function handleShare(resultado, dados, nomeIndice) {
-  const nome = dados.nome ? `Paciente: ${dados.nome}\n` : "";
-  const text = [
-    `CardioRisk Periop — Avaliação Cardiovascular Perioperatória`,
-    ``,
-    `${nome}Risco: ${resultado.rotulo_risco}`,
-    `Score ${nomeIndice}: ${resultado.pontuacao} pt${resultado.pontuacao !== 1 ? "s" : ""}`,
-    `Capacidade Funcional: ${resultado.mets} METs`,
-    `Cirurgia: ${resumirCirurgia(dados).rotulo || "Não informada"}`,
-    `Risco do Procedimento: ${resultado.risco_cirurgia === "baixo" ? "Baixo" : resultado.risco_cirurgia === "alto" ? "Alto" : "Intermediário"}`,
-    ``,
-    resultado.recomendacoes.length > 0 ? `Recomendações:\n${resultado.recomendacoes.map((r) => `• ${r.titulo}: ${r.corpo}`).join("\n")}` : "",
-    resultado.orientacoes_medicacao.length > 0 ? `\nManejo de Medicamentos:\n${resultado.orientacoes_medicacao.map((m) => `• ${m.medicamento}: ${m.acao} — ${m.detalhe}`).join("\n")}` : "",
-  ]
-    .filter(Boolean)
-    .join("\n");
-
-  try {
-    if (navigator.share) {
-      await navigator.share({ title: "CardioRisk Periop", text });
-    } else {
-      await navigator.clipboard.writeText(text);
-    }
-  } catch {
-    // Usuário cancelou ou clipboard não disponível
-  }
-}
-
 export function EtapaResultado({ resultado, dados }) {
-  const [copied, setCopied] = useState(false);
   const nomeIndice = resultado.indice_risco === "vsg" ? "VSG" : "RCRI";
   const hero = HERO[resultado.classe_risco] ?? HERO.baixo;
 
@@ -123,14 +94,6 @@ export function EtapaResultado({ resultado, dados }) {
     verde: <Stethoscope size={18} strokeWidth={2.2} color="var(--green)" />,
     amarelo: <TriangleAlert size={18} strokeWidth={2.2} color="var(--amber)" />,
     vermelho: <ShieldAlert size={18} strokeWidth={2.2} color="var(--red)" />,
-  };
-
-  const onShare = async () => {
-    await handleShare(resultado, dados, nomeIndice);
-    if (!navigator.share) {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
   };
 
   return (
@@ -436,33 +399,6 @@ export function EtapaResultado({ resultado, dados }) {
 
       {/* ── Ações ──────────────────────────────────────────────────── */}
       <div style={{ display: "flex", gap: 8 }}>
-        <button
-          type="button"
-          onClick={onShare}
-          style={{
-            flex: "0 0 auto",
-            padding: "14px 16px",
-            background: "var(--white)",
-            color: "var(--ink-mid)",
-            border: "1.5px solid var(--border)",
-            borderRadius: "var(--r)",
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 6,
-            transition: "all 0.15s",
-          }}
-          title="Compartilhar resumo"
-        >
-          <span style={{ display: "inline-flex" }}>
-            <Share2 size={16} strokeWidth={2.2} color={copied ? "var(--green)" : "var(--ink-mid)"} />
-          </span>
-          {copied ? "Copiado!" : "Compartilhar"}
-        </button>
-
         <button
           type="button"
           onClick={() => gerarRelatorio(resultado, dados)}
