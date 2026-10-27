@@ -54,7 +54,7 @@ npm run dev
 
 ## Limitações conhecidas
 
-- Há 51 testes automatizados do motor de cálculo (`backend/tests`); as regras de exames e o módulo de texto livre não têm cobertura sistemática.
+- Há 104 testes automatizados (`backend/tests`): 53 do motor de cálculo e 51 do módulo de texto livre; as regras de exames não têm cobertura sistemática.
 - Não houve validação clínica, de usabilidade nem de acurácia.
 - O módulo de texto livre não foi verificado e envia texto clínico ao servidor; avalie
   implicações da LGPD antes de qualquer uso com dados reais.

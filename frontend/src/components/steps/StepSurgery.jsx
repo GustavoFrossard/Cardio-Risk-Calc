@@ -83,6 +83,8 @@ export function EtapaCirurgia({ data, onChange }) {
     onChange("tipo_cirurgia", valor);
     onChange("risco_cirurgia", opcao?.risco ?? "");
     onChange("eh_vascular", opcao?.vascular ?? false);
+    // RCRI: operação intraperitoneal ou intratorácica já conta como cirurgia de alto risco.
+    onChange("rcri_cirurgia_alto_risco", opcao?.intracavitaria ?? false);
   };
 
   const opcaoSelecionada = OPCOES_CIRURGIA.find((o) => o.valor === data.tipo_cirurgia);

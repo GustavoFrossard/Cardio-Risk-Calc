@@ -90,6 +90,23 @@ export function EtapaResultadoEditorial({ resultado, dados }) {
         <div style={{ marginBottom: 30 }}>
           <SecaoTitulo>Manejo de Medicamentos</SecaoTitulo>
           <LinhaTempoMedicacoes orientacoes={resultado.orientacoes_medicacao} />
+          {/* A linha do tempo só mostra o nome; a conduta (ex.: ponte com heparina) fica aqui. */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 48px", marginTop: 18 }}>
+            {resultado.orientacoes_medicacao.map((med, i) => {
+              const cores = CORES_REC[med.tipo] || CORES_REC.amarelo;
+              return (
+                <div key={i} style={{ borderLeft: `3px solid ${cores.border}`, paddingLeft: 12, paddingTop: 6, paddingBottom: 10 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 3 }}>
+                    <span style={{ fontSize: 12.5, fontWeight: 700 }}>{med.medicamento}</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 999, background: cores.bg, color: cores.border, whiteSpace: "nowrap", flexShrink: 0 }}>
+                      {med.acao}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 11.5, color: "var(--ink-mid)", lineHeight: 1.55 }}>{med.detalhe}</div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 

@@ -131,10 +131,10 @@ STEP 1 — "Dados do Paciente"
 │   Quando ligado, aparece:                                                   │
 │   ─────────────────────────────────────────────────────────────────────     │
 │   "Indicação da varfarina" (warfarin_indication)                           │
-│   Chips: "FA" / "TEV" / "Prótese Mecânica" / "Valvar Reumática"           │
+│   Chips: "FA" / "TEV" / "Prótese Mecânica" / "FA valvar"                  │
 │                                                                             │
 │     "Prótese Mecânica" → Ponte com heparina (vermelho)                     │
-│     "Valvar Reumática" → Ponte com heparina (vermelho)                     │
+│     "FA valvar"        → Ponte com heparina (vermelho)                     │
 │     "FA"               → depende dos sub-campos abaixo                     │
 │     "TEV"              → depende dos sub-campos abaixo                     │
 │                                                                             │
