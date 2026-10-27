@@ -104,6 +104,7 @@ def test_avc_ait_recente(texto, recente):
 # ---------- Valvopatias ----------
 @pytest.mark.parametrize("texto", [
     "estenose aórtica", "estenose mitral", "insuficiência aórtica", "insuficiência mitral", "prótese valvar",
+    "prótese aórtica", "prótese mitral biológica",
 ])
 def test_valvopatias_reconhecidas(texto):
     assert analisar_texto_clinico(f"Paciente com {texto}.")["autofill"].get("doenca_valvar_conhecida") is True
