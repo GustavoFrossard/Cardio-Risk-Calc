@@ -199,7 +199,7 @@ def _determinar_ponte_varfarina(data: dict) -> dict:
     if indicacao == "rheumatic":
         return {
             "acao": "Suspender + Ponte com heparina",
-            "detalhe": "Doença valvar reumática: realizar ponte com heparina de baixo peso molecular.",
+            "detalhe": "FA valvar: realizar ponte com heparina de baixo peso molecular.",
             "tipo": TipoRecomendacao.VERMELHO,
         }
 
@@ -211,19 +211,19 @@ def _determinar_ponte_varfarina(data: dict) -> dict:
             extra = " e AVC/AIT < 3 meses" if avc_3m else ""
             return {
                 "acao": "Suspender + Ponte com heparina",
-                "detalhe": f"FA com CHA₂DS₂-VASc {chadsvasc}{extra}: realizar ponte com heparina.",
+                "detalhe": f"FA com CHADS₂ {chadsvasc}{extra}: realizar ponte com heparina.",
                 "tipo": TipoRecomendacao.VERMELHO,
             }
         elif chadsvasc >= 3:
             return {
                 "acao": "Considerar ponte com heparina",
-                "detalhe": f"FA com CHA₂DS₂-VASc {chadsvasc}: considerar ponte com heparina.",
+                "detalhe": f"FA com CHADS₂ {chadsvasc}: considerar ponte com heparina.",
                 "tipo": TipoRecomendacao.AMARELO,
             }
         else:
             return {
                 "acao": "Suspender sem ponte",
-                "detalhe": f"FA com CHA₂DS₂-VASc {chadsvasc} sem AVC/AIT recente: não realizar ponte.",
+                "detalhe": f"FA com CHADS₂ {chadsvasc} sem AVC/AIT recente: não realizar ponte.",
                 "tipo": TipoRecomendacao.VERDE,
             }
 

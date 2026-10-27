@@ -186,3 +186,17 @@ def test_varfarina_fa_ponte_com_heparina(chads, avc, acao):
         "usa_varfarina": True, "indicacao_varfarina": "af",
         "chadsvasc_varfarina": chads, "avc_3m_varfarina": avc})
     assert o[0]["acao"] == acao
+
+
+def test_varfarina_fa_cita_chads2_no_texto():
+    # A Tabela 11 usa CHADS2; CHA2DS2-VASc é outro escore e não pode aparecer no laudo.
+    o = montar_orientacoes_medicacao({
+        "usa_varfarina": True, "indicacao_varfarina": "af", "chadsvasc_varfarina": 4})
+    assert "CHADS₂ 4" in o[0]["detalhe"]
+    assert "VASc" not in o[0]["detalhe"]
+
+
+def test_varfarina_fa_valvar_indica_ponte():
+    o = montar_orientacoes_medicacao({"usa_varfarina": True, "indicacao_varfarina": "rheumatic"})
+    assert o[0]["acao"] == "Suspender + Ponte com heparina"
+    assert o[0]["detalhe"].startswith("FA valvar")

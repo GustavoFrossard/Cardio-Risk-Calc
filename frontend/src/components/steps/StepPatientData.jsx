@@ -17,7 +17,7 @@ const opcoesIndicacaoVarfarina = [
   { valor: "af", rotulo: "FA" },
   { valor: "vte", rotulo: "TEV" },
   { valor: "mechanical_valve", rotulo: "Prótese Mecânica" },
-  { valor: "rheumatic", rotulo: "Valvar Reumática" },
+  { valor: "rheumatic", rotulo: "FA valvar" },
 ];
 
 const opcoesTempoTevVarfarina = [

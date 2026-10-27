@@ -74,12 +74,12 @@ SURGERY_TYPE_MAP: dict[str, dict[str, Any]] = {
     "gynecologic_minor": {
         "risco": "baixo",
         "vascular": False,
-        "aliases": ["curetagem", "histeroscopia", "laqueadura tubaria", "conizacao", "ginecologica minor"],
+        "aliases": ["curetagem", "histeroscopia", "laqueadura tubaria", "conizacao", "ginecologica minor", "ginecologica menor"],
     },
     "orthopedic_minor": {
         "risco": "baixo",
         "vascular": False,
-        "aliases": ["artroscopia", "meniscectomia", "retirada de material de sintese", "liberacao do tunel do carpo", "ortopedica minor"],
+        "aliases": ["artroscopia", "meniscectomia", "retirada de material de sintese", "liberacao do tunel do carpo", "ortopedica minor", "ortopedica menor"],
     },
     "reconstructive": {
         "risco": "baixo",
@@ -94,11 +94,12 @@ SURGERY_TYPE_MAP: dict[str, dict[str, Any]] = {
     "urologic_minor": {
         "risco": "baixo",
         "vascular": False,
-        "aliases": ["ressecao transuretral", "rtu de prostata", "rtu de bexiga", "circuncisao", "postectomia", "vasectomia", "cistoscopia", "urologica minor"],
+        "aliases": ["ressecao transuretral", "rtu de prostata", "rtu de bexiga", "circuncisao", "postectomia", "vasectomia", "cistoscopia", "urologica minor", "urologica menor"],
     },
     "vats_minor": {
         "risco": "baixo",
         "vascular": False,
+        "intracavitaria": True,
         "aliases": ["vats minor", "cirurgia toracica videoassistida diagnostica", "biopsia pulmonar por vats"],
     },
 
@@ -135,10 +136,17 @@ SURGERY_TYPE_MAP: dict[str, dict[str, Any]] = {
     "intraperitoneal": {
         "risco": "intermediario",
         "vascular": False,
+        "intracavitaria": True,
         "aliases": [
             "colecistectomia",
             "hernia hiatal",
             "herniorrafia hiatal",
+            "herniorrafia umbilical",
+            "hernioplastia umbilical",
+            "hernia umbilical",
+            "herniorrafia incisional",
+            "hernioplastia incisional",
+            "hernia incisional",
             "esplenectomia",
             "intraperitoneal",
             "laparotomia",
@@ -150,6 +158,7 @@ SURGERY_TYPE_MAP: dict[str, dict[str, Any]] = {
     "intrathoracic": {
         "risco": "intermediario",
         "vascular": False,
+        "intracavitaria": True,
         "aliases": ["intratoracica", "toracotomia", "cirurgia toracica nao major", "mediastinoscopia", "biopsia pulmonar aberta"],
     },
     "neurologic": {
@@ -163,6 +172,8 @@ SURGERY_TYPE_MAP: dict[str, dict[str, Any]] = {
         "aliases": [
             "artroplastia",
             "ortopedica major",
+            "ortopedica maior",
+            "ortopedica de grande porte",
             "protese de quadril",
             "protese de joelho",
             "osteossintese",
@@ -184,12 +195,12 @@ SURGERY_TYPE_MAP: dict[str, dict[str, Any]] = {
     "urologic_major": {
         "risco": "intermediario",
         "vascular": False,
-        "aliases": ["urologica major", "nefrectomia", "prostatectomia radical", "nefrectomia parcial", "nefrectomia radical"],
+        "aliases": ["urologica major", "urologica maior", "nefrectomia", "prostatectomia radical", "nefrectomia parcial", "nefrectomia radical"],
     },
     "gynecologic_major": {
         "risco": "intermediario",
         "vascular": False,
-        "aliases": ["histerectomia", "histerectomia total", "cirurgia ginecologica oncologica", "ooforectomia", "ginecologica major"],
+        "aliases": ["histerectomia", "histerectomia total", "cirurgia ginecologica oncologica", "ooforectomia", "ginecologica major", "ginecologica maior"],
     },
     "total_cystectomy": {
         "risco": "intermediario",
@@ -201,7 +212,7 @@ SURGERY_TYPE_MAP: dict[str, dict[str, Any]] = {
     "aortic_vascular_major": {
         "risco": "alto",
         "vascular": True,
-        "aliases": ["aorta", "vascular major", "aneurisma de aorta aberta", "cirurgia de aorta aberta", "bypass aortobifemoral"],
+        "aliases": ["aorta", "vascular major", "vascular maior", "aneurisma de aorta aberta", "cirurgia de aorta aberta", "bypass aortobifemoral"],
     },
     "peripheral_open": {
         "risco": "alto",
@@ -221,36 +232,43 @@ SURGERY_TYPE_MAP: dict[str, dict[str, Any]] = {
     "pancreatic": {
         "risco": "alto",
         "vascular": False,
+        "intracavitaria": True,
         "aliases": ["pancreatectomia", "duodenopancreatectomia", "cirurgia de whipple", "whipple"],
     },
     "liver_biliary": {
         "risco": "alto",
         "vascular": False,
+        "intracavitaria": True,
         "aliases": ["hepatectomia", "ressecao hepatica", "cirurgia de vias biliares", "coledocotomia"],
     },
     "esophagectomy": {
         "risco": "alto",
         "vascular": False,
+        "intracavitaria": True,
         "aliases": ["esofagectomia"],
     },
     "pneumectomy": {
         "risco": "alto",
         "vascular": False,
+        "intracavitaria": True,
         "aliases": ["pneumectomia", "pneumonectomia", "lobectomia pulmonar"],
     },
     "lung_transplant": {
         "risco": "alto",
         "vascular": False,
+        "intracavitaria": True,
         "aliases": ["transplante pulmonar", "transplante de pulmao"],
     },
     "liver_transplant": {
         "risco": "alto",
         "vascular": False,
+        "intracavitaria": True,
         "aliases": ["transplante hepatico", "transplante de figado"],
     },
     "bowel_perforation": {
         "risco": "alto",
         "vascular": False,
+        "intracavitaria": True,
         "aliases": ["perfuracao intestinal", "reparo de perfuracao intestinal", "perfuracao de viscera oca"],
     },
 }
@@ -435,6 +453,86 @@ def _extrair_egfr(text: str) -> float | None:
     return float(m.group(1).replace(",", "."))
 
 
+FUNCAO_RENAL_PRESERVADA = [
+    "funcao renal preservada",
+    "funcao renal normal",
+    "funcao renal sem alteracoes",
+    "sem disfuncao renal",
+    "sem insuficiencia renal",
+    "creatinina normal",
+]
+
+VALVOPATIAS = [
+    "estenose aortica",
+    "estenose mitral",
+    "insuficiencia aortica",
+    "insuficiencia mitral",
+    "regurgitacao aortica",
+    "regurgitacao mitral",
+    "dupla lesao aortica",
+    "dupla lesao mitral",
+    "protese valvar",
+    "protese mecanica",
+    "protese biologica",
+    "troca valvar",
+    "valvopatia",
+    "doenca valvar",
+]
+
+# Tabela 11 da diretriz: "doença valvar reumática" aparece na coluna da FA (FA valvar).
+VALVOPATIA_REUMATICA = [
+    "doenca valvar reumatica",
+    "valvopatia reumatica",
+    "estenose mitral reumatica",
+    "cardiopatia reumatica",
+]
+
+PROTESE_MECANICA = r"\b(?:protese|valva|valvula)\s+(?:valvar\s+|cardiaca\s+)?(?:aortica\s+|mitral\s+)?mecanica\b"
+
+
+def _extrair_chads2(normalized_text: str) -> int | None:
+    # Só o CHADS2, que é o escore da Tabela 11. CHA2DS2-VASc e CHA2DS2-VA usam
+    # outra escala e não podem preencher este campo.
+    padrao = r"\bchads(2|₂)?(\s*-?\s*va(?:sc)?\b)?\s*(?:[:=]|de|score|escore)?\s*\(?\s*(\d)\b(?!\s*-?\s*va(?:sc)?\b)"
+    for m in re.finditer(padrao, normalized_text):
+        if m.group(2):
+            continue
+        valor = int(m.group(3))
+        if valor <= 6:
+            return valor
+    return None
+
+
+def _avc_ait_recente(normalized_text: str) -> bool:
+    # AVC/AIT < 3 meses é risco tromboembólico alto na Tabela 11 (ponte indicada).
+    padrao = (
+        r"\b(?:avc|avci|ait|acidente vascular cerebral|ataque isquemico transitorio)\b"
+        r"[^\.;]{0,15}?\bha\s+(\d+)\s*(dias?|semanas?|mes|meses)\b"
+    )
+    for m in re.finditer(padrao, normalized_text):
+        n, unidade = int(m.group(1)), m.group(2)
+        if unidade.startswith("dia"):
+            meses = n / 30
+        elif unidade.startswith("semana"):
+            meses = n / 4.3
+        else:
+            meses = n
+        if meses < 3:
+            return True
+    return False
+
+
+def _estenose_importante_sintomatica(normalized_text: str) -> bool:
+    # Condição ativa da Tabela 2: exige gravidade e sintomas explícitos na mesma frase.
+    for frase in re.split(r"[\.;]", normalized_text):
+        if re.search(
+            r"\bestenose\s+(?:valvar\s+)?(?:aortica|mitral)\s+(?:\w+\s+){0,2}?(?:importante|grave|severa|critica)\b",
+            frase,
+        ) and re.search(r"\bsintomatica\b", frase):
+            return True
+    return False
+
+
 def _extrair_cirurgia(normalized_text: str) -> dict[str, Any] | None:
     for surgery_id, payload in SURGERY_TYPE_MAP.items():
         if _corresponde_algum(normalized_text, payload["aliases"]):
@@ -442,6 +540,7 @@ def _extrair_cirurgia(normalized_text: str) -> dict[str, Any] | None:
                 "tipo_cirurgia": surgery_id,
                 "risco_cirurgia": payload["risco"],
                 "eh_vascular": payload["vascular"],
+                "rcri_cirurgia_alto_risco": payload.get("intracavitaria", False),
             }
     return None
 
@@ -495,11 +594,42 @@ def analisar_texto_clinico(text: str, current_data: dict[str, Any] | None = None
         autofill["usa_varfarina"] = True
         findings["medications"].append("varfarina")
 
-    if _corresponde_algum(normalized, ["fibrilacao atrial"]) or re.search(r"\bfa\b", normalized):
+    if _corresponde_algum(normalized, ["dabigatrana", "pradaxa"]):
+        autofill["usa_doac"] = True
+        autofill["tipo_doac"] = "dabigatrana"
+        findings["medications"].append("dabigatrana")
+    elif _corresponde_algum(normalized, ["rivaroxabana", "xarelto", "apixabana", "eliquis", "edoxabana", "lixiana"]):
+        autofill["usa_doac"] = True
+        autofill["tipo_doac"] = "rivaroxabana_apixabana_edoxabana"
+        findings["medications"].append("doac")
+    elif _corresponde_algum(normalized, ["doac", "noac", "anticoagulante oral direto"]):
+        autofill["usa_doac"] = True
+        findings["medications"].append("doac")
+
+    tem_fa = _corresponde_algum(normalized, ["fibrilacao atrial"]) or bool(re.search(r"\bfa\b", normalized))
+    tem_tev = _corresponde_algum(normalized, ["tev", "tromboembolismo venoso", "trombose venosa", "tep"])
+    tem_protese_mecanica = bool(re.search(PROTESE_MECANICA, normalized))
+    tem_fa_valvar = _corresponde_algum(normalized, ["fa valvar", "fibrilacao atrial valvar"]) or (
+        tem_fa and _corresponde_algum(normalized, VALVOPATIA_REUMATICA)
+    )
+
+    # Prótese mecânica e FA valvar sempre indicam ponte (Tabela 11), então
+    # prevalecem sobre TEV e FA comum quando o texto cita mais de uma.
+    if tem_protese_mecanica:
+        autofill["indicacao_varfarina"] = "mechanical_valve"
+    elif tem_fa_valvar:
+        autofill["indicacao_varfarina"] = "rheumatic"
+    elif tem_tev:
+        autofill["indicacao_varfarina"] = "vte"
+    elif tem_fa:
         autofill["indicacao_varfarina"] = "af"
 
-    if _corresponde_algum(normalized, ["tev", "tromboembolismo venoso", "trombose venosa", "tep"]):
-        autofill["indicacao_varfarina"] = "vte"
+    chads2 = _extrair_chads2(normalized)
+    if chads2 is not None:
+        autofill["chadsvasc_varfarina"] = chads2
+
+    if _avc_ait_recente(normalized):
+        autofill["avc_3m_varfarina"] = True
 
     if _corresponde_algum(normalized, ["avc", "ait", "acidente vascular cerebral", "avci"]):
         autofill["rcri_cerebrovascular"] = True
@@ -535,6 +665,34 @@ def analisar_texto_clinico(text: str, current_data: dict[str, Any] | None = None
     if has_revasc and not _esta_negado(normalized, "revascularizacao"):
         autofill["vsg_revasc_previa"] = True
 
+    valvopatias = [t for t in VALVOPATIAS if _corresponde_algum(normalized, [t]) and not _esta_negado(normalized, t)]
+    if valvopatias or tem_protese_mecanica:
+        autofill["doenca_valvar_conhecida"] = True
+        findings["diagnoses"].append("doenca_valvar")
+
+    if _estenose_importante_sintomatica(normalized):
+        autofill["cv_valvopatia_grave"] = True
+
+    # AAS em quem já tem doença aterosclerótica estabelecida é prevenção secundária.
+    if autofill.get("usa_aas") and not current_data.get("prevencao_aas"):
+        doenca_aterosclerotica = (
+            autofill.get("dac_conhecida")
+            or autofill.get("rcri_cerebrovascular")
+            or autofill.get("vsg_revasc_previa")
+            or _corresponde_algum(normalized, [
+                "stent",
+                "doenca arterial periferica",
+                "doenca arterial obstrutiva periferica",
+                "dap",
+                "doap",
+                "claudicacao intermitente",
+            ])
+        )
+        if _corresponde_algum(normalized, ["prevencao primaria"]):
+            autofill["prevencao_aas"] = "primary"
+        elif doenca_aterosclerotica or _corresponde_algum(normalized, ["prevencao secundaria"]):
+            autofill["prevencao_aas"] = "secondary"
+
     mets = _extrair_mets(text)
     if mets is None:
         mets = _inferir_mets_da_atividade(normalized)
@@ -549,6 +707,13 @@ def analisar_texto_clinico(text: str, current_data: dict[str, Any] | None = None
             autofill["vsg_creatinina_acima_1_8"] = True
 
     egfr = _extrair_egfr(text)
+
+    funcao_renal_preservada = (
+        creatinine is None and egfr is None and _corresponde_algum(normalized, FUNCAO_RENAL_PRESERVADA)
+    )
+    if funcao_renal_preservada:
+        autofill["rcri_creatinina_acima_2"] = False
+        autofill["vsg_creatinina_acima_1_8"] = False
 
     merged = {**current_data, **autofill}
     missing_critical: list[dict[str, str]] = []
@@ -588,7 +753,7 @@ def analisar_texto_clinico(text: str, current_data: dict[str, Any] | None = None
             }
         )
 
-    if creatinine is None and egfr is None:
+    if creatinine is None and egfr is None and not funcao_renal_preservada:
         missing_critical.append(
             {
                 "campo": "funcao_renal",
