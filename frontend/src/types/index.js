@@ -7,7 +7,7 @@ export const OPCOES_CIRURGIA = [
   { valor: "thyroid", rotulo: "Tireoide", risco: "baixo", vascular: false },
   { valor: "eye", rotulo: "Ocular", risco: "baixo", vascular: false },
   { valor: "gynecologic_minor", rotulo: "Ginecológica minor", risco: "baixo", vascular: false },
-  { valor: "orthopedic_minor", rotulo: "Ortopédica minor (menisco)", risco: "baixo", vascular: false },
+  { valor: "orthopedic_minor", rotulo: "Ortopédica minor", risco: "baixo", vascular: false },
   { valor: "reconstructive", rotulo: "Reconstrutiva", risco: "baixo", vascular: false },
   { valor: "superficial", rotulo: "Superfície", risco: "baixo", vascular: false },
   { valor: "urologic_minor", rotulo: "Urológica minor (RTU)", risco: "baixo", vascular: false },
