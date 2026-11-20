@@ -44,6 +44,56 @@ const opcoesRiscoSangramentoDoac = [
 
 // Conferência do preenchimento: termos clínicos que o modelo de NER encontrou no texto
 // e que nenhuma regra usou. O modelo não preenche campos; só pede que o médico confira.
+const ROTULOS_CAMPOS_DO_MODELO = {
+  rcri_doenca_coronaria: "Doença arterial coronariana",
+  rcri_ic: "Insuficiência cardíaca",
+  rcri_cerebrovascular: "Doença cerebrovascular (AVC/AIT)",
+  rcri_diabetes_insulina: "Diabetes com insulina",
+  vsg_dpoc: "DPOC",
+  vsg_tabagismo: "Tabagismo",
+  obesidade: "Obesidade",
+  vsg_betabloqueador_cronico: "Betabloqueador crônico",
+  vsg_revasc_previa: "Revascularização miocárdica prévia",
+  doenca_valvar_conhecida: "Doença valvar",
+  usa_aas: "AAS",
+  usa_clopidogrel: "Clopidogrel",
+  usa_ticagrelor: "Ticagrelor",
+  usa_prasugrel: "Prasugrel",
+  usa_varfarina: "Varfarina",
+  usa_doac: "DOAC",
+  tipo_cirurgia: "Tipo de cirurgia",
+};
+
+// Campos que o modelo de NER preencheu a partir de um termo que nenhuma regra usou.
+// A ligação termo → campo é por semelhança de escrita, então cada um pede conferência.
+function CamposPreenchidosPeloModelo({ itens }) {
+  const preenchidos = Array.isArray(itens) ? itens : [];
+  if (preenchidos.length === 0) return null;
+
+  return (
+    <div
+      style={{
+        borderRadius: "var(--r-sm)",
+        background: "var(--blue-soft)",
+        border: "1px solid var(--blue-border)",
+        padding: "10px 12px",
+        fontSize: 12,
+        color: "var(--blue)",
+        lineHeight: 1.5,
+      }}
+    >
+      <div style={{ fontWeight: 600, marginBottom: 6 }}>Campos preenchidos pelo modelo — confira</div>
+      <ul style={{ margin: 0, paddingLeft: 18 }}>
+        {preenchidos.map((item) => (
+          <li key={`${item.campo}-${item.termo}`}>
+            {ROTULOS_CAMPOS_DO_MODELO[item.campo] ?? item.campo}: preenchido a partir de “{item.termo}”
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function AvisoRevisaoNer({ revisao }) {
   const naoReconhecidos = Array.isArray(revisao?.nao_reconhecidos) ? revisao.nao_reconhecidos : [];
   const presentes = naoReconhecidos.filter((item) => !item.negado).map((item) => item.text);
@@ -231,6 +281,7 @@ export function EtapaDadosPaciente({ data, onChange, onAnalisarTextoClinico, ana
               </div>
             )}
 
+            <CamposPreenchidosPeloModelo itens={resultadoNlp?.ner_autofill} />
             <AvisoRevisaoNer revisao={resultadoNlp?.ner_review} />
           </div>
         )}

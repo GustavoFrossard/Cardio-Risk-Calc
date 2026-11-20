@@ -8,8 +8,11 @@ Gera: resultados_por_caso.csv, metricas_por_campo.csv e relatorio_avaliacao_pln.
 
 Com a opção --ner (exige transformers e torch: pip install -r requirements-ner.txt):
     python avaliar_pln.py --ner
-roda os mesmos casos com os modelos de NER ligados e mede o que a conferência (`ner_review`)
-acrescenta. Gera: avaliacao_ner.csv e resumo_avaliacao_ner.md. Não regrava os três arquivos acima.
+roda os mesmos casos com os modelos de NER ligados e mede o preenchimento pelo modelo
+(`ner_autofill`) ao lado do preenchimento só com regras, além dos avisos da conferência
+(`ner_review`). Os limiares da ligação entidade → campo são escolhidos nos casos de número ímpar e
+conferidos nos pares. Gera: avaliacao_ner.csv e resumo_avaliacao_ner.md. Não regrava os três
+arquivos acima.
 
 Cada caso tem um texto clínico fictício e um gabarito (o que um profissional marcaria no formulário).
 O gabarito foi revisado por um médico em 19/11/2026 (casos 8, 9, 35, 47, 49, 53 e 56 corrigidos).
@@ -391,6 +394,152 @@ def _tempo_medio_ms(textos, repeticoes):
     return 1000 * (time.perf_counter() - t0) / (repeticoes * len(textos))
 
 
+def _ouro(i):
+    """Gabarito do caso de número i (1 a 60) como campos do formulário."""
+    _, _, idade, mets, cirurgia, achados, creat = CASOS[i - 1]
+    return gabarito_para_formulario(idade, mets, cirurgia, achados, creat)
+
+
+def _classe(dados):
+    classe = calcular_risco(completar(dados))["classe_risco"]
+    return str(getattr(classe, "value", classe))
+
+
+def _metricas_preenchimento(autofills, numeros):
+    """Métricas dos campos de sim/não, da cirurgia e da classe de risco nos casos de `numeros`."""
+    m = {"vp": 0, "fp": 0, "fn": 0, "classe_igual": 0, "cir_ok": 0, "cir_ausente": 0, "cir_errada": 0,
+         "n": len(numeros)}
+    for i in numeros:
+        ouro, pred = _ouro(i), autofills[i - 1]
+        for campo in BOOLEANOS:
+            g, p = bool(ouro[campo]), bool(pred.get(campo, False))
+            m["vp"] += g and p
+            m["fp"] += p and not g
+            m["fn"] += g and not p
+        cir = pred.get("tipo_cirurgia")
+        m["cir_ok" if cir == ouro["tipo_cirurgia"] else "cir_ausente" if cir is None else "cir_errada"] += 1
+        m["classe_igual"] += _classe(ouro) == _classe(pred)
+    m["p"], m["r"], m["f1"] = prf(m["vp"], m["fp"], m["fn"])
+    return m
+
+
+GRADE_LIMIAR = [x / 100 for x in range(30, 100, 5)]
+GRADE_FOLGA = [x / 100 for x in range(0, 45, 5)]
+
+
+def _ligacoes(respostas, numeros, limiar, folga, alvo):
+    """Ligações (caso, campo, termo, certo) que o par limiar/folga faria nos casos de `numeros`.
+
+    Usa as entidades que nenhuma regra usou (`nao_reconhecidos` sem negação) e as funções de
+    ligação de core/clinical_nlp.py; conta cada campo uma vez por caso.
+    """
+    feitas = []
+    for i in numeros:
+        ouro, pred = _ouro(i), respostas[i - 1]["autofill"]
+        vistos = set()
+        for item in respostas[i - 1]["ner_review"]["nao_reconhecidos"]:
+            if item["negado"]:
+                continue
+            if alvo == "campo":
+                campo, _ = clinical_nlp._ligar_entidade_a_campo(item, limiar, folga)
+                if not campo or campo in pred or campo in vistos or campo not in BOOLEANOS:
+                    continue
+                certo = bool(ouro[campo])
+            else:
+                if item["label"] != "Procedures" or pred.get("tipo_cirurgia") or vistos:
+                    continue
+                campo, _ = clinical_nlp._ligar_entidade_a_cirurgia(item, limiar, folga)
+                if not campo:
+                    continue
+                certo = campo == ouro["tipo_cirurgia"]
+            vistos.add(campo)
+            feitas.append((i, campo, item["text"], certo))
+    return feitas
+
+
+def _escolher_limiares(respostas, numeros, alvo):
+    """Par (limiar, folga) com mais ligações certas nos casos de `numeros`; uma errada desconta duas.
+
+    No empate fica o par mais exigente (maior limiar, depois maior folga).
+    """
+    melhor = None
+    for limiar in GRADE_LIMIAR:
+        for folga in GRADE_FOLGA:
+            feitas = _ligacoes(respostas, numeros, limiar, folga, alvo)
+            certas = sum(f[3] for f in feitas)
+            erradas = len(feitas) - certas
+            chave = (certas - 2 * erradas, limiar, folga)
+            if melhor is None or chave > melhor[0]:
+                melhor = (chave, certas, erradas)
+    (_, limiar, folga), certas, erradas = melhor
+    return limiar, folga, certas, erradas
+
+
+def _secao_preenchimento(so_regras, com_ner, com_modelo, com_cirurgia, pct):
+    """Linhas do resumo: preenchimento pelo modelo ao lado do preenchimento só com regras."""
+    todos = list(range(1, len(CASOS) + 1))
+    impares, pares = todos[0::2], todos[1::2]
+    configuracoes = [("Só regras", [r["autofill"] for r in so_regras]),
+                     ("Regras + modelo (campos)", [r["autofill"] for r in com_modelo]),
+                     ("Regras + modelo (campos e cirurgia)", [r["autofill"] for r in com_cirurgia])]
+
+    md = ["## Preenchimento pelo modelo", "",
+          "Entidade que nenhuma regra usou preenche o campo a que se liga pela escrita (trigramas de "
+          "caracteres contra descrições canônicas de cada campo). Os limiares são escolhidos só nos casos "
+          "de número ímpar; os casos pares servem de conferência.", "",
+          "| Casos | Configuração | VP | FP | FN | Precisão | Revocação | F1 | Mesma classe de risco | "
+          "Classe errada | Cirurgia certa | Cirurgia não identificada | Cirurgia errada |",
+          "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
+    for nome_grupo, numeros in (("Total (60)", todos), ("Ímpares (30)", impares), ("Pares (30)", pares)):
+        for nome, autofills in configuracoes:
+            m = _metricas_preenchimento(autofills, numeros)
+            md.append(f"| {nome_grupo} | {nome} | {m['vp']} | {m['fp']} | {m['fn']} | {fmt(m['p'])} | "
+                      f"{fmt(m['r'])} | {fmt(m['f1'])} | {m['classe_igual']}/{m['n']} | "
+                      f"{m['n'] - m['classe_igual']} | {m['cir_ok']} | {m['cir_ausente']} | {m['cir_errada']} |")
+
+    md += ["", "### Limiares (escolhidos nos casos ímpares)", ""]
+    for alvo, nome, em_uso in (
+            ("campo", "Campos", (clinical_nlp.LIGACAO_CAMPO_LIMIAR, clinical_nlp.LIGACAO_CAMPO_FOLGA)),
+            ("cirurgia", "Tipo de cirurgia", (clinical_nlp.LIGACAO_CIRURGIA_LIMIAR, clinical_nlp.LIGACAO_CIRURGIA_FOLGA))):
+        limiar, folga, certas, erradas = _escolher_limiares(com_ner, impares, alvo)
+        nos_pares = _ligacoes(com_ner, pares, limiar, folga, alvo)
+        md.append(f"- {nome}: limiar {fmt(limiar)} e folga {fmt(folga)} (ímpares: {certas} ligações certas e "
+                  f"{erradas} erradas; pares, com os mesmos valores: {sum(f[3] for f in nos_pares)} certas e "
+                  f"{len(nos_pares) - sum(f[3] for f in nos_pares)} erradas). "
+                  f"Em uso em `core/clinical_nlp.py`: {fmt(em_uso[0])} e {fmt(em_uso[1])}.")
+
+    md += ["", "### O que o modelo preencheu", "",
+           "| Caso | Campo | Termo | Resultado |", "|---|---|---|---|"]
+    certos = errados = sem_gabarito = 0
+    for i in todos:
+        ouro = _ouro(i)
+        for p in com_modelo[i - 1]["ner_autofill"]:
+            if p["campo"] not in BOOLEANOS:
+                resultado = "sem gabarito"
+                sem_gabarito += 1
+            else:
+                resultado = "certo" if ouro[p["campo"]] else "ERRADO"
+                certos += bool(ouro[p["campo"]])
+                errados += not ouro[p["campo"]]
+            md.append(f"| {i} | {ROTULOS.get(p['campo'], p['campo'])} | {p['termo']} | {resultado} |")
+    md += ["", f"- Campos preenchidos pelo modelo: {certos + errados + sem_gabarito} "
+               f"({certos} certos, {errados} errados, {sem_gabarito} sem gabarito)", "",
+           "### Tipo de cirurgia pelo modelo (`CARDIORISK_NER_AUTOFILL_CIRURGIA=true`)", "",
+           "| Caso | Cirurgia ligada | Termo | Esperado | Resultado |", "|---|---|---|---|---|"]
+    cir_certas = cir_erradas = 0
+    for i in todos:
+        ouro = _ouro(i)
+        for p in com_cirurgia[i - 1]["ner_autofill"]:
+            if p["campo"] != "tipo_cirurgia":
+                continue
+            ok = p["valor"] == ouro["tipo_cirurgia"]
+            cir_certas += ok
+            cir_erradas += not ok
+            md.append(f"| {i} | {p['valor']} | {p['termo']} | {ouro['tipo_cirurgia']} | {'certo' if ok else 'ERRADO'} |")
+    md += ["", f"- Cirurgias que o modelo passou a identificar: {cir_certas} certas e {cir_erradas} erradas", ""]
+    return md
+
+
 def main_ner():
     n = len(CASOS)
     textos = [c[1] for c in CASOS]
@@ -415,7 +564,17 @@ def main_ner():
             sys.exit(f"Não foi possível carregar {nome}: {erro}")
         cargas.append((nome, time.perf_counter() - t1))
     carga_total = time.perf_counter() - t0
+
+    # 2a) Modelos só na conferência (sem preencher): base para os avisos e para a escolha dos limiares.
+    clinical_nlp.NER_AUTOFILL = False
     com_ner = [analisar_texto_clinico(t) for t in textos]  # também serve de aquecimento
+
+    # 2b) Modelos preenchendo campos; 2c) campos e tipo de cirurgia.
+    clinical_nlp.NER_AUTOFILL = True
+    clinical_nlp.NER_AUTOFILL_CIRURGIA = True
+    com_cirurgia = [analisar_texto_clinico(t) for t in textos]
+    clinical_nlp.NER_AUTOFILL_CIRURGIA = False
+    com_modelo = [analisar_texto_clinico(t) for t in textos]
     tempo_ner = _tempo_medio_ms(textos, 3)
     mem_ner, mem_pico = _memoria_mb()
 
@@ -501,6 +660,16 @@ def main_ner():
             "negacao_aponta_campo_a_mais": "; ".join(
                 f"{ROTULOS[c]}: {', '.join(v) if v else 'não'}" for c, v in fp_negados.items()),
             "preenchimento_igual_ao_sem_ner": "sim" if so_regras[i - 1]["autofill"] == pred else "não",
+            "preenchido_pelo_modelo": "; ".join(
+                f"{ROTULOS.get(p['campo'], p['campo'])} <- {p['termo']} "
+                f"({'certo' if ouro.get(p['campo']) else 'errado' if p['campo'] in BOOLEANOS else 'sem gabarito'})"
+                for p in com_modelo[i - 1]["ner_autofill"]),
+            "cirurgia_pelo_modelo (opção desligada por padrão)": "; ".join(
+                f"{p['valor']} <- {p['termo']} ({'certo' if p['valor'] == cirurgia else 'errado'})"
+                for p in com_cirurgia[i - 1]["ner_autofill"] if p["campo"] == "tipo_cirurgia"),
+            "classe_esperada": _classe(ouro),
+            "classe_so_regras": _classe(so_regras[i - 1]["autofill"]),
+            "classe_regras_e_modelo": _classe(com_modelo[i - 1]["autofill"]),
         })
 
     with open("avaliacao_ner.csv", "w", newline="", encoding="utf-8-sig") as f:
@@ -509,13 +678,16 @@ def main_ner():
 
     pct = lambda a, b: f"{a}/{b} ({100 * a / b:.1f}%)".replace(".", ",") if b else f"{a}/{b}"
     modelos = clinical_nlp.MODEL_NAMES
-    md = ["# Avaliação da conferência com o NER – CardioRisk Periop", "",
-          f"Casos: {n} textos clínicos fictícios, os mesmos de `python avaliar_pln.py`. As regras continuam "
-          "sendo as únicas que preenchem campos; os modelos só geram avisos (`ner_review`).", "",
+    md = ["# Avaliação com os modelos de NER – CardioRisk Periop", "",
+          f"Casos: {n} textos clínicos fictícios, os mesmos de `python avaliar_pln.py`. As regras preenchem "
+          "os campos; uma entidade dos modelos que nenhuma regra usou preenche o campo a que se liga "
+          "(`ner_autofill`) ou vira aviso (`ner_review`).", "",
           "Modelos: " + ", ".join(f"`{m}`" for m in modelos)
           + f". Score mínimo: {num(clinical_nlp.NER_SCORE_MINIMO, 2)}.", "",
-          "## O preenchimento não muda", "",
-          f"- Casos com `autofill` idêntico com e sem os modelos: {pct(preenchimento_igual, n)}", "",
+          *_secao_preenchimento(so_regras, com_ner, com_modelo, com_cirurgia, pct),
+          "## Modelos só na conferência (`CARDIORISK_NER_AUTOFILL=false`)", "",
+          "As seções abaixo medem os avisos quando os modelos não preenchem nada.", "",
+          f"- Casos com `autofill` idêntico ao das regras: {pct(preenchimento_igual, n)}", "",
           "## Volume", "",
           f"- Entidades devolvidas pelos modelos: {t['entidades']}",
           f"- Termos que coincidem com o que as regras reconheceram (`confirmados`): {t['confirmados']}",

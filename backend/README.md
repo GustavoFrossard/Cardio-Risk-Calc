@@ -21,22 +21,42 @@ Variáveis de ambiente (opcionais):
 | `CARDIORISK_ENABLE_NER` | `false` desativa o NER do Hugging Face no `/nlp/analyze` (recomendado com pouca RAM) |
 | `CARDIORISK_NER_MODELS` | Modelos de NER, separados por vírgula (padrão: `pucpr/clinicalnerpt-disorder,pucpr/clinicalnerpt-chemical,pucpr/clinicalnerpt-procedure`) |
 | `CARDIORISK_NER_MODEL` | Um único modelo; mantida por compatibilidade e usada só se `CARDIORISK_NER_MODELS` não estiver definida |
+| `CARDIORISK_NER_AUTOFILL` | `false` deixa os modelos só na conferência (`ner_review`), sem preencher campos (padrão: `true`) |
+| `CARDIORISK_NER_AUTOFILL_CIRURGIA` | `true` permite ao modelo preencher o tipo de cirurgia quando as regras não o identificam (padrão: `false`) |
 | `HF_TOKEN` | Token opcional do Hugging Face |
 | `CARDIORISK_SUPPRESS_MODEL_WARNINGS` | `true` oculta avisos de requisição não autenticada ao Hub |
 
-## Texto livre: regras e conferência com NER
+## Texto livre: regras e modelos de NER
 
-O `/nlp/analyze` preenche os campos **somente com regras** (listas de termos e expressões
-regulares). Os modelos de NER não preenchem nada: servem de conferência das regras. Quando um
-modelo encontra um termo clínico que nenhuma regra reconheceu (por exemplo "coronariopata" ou
-"ICFEr"), a resposta traz esse termo em `ner_review.nao_reconhecidos` e a tela pede que o médico
-confira o campo manualmente.
+O `/nlp/analyze` preenche os campos em duas etapas:
 
+1. **Regras** (listas de termos e expressões regulares) cuidam de idade, creatinina, METs,
+   CHADS₂, negação, eventos recentes, tipo de cirurgia e dos termos mais comuns de cada campo.
+   Funcionam sozinhas quando os modelos estão desligados.
+2. **Modelos de NER** marcam os termos clínicos do texto. Um termo que nenhuma regra usou é
+   comparado, pela escrita (trigramas de caracteres), com descrições canônicas de cada campo. Se a
+   semelhança com um campo passa do limiar (0,75) e fica com folga (0,20) sobre o segundo campo
+   mais parecido, o campo é preenchido. Exemplos: "coronariopata" marca doença arterial
+   coronariana; "ICFEr", insuficiência cardíaca; "bisoprolol", betabloqueador.
+
+Proteções do preenchimento pelo modelo:
+
+- termo negado ("sem coronariopatia") não preenche;
+- o que as regras preencheram e o que já veio marcado no formulário não é trocado;
+- campos com critério específico exigem o qualificador no próprio termo: diabetes só marca o
+  campo de insulina se o termo citar insulina; revascularização só marca revascularização
+  miocárdica se o termo citar miocárdio, coronária, CRM ou ATC.
+
+Campos da resposta:
+
+- `autofill`: campos preenchidos pelas regras e pelo modelo.
+- `ner_autofill`: o que o modelo preencheu, como lista de `campo`, `valor`, `termo`, `label` e
+  `score`. A tela mostra cada item como "preenchido a partir de …" e pede conferência.
 - `ner_review.nao_reconhecidos`: entidades com score ≥ 0,60, com mais de 2 letras e sem
-  duplicatas, cujo texto não coincide com nenhum termo reconhecido pelas regras. Cada item traz
-  `text`, `label`, `score` e `negado` (o termo vem depois de "nega", "sem" ou "não" na frase).
-- `ner_review.confirmados`: entidades que coincidem com algo que as regras reconheceram, com os
-  mesmos campos. Um item com `negado: true` indica um campo que pode ter sido marcado
+  duplicatas, que nenhuma regra usou e que não se ligaram a campo nenhum. Cada item traz `text`,
+  `label`, `score` e `negado` (o termo vem depois de "nega", "sem" ou "não" na frase).
+- `ner_review.confirmados`: entidades que coincidem com algo que as regras reconheceram ou com um
+  campo já marcado. Um item com `negado: true` indica um campo que pode ter sido marcado
   indevidamente (as regras não tratam negação em todos os campos).
 - `entities`: tudo o que os modelos devolveram (`text`, `label`, `score`, `start`, `end`, `model`).
 
@@ -44,18 +64,30 @@ Modelos padrão (BioBERTpt ajustado com o SemClinBr, um rótulo cada): `clinical
 (doenças, sinais e sintomas), `clinicalnerpt-chemical` (medicamentos) e `clinicalnerpt-procedure`
 (procedimentos).
 
+O tipo de cirurgia só é preenchido pelo modelo com `CARDIORISK_NER_AUTOFILL_CIRURGIA=true`. A
+opção vem desligada porque, nos casos de avaliação, a ligação de procedimento a tipo de cirurgia
+acerta 3 cirurgias e erra 1, e um tipo errado muda o índice aplicado.
+
 O NER exige `transformers` e `torch` (`pip install -r requirements-ner.txt`). Sem essas
-bibliotecas, ou com `CARDIORISK_ENABLE_NER=false`, o `/nlp/analyze` funciona apenas com as regras:
-o preenchimento é o mesmo e `ner_review` vem vazio.
+bibliotecas, ou com `CARDIORISK_ENABLE_NER=false`, o `/nlp/analyze` funciona apenas com as regras
+e `ner_autofill` e `ner_review` vêm vazios.
 
-**Memória:** com os três modelos carregados o processo ocupou cerca de 1,5 GB de RAM (medição
-em CPU com `python avaliar_pln.py --ner`; só as regras ocupam cerca de 20 MB). Por isso o
+**Avaliação** com 60 casos clínicos fictícios (`python avaliar_pln.py` para as regras e
+`python avaliar_pln.py --ner` com os modelos). Os limiares da ligação são escolhidos nos casos de
+número ímpar e conferidos nos pares:
+
+| Casos | Configuração | Precisão | Revocação | F1 | Mesma classe de risco |
+|---|---|---|---|---|---|
+| Todos (60) | Só regras | 0,89 | 0,82 | 0,85 | 50/60 |
+| Todos (60) | Regras + modelo | 0,90 | 0,90 | 0,90 | 53/60 |
+| Pares (30) | Só regras | 0,88 | 0,80 | 0,84 | 30/30 |
+| Pares (30) | Regras + modelo | 0,89 | 0,86 | 0,88 | 30/30 |
+
+**Memória:** com os três modelos carregados o processo ocupa cerca de 1,5 GB de RAM (medição em
+CPU com `python avaliar_pln.py --ner`; só as regras ocupam cerca de 20 MB). Por isso o
 `requirements.txt` do servidor não inclui essas bibliotecas e, em produção, o NER só roda em um
-servidor com pelo menos 2 GB de memória. A análise de um texto leva cerca de 0,13 s com os
+servidor com pelo menos 2 GB de memória. A análise de um texto leva cerca de 0,12 s com os
 modelos e 2 ms sem eles.
-
-Avaliação com 60 casos clínicos fictícios: `python avaliar_pln.py` (só regras) e
-`python avaliar_pln.py --ner` (conferência com os modelos).
 
 ## Endpoints
 
@@ -94,9 +126,9 @@ backend/
 ├── core/
 │   ├── calculator.py        # pontuar_rcri, pontuar_vsg, classes de risco,
 │   │                        # recomendações, exames e orientações de medicação
-│   └── clinical_nlp.py      # Extração de campos a partir de texto livre (regras) e
-│                            # conferência das regras com NER (opcional)
-├── tests/                   # 124 testes (pytest)
+│   └── clinical_nlp.py      # Extração de campos a partir de texto livre: regras e
+│                            # modelos de NER (opcionais)
+├── tests/                   # 151 testes (pytest)
 ├── avaliar_pln.py           # Avaliação com 60 casos fictícios (--ner liga os modelos)
 ├── requirements.txt         # fastapi, uvicorn, pydantic
 ├── requirements-ner.txt     # transformers, torch, sentencepiece (NER, opcional)
@@ -105,11 +137,14 @@ backend/
 
 ## Limitações
 
-- Há 124 testes automatizados (`python -m pytest tests -v`): 53 do motor de cálculo e 71 do
-  módulo de texto livre, dos quais 18 da conferência com NER (com um modelo falso, sem baixar
+- Há 151 testes automatizados (`python -m pytest tests -v`): 53 do motor de cálculo e 98 do
+  módulo de texto livre, dos quais 45 dos modelos de NER (com um modelo falso, sem baixar
   nada). As regras de exames não têm cobertura sistemática.
-- A conferência com NER gera avisos também em textos que as regras preencheram corretamente
-  (termos sem campo na calculadora, como "hipertenso"); ela orienta a revisão, não a substitui.
+- A ligação de um termo a um campo é por semelhança de escrita: não reconhece sinônimos sem
+  letras em comum com as descrições do campo, e foi medida só nos 60 casos fictícios. Todo
+  campo preenchido pelo modelo aparece na tela para conferência.
+- Termos clínicos sem campo na calculadora (como "hipertenso") geram avisos também em textos
+  preenchidos corretamente; os avisos orientam a revisão, não a substituem.
 - Sem validação clínica. Não substitui o julgamento médico.
 - Dados do paciente não são armazenados pela API, mas o texto enviado ao
   `/nlp/analyze` pode conter dados sensíveis (LGPD): não o use com dados reais sem

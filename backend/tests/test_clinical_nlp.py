@@ -192,13 +192,13 @@ def _textos(itens):
 
 
 def test_ner_termo_que_nenhuma_regra_reconhece_vira_aviso(ner_falso):
-    ner_falso([("coronariopata", "Disorder", 0.99), ("ICFEr", "Disorder", 0.98)])
-    r = analisar_texto_clinico("Paciente de 61 anos, coronariopata, ICFEr. Colecistectomia.")
-    assert _textos(r["ner_review"]["nao_reconhecidos"]) == ["coronariopata", "ICFEr"]
+    # Termos clínicos sem campo no formulário: viram aviso e não preenchem nada.
+    ner_falso([("coxartrose", "Disorder", 0.99), ("hipotireoidismo", "Disorder", 0.98)])
+    r = analisar_texto_clinico("Paciente de 61 anos, coxartrose, hipotireoidismo. Colecistectomia.")
+    assert _textos(r["ner_review"]["nao_reconhecidos"]) == ["coxartrose", "hipotireoidismo"]
     assert r["ner_review"]["nao_reconhecidos"][0] == {
-        "text": "coronariopata", "label": "Disorder", "score": 0.99, "negado": False}
-    # O modelo só avisa: o campo continua sem preencher.
-    assert "rcri_doenca_coronaria" not in r["autofill"]
+        "text": "coxartrose", "label": "Disorder", "score": 0.99, "negado": False}
+    assert r["ner_autofill"] == []
 
 
 def test_ner_termo_reconhecido_pelas_regras_vai_para_confirmados(ner_falso):
@@ -236,10 +236,10 @@ def test_ner_score_baixo_e_termo_curto_sao_descartados(ner_falso):
 
 def test_ner_entidade_repetida_aparece_uma_vez(ner_falso):
     # Mesmo termo duas vezes no texto e em dois modelos: um aviso só, com o maior score.
-    ner_falso([("bisoprolol", "ChemicalDrugs", 0.91)], modelos=("modelo-a", "modelo-b"))
-    r = analisar_texto_clinico("Usa bisoprolol pela manhã. Bisoprolol mantido no dia da cirurgia.")
+    ner_falso([("cilostazol", "ChemicalDrugs", 0.91)], modelos=("modelo-a", "modelo-b"))
+    r = analisar_texto_clinico("Usa cilostazol pela manhã. Cilostazol mantido no dia da cirurgia.")
     assert len(r["entities"]) == 2
-    assert _textos(r["ner_review"]["nao_reconhecidos"]) == ["bisoprolol"]
+    assert _textos(r["ner_review"]["nao_reconhecidos"]) == ["cilostazol"]
 
 
 def test_ner_trecho_contido_em_outro_aviso_nao_se_repete(ner_falso):
@@ -267,10 +267,11 @@ def test_ner_entidades_trazem_posicao_trecho_original_e_modelo(ner_falso):
 
 @pytest.mark.parametrize("texto", [CASO_1, CASO_2, CASO_3, CASO_4, CASO_5, CASO_6],
                          ids=["caso1", "caso2", "caso3", "caso4", "caso5", "caso6"])
-def test_ner_ligado_nao_altera_o_preenchimento(texto, monkeypatch):
+def test_ner_termos_sem_campo_nao_alteram_o_preenchimento(texto, monkeypatch):
     sem_ner = analisar_texto_clinico(texto)
     assert sem_ner["ner_review"] == {"nao_reconhecidos": [], "confirmados": []}
     assert sem_ner["entities"] == []
+    assert sem_ner["ner_autofill"] == []
     assert sem_ner["model"]["status"] == "fallback"
 
     achados = [("hipertensão arterial", "Disorder", 0.99), ("diabetes", "Disorder", 0.99),
@@ -293,6 +294,7 @@ def test_ner_sem_transformers_instalado_devolve_avisos_vazios(monkeypatch):
     monkeypatch.setattr(clinical_nlp, "_NER_ERRORS", {})
     r = analisar_texto_clinico(CASO_1)
     assert r["ner_review"] == {"nao_reconhecidos": [], "confirmados": []}
+    assert r["ner_autofill"] == []
     assert r["model"]["status"] == "fallback"
     assert "transformers não está instalado" in r["model"]["detail"]
     assert r["autofill"]["usa_aas"] is True
@@ -314,3 +316,135 @@ def test_ner_texto_longo_e_dividido_sem_perder_posicoes():
     assert len(trechos) > 1
     assert "".join(t for _, t in trechos) == texto
     assert all(len(t) <= 1000 and texto[ini:ini + len(t)] == t for ini, t in trechos)
+
+
+# ---------- Preenchimento a partir das entidades do NER (ner_autofill) ----------
+@pytest.mark.parametrize("termo,campo", [
+    ("coronariopata", "rcri_doenca_coronaria"),
+    ("ICFEr", "rcri_ic"),
+    ("AVE isquêmico", "rcri_cerebrovascular"),
+    ("bisoprolol", "vsg_betabloqueador_cronico"),
+    ("propranolol", "vsg_betabloqueador_cronico"),
+    ("Brilinta", "usa_ticagrelor"),
+    ("hipertenso", None),
+    ("cilostazol", None),
+    ("pancreatite crônica", None),
+    ("neoplasia de pulmão", None),
+])
+def test_ligacao_de_entidade_a_campo(termo, campo):
+    ligado, confianca = clinical_nlp._ligar_entidade_a_campo({"text": termo})
+    assert ligado == campo
+    assert 0.0 <= confianca <= 1.0
+
+
+@pytest.mark.parametrize("termo,campo", [
+    ("diabético", None),
+    ("diabetes mellitus", None),
+    ("DM2 insulinizado", "rcri_diabetes_insulina"),
+    ("DM insulinodependente", "rcri_diabetes_insulina"),
+    ("revascularização", None),
+    ("stent", None),
+    ("revascularização miocárdica", "vsg_revasc_previa"),
+    ("CRM", "vsg_revasc_previa"),
+])
+def test_campo_com_criterio_especifico_exige_o_qualificador(termo, campo):
+    assert clinical_nlp._ligar_entidade_a_campo({"text": termo})[0] == campo
+
+
+def test_ner_preenche_campo_que_nenhuma_regra_preencheu(ner_falso):
+    ner_falso([("coronariopata", "Disorder", 0.99), ("coxartrose", "Disorder", 0.98)])
+    r = analisar_texto_clinico("Paciente de 61 anos, coronariopata, coxartrose. Colecistectomia.")
+    assert r["ner_autofill"] == [{"campo": "rcri_doenca_coronaria", "valor": True, "termo": "coronariopata",
+                                  "label": "Disorder", "score": 0.99}]
+    assert r["autofill"]["rcri_doenca_coronaria"] is True
+    assert r["autofill"]["dac_conhecida"] is True and r["autofill"]["vsg_dac"] is True
+    # O que não se liga a campo nenhum continua como aviso.
+    assert _textos(r["ner_review"]["nao_reconhecidos"]) == ["coxartrose"]
+    assert r["summary"]["autofill_count"] == len(r["autofill"])
+    assert "rcri_doenca_coronaria" in r["summary"]["autofill_fields"]
+
+
+def test_ner_entidade_negada_nao_preenche(ner_falso):
+    ner_falso([("coronariopatia", "Disorder", 0.99), ("bisoprolol", "ChemicalDrugs", 0.99)])
+    r = analisar_texto_clinico("Paciente sem coronariopatia. Nega uso de bisoprolol.")
+    assert r["ner_autofill"] == []
+    assert "rcri_doenca_coronaria" not in r["autofill"]
+    assert "vsg_betabloqueador_cronico" not in r["autofill"]
+    assert {i["text"]: i["negado"] for i in r["ner_review"]["nao_reconhecidos"]} == {
+        "coronariopatia": True, "bisoprolol": True}
+
+
+def test_ner_nao_sobrescreve_o_que_as_regras_preencheram(ner_falso, monkeypatch):
+    # A regra marca a doença coronariana por "infarto" e a cirurgia por "tireoidectomia":
+    # as entidades não trocam nada, e "coronariopata" só confirma o campo.
+    texto = "Paciente coronariopata, infarto há 2 anos. Fará tireoidectomia total; Hemicolectomia em 2010."
+    regras = analisar_texto_clinico(texto)  # sem os modelos (fixture _sem_ner)
+    monkeypatch.setattr(clinical_nlp, "NER_AUTOFILL_CIRURGIA", True)
+    ner_falso([("coronariopata", "Disorder", 0.99), ("Hemicolectomia", "Procedures", 0.99)])
+    r = analisar_texto_clinico(texto)
+    assert r["ner_autofill"] == []
+    assert r["autofill"] == regras["autofill"]
+    assert r["autofill"]["tipo_cirurgia"] == "thyroid"
+    assert "coronariopata" in _textos(r["ner_review"]["confirmados"])
+
+
+def test_ner_nao_sobrescreve_o_que_veio_no_formulario(ner_falso, monkeypatch):
+    monkeypatch.setattr(clinical_nlp, "NER_AUTOFILL_CIRURGIA", True)
+    ner_falso([("coronariopata", "Disorder", 0.99), ("Hemicolectomia", "Procedures", 0.99)])
+    r = analisar_texto_clinico("Paciente coronariopata. Hemicolectomia direita.",
+                               {"rcri_doenca_coronaria": True, "tipo_cirurgia": "eye"})
+    assert r["ner_autofill"] == []
+    assert "rcri_doenca_coronaria" not in r["autofill"]
+    assert "tipo_cirurgia" not in r["autofill"]
+
+
+def test_ner_diabetes_sem_insulina_nao_marca_o_campo(ner_falso):
+    ner_falso([("diabético", "Disorder", 0.99)])
+    r = analisar_texto_clinico("Homem de 70 anos, diabético em uso de metformina.")
+    assert r["ner_autofill"] == []
+    assert "rcri_diabetes_insulina" not in r["autofill"]
+    assert "vsg_diabetes_insulina" not in r["autofill"]
+
+
+def test_ner_diabetes_com_insulina_marca_os_dois_campos(ner_falso):
+    ner_falso([("DM2 insulinizado", "Disorder", 0.99)])
+    r = analisar_texto_clinico("Paciente de 70 anos, DM2 insulinizado, HAS.")
+    assert [p["campo"] for p in r["ner_autofill"]] == ["rcri_diabetes_insulina"]
+    assert r["autofill"]["rcri_diabetes_insulina"] is True and r["autofill"]["vsg_diabetes_insulina"] is True
+
+
+def test_ner_revascularizacao_sem_qualificador_nao_marca_o_campo(ner_falso):
+    ner_falso([("stent", "Procedures", 0.99)])
+    r = analisar_texto_clinico("Homem de 62 anos, implante de stent em 2015.")
+    assert r["ner_autofill"] == []
+    assert "vsg_revasc_previa" not in r["autofill"]
+
+
+def test_ner_tipo_de_cirurgia_so_e_ligado_com_a_opcao(ner_falso, monkeypatch):
+    ner_falso([("Hemicolectomia", "Procedures", 0.95)])
+    texto = "Homem de 63 anos. Creatinina 1,2. 7 METs. Hemicolectomia direita por neoplasia."
+
+    r = analisar_texto_clinico(texto)
+    assert r["ner_autofill"] == []
+    assert "tipo_cirurgia" not in r["autofill"]
+    assert "tipo_cirurgia" in [m["campo"] for m in r["missing_critical"]]
+    assert _textos(r["ner_review"]["nao_reconhecidos"]) == ["Hemicolectomia"]
+
+    monkeypatch.setattr(clinical_nlp, "NER_AUTOFILL_CIRURGIA", True)
+    r = analisar_texto_clinico(texto)
+    assert r["ner_autofill"] == [{"campo": "tipo_cirurgia", "valor": "intraperitoneal",
+                                  "termo": "Hemicolectomia", "label": "Procedures", "score": 0.95}]
+    assert r["autofill"]["tipo_cirurgia"] == "intraperitoneal"
+    assert r["autofill"]["risco_cirurgia"] == "intermediario"
+    assert r["autofill"]["rcri_cirurgia_alto_risco"] is True
+    assert "tipo_cirurgia" not in [m["campo"] for m in r["missing_critical"]]
+    assert r["summary"]["missing_critical_count"] == len(r["missing_critical"])
+
+
+def test_ner_preenchimento_desligado_deixa_so_o_aviso(ner_falso, monkeypatch):
+    monkeypatch.setattr(clinical_nlp, "NER_AUTOFILL", False)
+    ner_falso([("coronariopata", "Disorder", 0.99)])
+    r = analisar_texto_clinico("Paciente de 61 anos, coronariopata.")
+    assert r["ner_autofill"] == []
+    assert "rcri_doenca_coronaria" not in r["autofill"]
+    assert _textos(r["ner_review"]["nao_reconhecidos"]) == ["coronariopata"]

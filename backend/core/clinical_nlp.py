@@ -1,11 +1,13 @@
 """Clinical text parsing for CardioRisk.
 
 This module combines:
-1) Rule-based extraction tailored to CardioRisk calculator fields. The rules are
-   the only thing that fills form fields.
-2) Optional NER inference with the `pucpr/clinicalnerpt-*` models (Hugging Face),
-   used only to review the rules: clinical terms the models find and no rule
-   recognized are returned in `ner_review` so the physician can check them.
+1) Rule-based extraction tailored to CardioRisk calculator fields. The rules
+   handle numbers, negation and recent events, and work on their own when the
+   models are off.
+2) Optional NER inference with the `pucpr/clinicalnerpt-*` models (Hugging Face).
+   A clinical term the models find and no rule used fills the form field it is
+   linked to (`ner_autofill`); terms linked to no field are returned in
+   `ner_review` so the physician can check them.
 """
 
 from __future__ import annotations
@@ -442,8 +444,9 @@ def _revisar_com_ner(
 ) -> dict[str, list[dict[str, Any]]]:
     """Confere as entidades do NER com os termos que as regras reconheceram.
 
-    Não preenche campo nenhum: só separa o que as regras já usaram (`confirmados`)
-    do que o modelo encontrou e nenhuma regra reconheceu (`nao_reconhecidos`).
+    Separa o que as regras já usaram (`confirmados`) do que o modelo encontrou e
+    nenhuma regra reconheceu (`nao_reconhecidos`); o preenchimento a partir destas
+    últimas fica em `_preencher_com_ner`.
     A comparação é por palavra inteira, para "ic" não coincidir com "cronica".
     """
     termos = [t for t in (_chave_termo(t) for t in termos_reconhecidos) if t]
@@ -482,6 +485,210 @@ def _revisar_com_ner(
     ]
 
     return {"nao_reconhecidos": nao_reconhecidos, "confirmados": confirmados}
+
+
+# ---------------------------------------------------------------------------
+# Preenchimento a partir das entidades do NER
+# ---------------------------------------------------------------------------
+# Uma entidade que nenhuma regra usou é comparada, pela escrita, com descrições
+# canônicas de cada campo. Só preenche quando a semelhança com um campo passa do
+# limiar e fica com folga sobre o segundo campo mais parecido.
+
+# Descrições canônicas por campo do formulário.
+DESCRICOES_CAMPO: dict[str, list[str]] = {
+    "rcri_doenca_coronaria": [
+        "doença arterial coronariana", "coronariopatia", "infarto do miocárdio", "angina", "síndrome coronariana",
+    ],
+    "rcri_ic": ["insuficiência cardíaca", "insuficiência cardíaca congestiva", "ICC", "ICFEr", "ICFEp"],
+    "rcri_cerebrovascular": [
+        "acidente vascular cerebral", "acidente vascular encefálico", "AVC", "AVE",
+        "ataque isquêmico transitório", "AIT",
+    ],
+    "rcri_diabetes_insulina": [
+        "diabetes insulinodependente", "diabético insulino-requerente", "insulina", "insulinoterapia",
+    ],
+    "vsg_dpoc": ["doença pulmonar obstrutiva crônica", "DPOC", "enfisema pulmonar", "bronquite crônica"],
+    "vsg_tabagismo": ["tabagismo", "tabagista", "fumante"],
+    "obesidade": ["obesidade", "obeso", "obesidade mórbida"],
+    "vsg_betabloqueador_cronico": [
+        "betabloqueador", "atenolol", "metoprolol", "carvedilol", "bisoprolol", "propranolol", "nebivolol",
+    ],
+    "vsg_revasc_previa": [
+        "revascularização miocárdica", "cirurgia de revascularização do miocárdio", "CRM",
+        "angioplastia coronária", "ATC", "stent coronário",
+    ],
+    "doenca_valvar_conhecida": [
+        "valvopatia", "doença valvar", "estenose aórtica", "insuficiência mitral", "prótese valvar",
+    ],
+    "usa_aas": ["ácido acetilsalicílico", "AAS", "aspirina"],
+    "usa_clopidogrel": ["clopidogrel"],
+    "usa_ticagrelor": ["ticagrelor", "Brilinta"],
+    "usa_prasugrel": ["prasugrel"],
+    "usa_varfarina": ["varfarina", "Marevan"],
+    "usa_doac": ["rivaroxabana", "apixabana", "edoxabana", "dabigatrana", "Xarelto", "Eliquis", "Pradaxa"],
+}
+
+# Termos clínicos frequentes que não têm campo no formulário. Entram na comparação
+# como concorrentes: uma entidade mais parecida com eles não preenche nada.
+DESCRICOES_SEM_CAMPO = [
+    "hipertensão arterial", "hipertenso", "HAS", "dislipidemia", "DLP", "diabetes mellitus", "diabético",
+    "doença renal crônica", "hipotireoidismo", "neoplasia", "estatina", "sinvastatina", "enalapril",
+    "losartana", "furosemida", "metformina", "dispneia", "comorbidades", "cirurgia",
+]
+
+# Campos que o formulário mantém em sincronia com o campo principal.
+CAMPOS_ASSOCIADOS: dict[str, list[str]] = {
+    "rcri_doenca_coronaria": ["dac_conhecida", "vsg_dac"],
+    "rcri_ic": ["ic_conhecida", "vsg_ic"],
+    "rcri_diabetes_insulina": ["vsg_diabetes_insulina"],
+}
+
+# Campos com critério específico: o termo geral não basta, a entidade precisa
+# trazer o qualificador (diabetes só com insulina; revascularização só miocárdica).
+CRITERIO_ESPECIFICO: dict[str, str] = {
+    "rcri_diabetes_insulina": r"insulin|\bnph\b|glargina",
+    "vsg_revasc_previa": r"miocard|coronari|\bcrm\b|\batc\b|safena|mamaria",
+}
+
+# Limiares escolhidos nos casos de número ímpar de avaliar_pln.py (`--ner` mostra a busca).
+LIGACAO_CAMPO_LIMIAR = 0.75
+LIGACAO_CAMPO_FOLGA = 0.20
+LIGACAO_CIRURGIA_LIMIAR = 0.45
+LIGACAO_CIRURGIA_FOLGA = 0.05
+
+# CARDIORISK_NER_AUTOFILL=false deixa os modelos só na conferência (`ner_review`).
+NER_AUTOFILL = _para_booleano(os.getenv("CARDIORISK_NER_AUTOFILL"), default=True)
+# A ligação de procedimento a tipo de cirurgia fica desligada por padrão: nos casos
+# de avaliação ela acerta 3 cirurgias e erra 1 (`python avaliar_pln.py --ner`), e um
+# tipo de cirurgia errado muda o índice aplicado. CARDIORISK_NER_AUTOFILL_CIRURGIA=true liga.
+NER_AUTOFILL_CIRURGIA = _para_booleano(os.getenv("CARDIORISK_NER_AUTOFILL_CIRURGIA"), default=False)
+
+
+def _trigramas(texto: str) -> dict[str, int]:
+    texto = f" {_chave_termo(texto)} "
+    contagem: dict[str, int] = {}
+    for i in range(len(texto) - 2):
+        contagem[texto[i:i + 3]] = contagem.get(texto[i:i + 3], 0) + 1
+    return contagem
+
+
+def _semelhanca_escrita(termo: str, descricao: str, com_contencao: bool = True) -> float:
+    """Semelhança de escrita entre 0 e 1, por trigramas de caracteres.
+
+    É o maior entre o cosseno dos trigramas e, com `com_contencao`, a fração dos
+    trigramas da descrição presentes no termo ("AVE isquêmico" contém "AVE").
+    """
+    do_termo, da_descricao = _trigramas(termo), _trigramas(descricao)
+    if not do_termo or not da_descricao:
+        return 0.0
+    comum = sum(do_termo[g] * da_descricao[g] for g in do_termo if g in da_descricao)
+    norma = (sum(v * v for v in do_termo.values()) * sum(v * v for v in da_descricao.values())) ** 0.5
+    cosseno = comum / norma
+    if not com_contencao:
+        return cosseno
+    contidos = sum(min(n, do_termo.get(g, 0)) for g, n in da_descricao.items())
+    return max(cosseno, contidos / sum(da_descricao.values()))
+
+
+def _mais_parecido(
+    termo: str, grupos: dict[str, list[str]], limiar: float, folga: float, com_contencao: bool
+) -> tuple[str | None, float]:
+    pontos = sorted(
+        ((max(_semelhanca_escrita(termo, d, com_contencao) for d in descricoes), nome)
+         for nome, descricoes in grupos.items()),
+        reverse=True,
+    )
+    (melhor, nome), (segundo, _) = pontos[0], pontos[1]
+    if melhor < limiar or melhor - segundo < folga:
+        return None, round(melhor, 4)
+    return nome, round(melhor, 4)
+
+
+def _ligar_entidade_a_campo(
+    entidade: dict[str, Any], limiar: float | None = None, folga: float | None = None
+) -> tuple[str | None, float]:
+    """Devolve (campo do `autofill`, confiança) para a entidade, ou (None, confiança)."""
+    termo = str(entidade.get("text", ""))
+    grupos = {**DESCRICOES_CAMPO, "": DESCRICOES_SEM_CAMPO}
+    campo, confianca = _mais_parecido(
+        termo,
+        grupos,
+        LIGACAO_CAMPO_LIMIAR if limiar is None else limiar,
+        LIGACAO_CAMPO_FOLGA if folga is None else folga,
+        com_contencao=True,
+    )
+    if not campo:
+        return None, confianca
+    criterio = CRITERIO_ESPECIFICO.get(campo)
+    if criterio and not re.search(criterio, _chave_termo(termo)):
+        return None, confianca
+    return campo, confianca
+
+
+def _ligar_entidade_a_cirurgia(
+    entidade: dict[str, Any], limiar: float | None = None, folga: float | None = None
+) -> tuple[str | None, float]:
+    """Devolve (categoria de SURGERY_TYPE_MAP, confiança) para uma entidade de procedimento."""
+    return _mais_parecido(
+        str(entidade.get("text", "")),
+        {nome: dados["aliases"] for nome, dados in SURGERY_TYPE_MAP.items()},
+        LIGACAO_CIRURGIA_LIMIAR if limiar is None else limiar,
+        LIGACAO_CIRURGIA_FOLGA if folga is None else folga,
+        com_contencao=False,
+    )
+
+
+def _preencher_com_ner(
+    review: dict[str, list[dict[str, Any]]],
+    autofill: dict[str, Any],
+    current_data: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Preenche em `autofill` os campos ligados às entidades que nenhuma regra usou.
+
+    Nunca usa entidade negada, nunca troca o que as regras preencheram nem o que já
+    veio marcado em `current_data`. As entidades usadas saem de `nao_reconhecidos`.
+    """
+    preenchidos: list[dict[str, Any]] = []
+    restantes: list[dict[str, Any]] = []
+
+    for item in review["nao_reconhecidos"]:
+        usado = False
+        if not item.get("negado"):
+            campo, _ = _ligar_entidade_a_campo(item)
+            if campo and (autofill.get(campo) or current_data.get(campo)):
+                # O campo já está marcado: a entidade só confirma, não é aviso.
+                review["confirmados"].append(item)
+                usado = True
+            elif campo and campo not in autofill:
+                autofill[campo] = True
+                for associado in CAMPOS_ASSOCIADOS.get(campo, []):
+                    autofill.setdefault(associado, True)
+                preenchidos.append({"campo": campo, "valor": True, "termo": item["text"],
+                                    "label": item["label"], "score": item["score"]})
+                usado = True
+            elif (
+                NER_AUTOFILL_CIRURGIA
+                and item.get("label") == "Procedures"
+                and not autofill.get("tipo_cirurgia")
+                and not current_data.get("tipo_cirurgia")
+            ):
+                cirurgia, _ = _ligar_entidade_a_cirurgia(item)
+                if cirurgia:
+                    dados = SURGERY_TYPE_MAP[cirurgia]
+                    autofill.update(
+                        tipo_cirurgia=cirurgia,
+                        risco_cirurgia=dados["risco"],
+                        eh_vascular=dados["vascular"],
+                        rcri_cirurgia_alto_risco=dados.get("intracavitaria", False),
+                    )
+                    preenchidos.append({"campo": "tipo_cirurgia", "valor": cirurgia, "termo": item["text"],
+                                        "label": item["label"], "score": item["score"]})
+                    usado = True
+        if not usado:
+            restantes.append(item)
+
+    review["nao_reconhecidos"] = restantes
+    return preenchidos
 
 
 def _buscar(padrao: str, texto: str, flags: int = 0) -> re.Match[str] | None:
@@ -716,18 +923,34 @@ def analisar_texto_clinico(text: str, current_data: dict[str, Any] | None = None
     finally:
         _TERMOS_RECONHECIDOS.reset(marcador)
 
-    # O NER só confere: nada do que ele devolve altera `autofill`.
     entities, model_info = _executar_ner(text)
     review = _revisar_com_ner(_normalizar(text), entities, termos_reconhecidos)
 
+    # Entidades que nenhuma regra usou preenchem o campo a que se ligam; as demais
+    # ficam em `ner_review` para conferência. Sem modelos não há entidades e o
+    # resultado é o das regras.
+    autofill = resultado["autofill"]
+    missing_critical = resultado["missing_critical"]
+    summary = resultado["summary"]
+    ner_autofill = _preencher_com_ner(review, autofill, current_data or {}) if NER_AUTOFILL else []
+    if ner_autofill:
+        if autofill.get("tipo_cirurgia"):
+            missing_critical = [m for m in missing_critical if m["campo"] != "tipo_cirurgia"]
+        summary = {
+            "autofill_fields": sorted(autofill.keys()),
+            "autofill_count": len(autofill),
+            "missing_critical_count": len(missing_critical),
+        }
+
     return {
-        "autofill": resultado["autofill"],
-        "missing_critical": resultado["missing_critical"],
+        "autofill": autofill,
+        "missing_critical": missing_critical,
         "findings": resultado["findings"],
         "entities": entities,
         "model": model_info,
         "ner_review": review,
-        "summary": resultado["summary"],
+        "ner_autofill": ner_autofill,
+        "summary": summary,
         "context": resultado["context"],
     }
 
