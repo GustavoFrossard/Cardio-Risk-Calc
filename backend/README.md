@@ -19,12 +19,43 @@ Variáveis de ambiente (opcionais):
 |----------|--------|
 | `CORS_ALLOW_ORIGINS` | Origens permitidas, separadas por vírgula (padrão: localhost:3000, localhost:5173 e o site de produção) |
 | `CARDIORISK_ENABLE_NER` | `false` desativa o NER do Hugging Face no `/nlp/analyze` (recomendado com pouca RAM) |
-| `CARDIORISK_NER_MODEL` | Modelo NER (padrão: `pucpr/clinicalnerpt-medical`) |
+| `CARDIORISK_NER_MODELS` | Modelos de NER, separados por vírgula (padrão: `pucpr/clinicalnerpt-disorder,pucpr/clinicalnerpt-chemical,pucpr/clinicalnerpt-procedure`) |
+| `CARDIORISK_NER_MODEL` | Um único modelo; mantida por compatibilidade e usada só se `CARDIORISK_NER_MODELS` não estiver definida |
 | `HF_TOKEN` | Token opcional do Hugging Face |
 | `CARDIORISK_SUPPRESS_MODEL_WARNINGS` | `true` oculta avisos de requisição não autenticada ao Hub |
 
-O NER exige `transformers` e `torch` (`pip install -r requirements-train.txt`). Sem essas
-bibliotecas, o `/nlp/analyze` funciona apenas com as regras de extração.
+## Texto livre: regras e conferência com NER
+
+O `/nlp/analyze` preenche os campos **somente com regras** (listas de termos e expressões
+regulares). Os modelos de NER não preenchem nada: servem de conferência das regras. Quando um
+modelo encontra um termo clínico que nenhuma regra reconheceu (por exemplo "coronariopata" ou
+"ICFEr"), a resposta traz esse termo em `ner_review.nao_reconhecidos` e a tela pede que o médico
+confira o campo manualmente.
+
+- `ner_review.nao_reconhecidos`: entidades com score ≥ 0,60, com mais de 2 letras e sem
+  duplicatas, cujo texto não coincide com nenhum termo reconhecido pelas regras. Cada item traz
+  `text`, `label`, `score` e `negado` (o termo vem depois de "nega", "sem" ou "não" na frase).
+- `ner_review.confirmados`: entidades que coincidem com algo que as regras reconheceram, com os
+  mesmos campos. Um item com `negado: true` indica um campo que pode ter sido marcado
+  indevidamente (as regras não tratam negação em todos os campos).
+- `entities`: tudo o que os modelos devolveram (`text`, `label`, `score`, `start`, `end`, `model`).
+
+Modelos padrão (BioBERTpt ajustado com o SemClinBr, um rótulo cada): `clinicalnerpt-disorder`
+(doenças, sinais e sintomas), `clinicalnerpt-chemical` (medicamentos) e `clinicalnerpt-procedure`
+(procedimentos).
+
+O NER exige `transformers` e `torch` (`pip install -r requirements-ner.txt`). Sem essas
+bibliotecas, ou com `CARDIORISK_ENABLE_NER=false`, o `/nlp/analyze` funciona apenas com as regras:
+o preenchimento é o mesmo e `ner_review` vem vazio.
+
+**Memória:** com os três modelos carregados o processo ocupou cerca de 1,5 GB de RAM (medição
+em CPU com `python avaliar_pln.py --ner`; só as regras ocupam cerca de 20 MB). Por isso o
+`requirements.txt` do servidor não inclui essas bibliotecas e, em produção, o NER só roda em um
+servidor com pelo menos 2 GB de memória. A análise de um texto leva cerca de 0,13 s com os
+modelos e 2 ms sem eles.
+
+Avaliação com 60 casos clínicos fictícios: `python avaliar_pln.py` (só regras) e
+`python avaliar_pln.py --ner` (conferência com os modelos).
 
 ## Endpoints
 
@@ -63,15 +94,22 @@ backend/
 ├── core/
 │   ├── calculator.py        # pontuar_rcri, pontuar_vsg, classes de risco,
 │   │                        # recomendações, exames e orientações de medicação
-│   └── clinical_nlp.py      # Extração de campos a partir de texto livre (NER + regras)
+│   └── clinical_nlp.py      # Extração de campos a partir de texto livre (regras) e
+│                            # conferência das regras com NER (opcional)
+├── tests/                   # 124 testes (pytest)
+├── avaliar_pln.py           # Avaliação com 60 casos fictícios (--ner liga os modelos)
 ├── requirements.txt         # fastapi, uvicorn, pydantic
-├── requirements-train.txt   # transformers, torch, sentencepiece (NER)
+├── requirements-ner.txt     # transformers, torch, sentencepiece (NER, opcional)
 └── Procfile                 # uvicorn main:app
 ```
 
 ## Limitações
 
-- Testes automatizados cobrem o motor de cálculo (`python -m pytest tests -v`); exames e texto livre não têm cobertura sistemática.
+- Há 124 testes automatizados (`python -m pytest tests -v`): 53 do motor de cálculo e 71 do
+  módulo de texto livre, dos quais 18 da conferência com NER (com um modelo falso, sem baixar
+  nada). As regras de exames não têm cobertura sistemática.
+- A conferência com NER gera avisos também em textos que as regras preencheram corretamente
+  (termos sem campo na calculadora, como "hipertenso"); ela orienta a revisão, não a substitui.
 - Sem validação clínica. Não substitui o julgamento médico.
 - Dados do paciente não são armazenados pela API, mas o texto enviado ao
   `/nlp/analyze` pode conter dados sensíveis (LGPD): não o use com dados reais sem

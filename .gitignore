@@ -46,6 +46,11 @@ desktop.ini
 *.log
 logs/
 
+# Saídas da sondagem de modelos de NER (não versionadas)
+backend/ner_probe_*.json
+backend/ner_probe_status.txt
+backend/ner_probe_log.txt
+
 # Test artifacts
 *.tmp
 test_out.txt

@@ -22,7 +22,11 @@ Sociedade Brasileira de Cardiologia – 2024** (Gualandro et al., Arq Bras Cardi
 - Gera recomendações, exames complementares e orientações sobre antiagregantes e
   anticoagulantes, além de relatório em PDF (gerado no navegador).
 - Módulo experimental que extrai campos do formulário a partir de texto clínico livre
-  (`/nlp/analyze`).
+  (`/nlp/analyze`). O preenchimento é feito só por regras; modelos de NER clínico em português
+  (`pucpr/clinicalnerpt-disorder`, `-chemical` e `-procedure`) servem de conferência: avisam o
+  médico quando encontram um termo clínico que nenhuma regra usou. O NER é opcional
+  (`backend/requirements-ner.txt`) e precisa de um servidor com cerca de 2 GB de memória; no
+  servidor de produção atual ele fica desligado e a tela funciona só com as regras.
 
 ## Estrutura
 
@@ -54,7 +58,7 @@ npm run dev
 
 ## Limitações conhecidas
 
-- Há 104 testes automatizados (`backend/tests`): 53 do motor de cálculo e 51 do módulo de texto livre; as regras de exames não têm cobertura sistemática.
+- Há 124 testes automatizados (`backend/tests`): 53 do motor de cálculo e 71 do módulo de texto livre (18 deles da conferência com NER); as regras de exames não têm cobertura sistemática.
 - Não houve validação clínica, de usabilidade nem de acurácia.
 - O módulo de texto livre não foi verificado e envia texto clínico ao servidor; avalie
   implicações da LGPD antes de qualquer uso com dados reais.

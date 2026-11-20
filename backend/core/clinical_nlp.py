@@ -1,8 +1,11 @@
 """Clinical text parsing for CardioRisk.
 
 This module combines:
-1) Optional NER inference with `pucpr/clinicalnerpt-medical` (Hugging Face)
-2) Rule-based extraction tailored to CardioRisk calculator fields
+1) Rule-based extraction tailored to CardioRisk calculator fields. The rules are
+   the only thing that fills form fields.
+2) Optional NER inference with the `pucpr/clinicalnerpt-*` models (Hugging Face),
+   used only to review the rules: clinical terms the models find and no rule
+   recognized are returned in `ner_review` so the physician can check them.
 """
 
 from __future__ import annotations
@@ -12,9 +15,31 @@ import re
 import threading
 import unicodedata
 import warnings
+from contextvars import ContextVar
 from typing import Any
 
-MODEL_NAME = os.getenv("CARDIORISK_NER_MODEL", "pucpr/clinicalnerpt-medical")
+# Modelos de NER usados por padrão: doenças, medicamentos e procedimentos.
+DEFAULT_NER_MODELS = (
+    "pucpr/clinicalnerpt-disorder",
+    "pucpr/clinicalnerpt-chemical",
+    "pucpr/clinicalnerpt-procedure",
+)
+
+
+def _modelos_do_ambiente() -> list[str]:
+    # CARDIORISK_NER_MODELS (lista separada por vírgula) tem prioridade;
+    # CARDIORISK_NER_MODEL (um modelo) continua valendo por compatibilidade.
+    bruto = os.getenv("CARDIORISK_NER_MODELS") or os.getenv("CARDIORISK_NER_MODEL") or ""
+    nomes: list[str] = []
+    for nome in bruto.split(","):
+        nome = nome.strip()
+        if nome and nome not in nomes:
+            nomes.append(nome)
+    return nomes or list(DEFAULT_NER_MODELS)
+
+
+MODEL_NAMES = _modelos_do_ambiente()
+NER_SCORE_MINIMO = 0.60
 HF_TOKEN = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACEHUB_API_TOKEN")
 
 
@@ -44,9 +69,25 @@ except Exception:  # pragma: no cover - optional dependency for local/dev enviro
     pipeline = None
 
 
-_NER_PIPELINE = None
-_NER_ERROR: str | None = None
+_NER_PIPELINES: dict[str, Any] = {}
+_NER_ERRORS: dict[str, str] = {}
 _NER_LOCK = threading.Lock()
+
+# Termos que as regras reconheceram na chamada em curso (None fora de uma análise).
+_TERMOS_RECONHECIDOS: ContextVar[list[str] | None] = ContextVar("termos_reconhecidos", default=None)
+
+
+def _chave_termo(termo: str) -> str:
+    return re.sub(r"\s+", " ", _normalizar(termo)).strip(" ,.;:()-")
+
+
+def _anotar_termo(termo: str | None) -> None:
+    termos = _TERMOS_RECONHECIDOS.get()
+    if termos is None or not termo:
+        return
+    termo = _chave_termo(termo)
+    if termo and termo not in termos:
+        termos.append(termo)
 
 
 SURGERY_TYPE_MAP: dict[str, dict[str, Any]] = {
@@ -280,7 +321,7 @@ def _normalizar(text: str) -> str:
     return text.lower()
 
 
-def _construir_pipeline_ner():
+def _construir_pipeline_ner(nome_modelo: str):
     if pipeline is None or AutoTokenizer is None or AutoModelForTokenClassification is None:
         raise RuntimeError("transformers não está instalado no ambiente")
 
@@ -288,64 +329,178 @@ def _construir_pipeline_ner():
     if HF_TOKEN:
         load_kwargs["token"] = HF_TOKEN
 
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, **load_kwargs)
-    model = AutoModelForTokenClassification.from_pretrained(MODEL_NAME, **load_kwargs)
-    return pipeline("ner", model=model, tokenizer=tokenizer, aggregation_strategy="simple")
+    tokenizer = AutoTokenizer.from_pretrained(nome_modelo, **load_kwargs)
+    model = AutoModelForTokenClassification.from_pretrained(nome_modelo, **load_kwargs)
+    # "first" agrega por palavra. Com "simple" estes modelos devolvem pedaços de
+    # palavra ("corona", "rio", "pata" em vez de "coronariopata").
+    return pipeline("ner", model=model, tokenizer=tokenizer, aggregation_strategy="first")
 
 
-def _obter_pipeline_ner():
-    global _NER_PIPELINE, _NER_ERROR
+def _obter_pipeline_ner(nome_modelo: str | None = None):
+    nome_modelo = nome_modelo or MODEL_NAMES[0]
 
     if not ENABLE_NER:
         return None, "NER desativado por CARDIORISK_ENABLE_NER=false"
 
     with _NER_LOCK:
-        if _NER_PIPELINE is not None:
-            return _NER_PIPELINE, None
-        if _NER_ERROR is not None:
-            return None, _NER_ERROR
+        if nome_modelo in _NER_PIPELINES:
+            return _NER_PIPELINES[nome_modelo], None
+        if nome_modelo in _NER_ERRORS:
+            return None, _NER_ERRORS[nome_modelo]
 
         try:
-            _NER_PIPELINE = _construir_pipeline_ner()
-            return _NER_PIPELINE, None
+            _NER_PIPELINES[nome_modelo] = _construir_pipeline_ner(nome_modelo)
+            return _NER_PIPELINES[nome_modelo], None
         except Exception as exc:  # pragma: no cover - depends on runtime/dependencies
-            _NER_ERROR = str(exc)
-            return None, _NER_ERROR
+            _NER_ERRORS[nome_modelo] = str(exc)
+            return None, _NER_ERRORS[nome_modelo]
+
+
+# O BERT aceita 512 tokens; textos longos são analisados em trechos menores.
+_NER_TAMANHO_TRECHO = 1000
+
+
+def _dividir_em_trechos(text: str) -> list[tuple[int, str]]:
+    """Divide o texto em trechos de até 1000 caracteres, cortando de preferência em fim de frase."""
+    trechos: list[tuple[int, str]] = []
+    inicio = 0
+    while inicio < len(text):
+        fim = min(len(text), inicio + _NER_TAMANHO_TRECHO)
+        if fim < len(text):
+            janela = text[inicio:fim]
+            cortes = [m.end() for m in re.finditer(r"[\.;!?\n]\s+", janela)] or [
+                m.end() for m in re.finditer(r"\s+", janela)
+            ]
+            if cortes:
+                fim = inicio + cortes[-1]
+        trechos.append((inicio, text[inicio:fim]))
+        inicio = fim
+    return trechos
 
 
 def _executar_ner(text: str) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    ner, error = _obter_pipeline_ner()
-    if ner is None:
+    """Roda cada modelo configurado e devolve as entidades com a posição no texto original."""
+    nome_conjunto = ", ".join(MODEL_NAMES)
+    entidades: list[dict[str, Any]] = []
+    por_modelo: list[dict[str, str]] = []
+
+    for nome_modelo in MODEL_NAMES:
+        ner, error = _obter_pipeline_ner(nome_modelo)
+        if ner is None:
+            por_modelo.append({"name": nome_modelo, "status": "fallback", "detail": f"NER indisponível: {error}"})
+            continue
+
+        try:
+            do_modelo: list[dict[str, Any]] = []
+            for deslocamento, trecho in _dividir_em_trechos(text):
+                for item in ner(trecho):
+                    start, end = item.get("start"), item.get("end")
+                    if start is None or end is None:
+                        start = end = None
+                        trecho_original = str(item.get("word", ""))
+                    else:
+                        start, end = int(start) + deslocamento, int(end) + deslocamento
+                        trecho_original = text[start:end]
+                    do_modelo.append(
+                        {
+                            "text": trecho_original,
+                            "label": item.get("entity_group", "UNKNOWN"),
+                            "score": round(float(item.get("score", 0.0)), 4),
+                            "start": start,
+                            "end": end,
+                            "model": nome_modelo,
+                        }
+                    )
+            entidades.extend(do_modelo)
+            por_modelo.append({"name": nome_modelo, "status": "loaded", "detail": "ok"})
+        except Exception as exc:  # pragma: no cover - depends on runtime/dependencies
+            por_modelo.append({"name": nome_modelo, "status": "fallback", "detail": f"Falha na inferência NER: {exc}"})
+
+    carregados = [m for m in por_modelo if m["status"] == "loaded"]
+    falhas = [m for m in por_modelo if m["status"] != "loaded"]
+    if not carregados:
         return [], {
-            "name": MODEL_NAME,
+            "name": nome_conjunto,
             "status": "fallback",
-            "detail": f"NER indisponível: {error}",
+            "detail": falhas[0]["detail"] if falhas else "NER indisponível: nenhum modelo configurado",
+            "models": por_modelo,
         }
 
-    try:
-        entities = ner(text)
-        cleaned = [
-            {
-                "text": item.get("word", ""),
-                "label": item.get("entity_group", "UNKNOWN"),
-                "score": round(float(item.get("score", 0.0)), 4),
-            }
-            for item in entities
-        ]
-        return cleaned, {"name": MODEL_NAME, "status": "loaded", "detail": "ok"}
-    except Exception as exc:  # pragma: no cover - depends on runtime/dependencies
-        return [], {
-            "name": MODEL_NAME,
-            "status": "fallback",
-            "detail": f"Falha na inferência NER: {exc}",
+    entidades.sort(key=lambda e: e["start"] if e["start"] is not None else len(text))
+    detalhe = "ok" if not falhas else "parcial: " + "; ".join(f"{m['name']}: {m['detail']}" for m in falhas)
+    return entidades, {"name": nome_conjunto, "status": "loaded", "detail": detalhe, "models": por_modelo}
+
+
+def _contem_palavra(texto: str, trecho: str) -> bool:
+    return bool(re.search(rf"(?<!\w){re.escape(trecho)}(?!\w)", texto))
+
+
+def _revisar_com_ner(
+    texto_normalizado: str,
+    entidades: list[dict[str, Any]],
+    termos_reconhecidos: list[str],
+) -> dict[str, list[dict[str, Any]]]:
+    """Confere as entidades do NER com os termos que as regras reconheceram.
+
+    Não preenche campo nenhum: só separa o que as regras já usaram (`confirmados`)
+    do que o modelo encontrou e nenhuma regra reconheceu (`nao_reconhecidos`).
+    A comparação é por palavra inteira, para "ic" não coincidir com "cronica".
+    """
+    termos = [t for t in (_chave_termo(t) for t in termos_reconhecidos) if t]
+
+    # Sem duplicatas: fica a ocorrência de maior score de cada trecho.
+    melhores: dict[str, dict[str, Any]] = {}
+    for entidade in entidades:
+        score = float(entidade.get("score", 0.0))
+        if score < NER_SCORE_MINIMO:
+            continue
+        chave = _chave_termo(str(entidade.get("text", "")))
+        if sum(ch.isalpha() for ch in chave) <= 2:
+            continue
+        if chave not in melhores or score > float(melhores[chave].get("score", 0.0)):
+            melhores[chave] = entidade
+
+    nao_reconhecidos: list[dict[str, Any]] = []
+    confirmados: list[dict[str, Any]] = []
+    for chave, entidade in melhores.items():
+        item = {
+            "text": str(entidade.get("text", "")).strip(),
+            "label": entidade.get("label", "UNKNOWN"),
+            "score": entidade.get("score", 0.0),
+            "negado": _esta_negado(texto_normalizado, chave),
         }
+        coincide = any(_contem_palavra(chave, termo) or _contem_palavra(termo, chave) for termo in termos)
+        (confirmados if coincide else nao_reconhecidos).append(item)
+
+    # Dois modelos podem marcar o mesmo achado com cortes diferentes ("DAOP" e
+    # "DAOP com claudicação"): fica só o trecho mais longo.
+    chaves = [_chave_termo(item["text"]) for item in nao_reconhecidos]
+    nao_reconhecidos = [
+        item
+        for item, chave in zip(nao_reconhecidos, chaves)
+        if not any(outra != chave and _contem_palavra(outra, chave) for outra in chaves)
+    ]
+
+    return {"nao_reconhecidos": nao_reconhecidos, "confirmados": confirmados}
+
+
+def _buscar(padrao: str, texto: str, flags: int = 0) -> re.Match[str] | None:
+    """re.search que anota o trecho casado como termo reconhecido pelas regras."""
+    m = re.search(padrao, texto, flags)
+    if m:
+        _anotar_termo(m.group(0))
+    return m
 
 
 def _corresponde_algum(normalized_text: str, terms: list[str]) -> bool:
+    # Percorre a lista inteira para anotar todos os termos presentes ("DAC, IAM há 4 meses"
+    # anota "dac" e "iam"); o resultado é o mesmo de parar no primeiro.
+    achou = False
     for term in terms:
         if re.search(rf"\b{re.escape(_normalizar(term))}\b", normalized_text):
-            return True
-    return False
+            _anotar_termo(term)
+            achou = True
+    return achou
 
 
 def _esta_negado(normalized_text: str, term: str) -> bool:
@@ -406,7 +561,7 @@ def _extrair_nome(text: str) -> str | None:
 
 
 def _extrair_mets(text: str) -> float | None:
-    m = re.search(r"\b(\d+(?:[\.,]\d+)?)\s*(?:mets?|met)\b", text, flags=re.IGNORECASE)
+    m = _buscar(r"\b(\d+(?:[\.,]\d+)?)\s*(?:mets?|met)\b", text, flags=re.IGNORECASE)
     if not m:
         return None
     value = float(m.group(1).replace(",", "."))
@@ -432,7 +587,7 @@ def _inferir_mets_da_atividade(normalized_text: str) -> float | None:
 
 
 def _extrair_creatinina(text: str) -> float | None:
-    m = re.search(
+    m = _buscar(
         r"(?:creatinina|creat)[^\d]{0,30}(\d+(?:[\.,]\d+)?)\s*(?:mg/?d?l)?",
         text,
         flags=re.IGNORECASE,
@@ -443,7 +598,7 @@ def _extrair_creatinina(text: str) -> float | None:
 
 
 def _extrair_egfr(text: str) -> float | None:
-    m = re.search(
+    m = _buscar(
         r"(?:tfg|egfr|filtracao\s+glomerular)[^\d]{0,25}(\d+(?:[\.,]\d+)?)\s*(?:ml/?min(?:/1\.73m2)?)?",
         text,
         flags=re.IGNORECASE,
@@ -502,6 +657,7 @@ def _extrair_chads2(normalized_text: str) -> int | None:
             continue
         valor = int(m.group(3))
         if valor <= 6:
+            _anotar_termo(m.group(0))
             return valor
     return None
 
@@ -521,6 +677,7 @@ def _avc_ait_recente(normalized_text: str) -> bool:
         else:
             meses = n
         if meses < 3:
+            _anotar_termo(m.group(0))
             return True
     return False
 
@@ -528,10 +685,12 @@ def _avc_ait_recente(normalized_text: str) -> bool:
 def _estenose_importante_sintomatica(normalized_text: str) -> bool:
     # Condição ativa da Tabela 2: exige gravidade e sintomas explícitos na mesma frase.
     for frase in re.split(r"[\.;]", normalized_text):
-        if re.search(
+        m = re.search(
             r"\bestenose\s+(?:valvar\s+)?(?:aortica|mitral)\s+(?:\w+\s+){0,2}?(?:importante|grave|severa|critica)\b",
             frase,
-        ) and re.search(r"\bsintomatica\b", frase):
+        )
+        if m and re.search(r"\bsintomatica\b", frase):
+            _anotar_termo(m.group(0))
             return True
     return False
 
@@ -549,7 +708,31 @@ def _extrair_cirurgia(normalized_text: str) -> dict[str, Any] | None:
 
 
 def analisar_texto_clinico(text: str, current_data: dict[str, Any] | None = None) -> dict[str, Any]:
-    current_data = current_data or {}
+    # As regras anotam aqui os termos que reconheceram, para a conferência com o NER.
+    termos_reconhecidos: list[str] = []
+    marcador = _TERMOS_RECONHECIDOS.set(termos_reconhecidos)
+    try:
+        resultado = _analisar_com_regras(text, current_data or {})
+    finally:
+        _TERMOS_RECONHECIDOS.reset(marcador)
+
+    # O NER só confere: nada do que ele devolve altera `autofill`.
+    entities, model_info = _executar_ner(text)
+    review = _revisar_com_ner(_normalizar(text), entities, termos_reconhecidos)
+
+    return {
+        "autofill": resultado["autofill"],
+        "missing_critical": resultado["missing_critical"],
+        "findings": resultado["findings"],
+        "entities": entities,
+        "model": model_info,
+        "ner_review": review,
+        "summary": resultado["summary"],
+        "context": resultado["context"],
+    }
+
+
+def _analisar_com_regras(text: str, current_data: dict[str, Any]) -> dict[str, Any]:
     normalized = _normalizar(text)
 
     autofill: dict[str, Any] = {}
@@ -609,9 +792,9 @@ def analisar_texto_clinico(text: str, current_data: dict[str, Any] | None = None
         autofill["usa_doac"] = True
         findings["medications"].append("doac")
 
-    tem_fa = _corresponde_algum(normalized, ["fibrilacao atrial"]) or bool(re.search(r"\bfa\b", normalized))
+    tem_fa = _corresponde_algum(normalized, ["fibrilacao atrial"]) or bool(_buscar(r"\bfa\b", normalized))
     tem_tev = _corresponde_algum(normalized, ["tev", "tromboembolismo venoso", "trombose venosa", "tep"])
-    tem_protese_mecanica = bool(re.search(PROTESE_MECANICA, normalized))
+    tem_protese_mecanica = bool(_buscar(PROTESE_MECANICA, normalized))
     tem_fa_valvar = _corresponde_algum(normalized, ["fa valvar", "fibrilacao atrial valvar"]) or (
         tem_fa and _corresponde_algum(normalized, VALVOPATIA_REUMATICA)
     )
@@ -766,8 +949,6 @@ def analisar_texto_clinico(text: str, current_data: dict[str, Any] | None = None
             }
         )
 
-    entities, model_info = _executar_ner(text)
-
     summary = {
         "autofill_fields": sorted(autofill.keys()),
         "autofill_count": len(autofill),
@@ -783,8 +964,6 @@ def analisar_texto_clinico(text: str, current_data: dict[str, Any] | None = None
         "autofill": autofill,
         "missing_critical": missing_critical,
         "findings": findings,
-        "entities": entities,
-        "model": model_info,
         "summary": summary,
         "context": context,
     }

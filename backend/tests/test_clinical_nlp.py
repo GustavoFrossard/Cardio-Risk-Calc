@@ -157,3 +157,160 @@ def test_herniorrafia_inguinal_nao_e_intraperitoneal():
 def test_cirurgia_fora_da_cavidade_nao_marca_criterio_do_rcri():
     autofill = analisar_texto_clinico("Programada artroplastia de quadril.")["autofill"]
     assert autofill["rcri_cirurgia_alto_risco"] is False
+
+
+# ---------- Conferência das regras com o NER (ner_review) ----------
+def _pipeline_falso(achados):
+    """Pipeline de NER de mentira: devolve as entidades de `achados` que aparecem no texto.
+
+    `achados` é uma lista de (trecho, rótulo, score). Evita baixar o modelo nos testes.
+    """
+    def ner(texto):
+        saida = []
+        for trecho, rotulo, score in achados:
+            inicio = texto.find(trecho)
+            while inicio != -1:
+                saida.append({"entity_group": rotulo, "score": score, "word": trecho.lower(),
+                              "start": inicio, "end": inicio + len(trecho)})
+                inicio = texto.find(trecho, inicio + 1)
+        return saida
+    return ner
+
+
+@pytest.fixture
+def ner_falso(monkeypatch):
+    def instalar(achados, modelos=("modelo-falso",)):
+        monkeypatch.setattr(clinical_nlp, "ENABLE_NER", True)
+        monkeypatch.setattr(clinical_nlp, "MODEL_NAMES", list(modelos))
+        monkeypatch.setattr(clinical_nlp, "_obter_pipeline_ner",
+                            lambda nome_modelo=None: (_pipeline_falso(achados), None))
+    return instalar
+
+
+def _textos(itens):
+    return [item["text"] for item in itens]
+
+
+def test_ner_termo_que_nenhuma_regra_reconhece_vira_aviso(ner_falso):
+    ner_falso([("coronariopata", "Disorder", 0.99), ("ICFEr", "Disorder", 0.98)])
+    r = analisar_texto_clinico("Paciente de 61 anos, coronariopata, ICFEr. Colecistectomia.")
+    assert _textos(r["ner_review"]["nao_reconhecidos"]) == ["coronariopata", "ICFEr"]
+    assert r["ner_review"]["nao_reconhecidos"][0] == {
+        "text": "coronariopata", "label": "Disorder", "score": 0.99, "negado": False}
+    # O modelo só avisa: o campo continua sem preencher.
+    assert "rcri_doenca_coronaria" not in r["autofill"]
+
+
+def test_ner_termo_reconhecido_pelas_regras_vai_para_confirmados(ner_falso):
+    ner_falso([("infarto", "Disorder", 0.97), ("AAS", "ChemicalDrugs", 0.95),
+               ("colecistectomia videolaparoscópica", "Procedures", 0.99)])
+    r = analisar_texto_clinico("Teve infarto há 2 anos, em uso de AAS. Fará colecistectomia videolaparoscópica.")
+    assert _textos(r["ner_review"]["confirmados"]) == ["infarto", "AAS", "colecistectomia videolaparoscópica"]
+    assert r["ner_review"]["nao_reconhecidos"] == []
+
+
+def test_ner_comparacao_por_palavra_inteira(ner_falso):
+    # "ic" foi reconhecido pelas regras, mas não pode confirmar "insuficiência renal crônica".
+    ner_falso([("insuficiência renal crônica", "Disorder", 0.99)])
+    r = analisar_texto_clinico("Paciente com IC e insuficiência renal crônica.")
+    assert _textos(r["ner_review"]["nao_reconhecidos"]) == ["insuficiência renal crônica"]
+
+
+def test_ner_termo_negado_vem_marcado(ner_falso):
+    ner_falso([("AVC", "Disorder", 0.99), ("dispneia", "Disorder", 0.99), ("coronariopatia", "Disorder", 0.99)])
+    r = analisar_texto_clinico("Nega AVC, nega dispneia, sem coronariopatia. Hipertenso.")
+    nao_reconhecidos = {i["text"]: i["negado"] for i in r["ner_review"]["nao_reconhecidos"]}
+    confirmados = {i["text"]: i["negado"] for i in r["ner_review"]["confirmados"]}
+    assert nao_reconhecidos == {"dispneia": True, "coronariopatia": True}
+    # As regras ignoram a negação e usam "AVC"; a conferência marca o termo como negado.
+    assert confirmados == {"AVC": True}
+
+
+def test_ner_score_baixo_e_termo_curto_sao_descartados(ner_falso):
+    ner_falso([("coronariopata", "Disorder", 0.59), ("DM", "Disorder", 0.99), ("bócio", "Disorder", 0.60)])
+    r = analisar_texto_clinico("Paciente coronariopata, DM, bócio.")
+    assert _textos(r["ner_review"]["nao_reconhecidos"]) == ["bócio"]
+    # `entities` continua trazendo tudo o que o modelo devolveu.
+    assert len(r["entities"]) == 3
+
+
+def test_ner_entidade_repetida_aparece_uma_vez(ner_falso):
+    # Mesmo termo duas vezes no texto e em dois modelos: um aviso só, com o maior score.
+    ner_falso([("bisoprolol", "ChemicalDrugs", 0.91)], modelos=("modelo-a", "modelo-b"))
+    r = analisar_texto_clinico("Usa bisoprolol pela manhã. Bisoprolol mantido no dia da cirurgia.")
+    assert len(r["entities"]) == 2
+    assert _textos(r["ner_review"]["nao_reconhecidos"]) == ["bisoprolol"]
+
+
+def test_ner_trecho_contido_em_outro_aviso_nao_se_repete(ner_falso):
+    ner_falso([("DAOP", "Procedures", 0.90), ("DAOP com claudicação", "Disorder", 0.99)])
+    r = analisar_texto_clinico("Homem de 57 anos, DAOP com claudicação.")
+    assert _textos(r["ner_review"]["nao_reconhecidos"]) == ["DAOP com claudicação"]
+
+
+def test_ner_todos_os_termos_da_mesma_regra_sao_confirmados(ner_falso):
+    # A regra da doença coronariana casa "dac" e "iam"; nenhum dos dois pode virar aviso.
+    ner_falso([("DAC", "Disorder", 0.99), ("IAM", "Disorder", 0.99)])
+    r = analisar_texto_clinico("Homem de 72 anos, DAC, IAM há 4 meses.")
+    assert _textos(r["ner_review"]["confirmados"]) == ["DAC", "IAM"]
+    assert r["ner_review"]["nao_reconhecidos"] == []
+
+
+def test_ner_entidades_trazem_posicao_trecho_original_e_modelo(ner_falso):
+    ner_falso([("Coronariopata", "Disorder", 0.99)], modelos=("modelo-a",))
+    texto = "Coronariopata em uso de AAS."
+    entidade = analisar_texto_clinico(texto)["entities"][0]
+    assert entidade == {"text": "Coronariopata", "label": "Disorder", "score": 0.99,
+                        "start": 0, "end": 13, "model": "modelo-a"}
+    assert texto[entidade["start"]:entidade["end"]] == entidade["text"]
+
+
+@pytest.mark.parametrize("texto", [CASO_1, CASO_2, CASO_3, CASO_4, CASO_5, CASO_6],
+                         ids=["caso1", "caso2", "caso3", "caso4", "caso5", "caso6"])
+def test_ner_ligado_nao_altera_o_preenchimento(texto, monkeypatch):
+    sem_ner = analisar_texto_clinico(texto)
+    assert sem_ner["ner_review"] == {"nao_reconhecidos": [], "confirmados": []}
+    assert sem_ner["entities"] == []
+    assert sem_ner["model"]["status"] == "fallback"
+
+    achados = [("hipertensão arterial", "Disorder", 0.99), ("diabetes", "Disorder", 0.99),
+               ("dispneia", "Disorder", 0.99), ("lesão", "Disorder", 0.99), ("infarto", "Disorder", 0.99),
+               ("programação", "Procedures", 0.99)]
+    monkeypatch.setattr(clinical_nlp, "ENABLE_NER", True)
+    monkeypatch.setattr(clinical_nlp, "MODEL_NAMES", ["modelo-falso"])
+    monkeypatch.setattr(clinical_nlp, "_obter_pipeline_ner", lambda nome_modelo=None: (_pipeline_falso(achados), None))
+    com_ner = analisar_texto_clinico(texto)
+
+    for campo in ("autofill", "missing_critical", "findings", "summary", "context"):
+        assert com_ner[campo] == sem_ner[campo]
+    assert com_ner["ner_review"]["nao_reconhecidos"]
+
+
+def test_ner_sem_transformers_instalado_devolve_avisos_vazios(monkeypatch):
+    monkeypatch.setattr(clinical_nlp, "ENABLE_NER", True)
+    monkeypatch.setattr(clinical_nlp, "pipeline", None)
+    monkeypatch.setattr(clinical_nlp, "_NER_PIPELINES", {})
+    monkeypatch.setattr(clinical_nlp, "_NER_ERRORS", {})
+    r = analisar_texto_clinico(CASO_1)
+    assert r["ner_review"] == {"nao_reconhecidos": [], "confirmados": []}
+    assert r["model"]["status"] == "fallback"
+    assert "transformers não está instalado" in r["model"]["detail"]
+    assert r["autofill"]["usa_aas"] is True
+
+
+def test_ner_modelos_lidos_do_ambiente(monkeypatch):
+    monkeypatch.setenv("CARDIORISK_NER_MODELS", "a/um, b/dois ,a/um")
+    monkeypatch.setenv("CARDIORISK_NER_MODEL", "c/antigo")
+    assert clinical_nlp._modelos_do_ambiente() == ["a/um", "b/dois"]
+    monkeypatch.delenv("CARDIORISK_NER_MODELS")
+    assert clinical_nlp._modelos_do_ambiente() == ["c/antigo"]
+    monkeypatch.delenv("CARDIORISK_NER_MODEL")
+    assert clinical_nlp._modelos_do_ambiente() == list(clinical_nlp.DEFAULT_NER_MODELS)
+
+
+def test_ner_texto_longo_e_dividido_sem_perder_posicoes():
+    texto = "Paciente com coronariopatia grave. " * 80
+    trechos = clinical_nlp._dividir_em_trechos(texto)
+    assert len(trechos) > 1
+    assert "".join(t for _, t in trechos) == texto
+    assert all(len(t) <= 1000 and texto[ini:ini + len(t)] == t for ini, t in trechos)

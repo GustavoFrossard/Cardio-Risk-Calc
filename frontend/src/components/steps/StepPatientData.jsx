@@ -42,6 +42,55 @@ const opcoesRiscoSangramentoDoac = [
   { valor: "alto", rotulo: "Alto" },
 ];
 
+// Conferência do preenchimento: termos clínicos que o modelo de NER encontrou no texto
+// e que nenhuma regra usou. O modelo não preenche campos; só pede que o médico confira.
+function AvisoRevisaoNer({ revisao }) {
+  const naoReconhecidos = Array.isArray(revisao?.nao_reconhecidos) ? revisao.nao_reconhecidos : [];
+  const presentes = naoReconhecidos.filter((item) => !item.negado).map((item) => item.text);
+  const ausentes = naoReconhecidos.filter((item) => item.negado).map((item) => item.text);
+  const usadosNegados = (Array.isArray(revisao?.confirmados) ? revisao.confirmados : [])
+    .filter((item) => item.negado)
+    .map((item) => item.text);
+
+  if (presentes.length === 0 && ausentes.length === 0 && usadosNegados.length === 0) return null;
+
+  return (
+    <div
+      style={{
+        borderRadius: "var(--r-sm)",
+        background: "var(--amber-soft)",
+        border: "1px solid var(--amber-border)",
+        padding: "10px 12px",
+        fontSize: 12,
+        color: "var(--amber)",
+        lineHeight: 1.5,
+        display: "flex",
+        flexDirection: "column",
+        gap: 6,
+      }}
+    >
+      <div style={{ fontWeight: 600 }}>Conferência do preenchimento</div>
+      {presentes.length > 0 && (
+        <div>
+          O modelo encontrou termos clínicos que não foram usados no preenchimento. Confira se algum campo
+          precisa ser marcado: <strong>{presentes.join(", ")}</strong>.
+        </div>
+      )}
+      {ausentes.length > 0 && (
+        <div>
+          Termos mencionados como ausentes no texto (não usados no preenchimento): {ausentes.join(", ")}.
+        </div>
+      )}
+      {usadosNegados.length > 0 && (
+        <div>
+          Termos usados no preenchimento que aparecem negados no texto. Confira se algum campo foi marcado
+          indevidamente: <strong>{usadosNegados.join(", ")}</strong>.
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function EtapaDadosPaciente({ data, onChange, onAnalisarTextoClinico, analisando, resultadoNlp }) {
   const [sliderIdx, setSliderIdx] = useState(() => {
     let best = 0;
@@ -181,6 +230,8 @@ export function EtapaDadosPaciente({ data, onChange, onAnalisarTextoClinico, ana
                 </ul>
               </div>
             )}
+
+            <AvisoRevisaoNer revisao={resultadoNlp?.ner_review} />
           </div>
         )}
       </Card>
